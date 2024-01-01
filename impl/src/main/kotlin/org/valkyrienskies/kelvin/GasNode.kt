@@ -8,4 +8,8 @@ data class GasNode(
     val volume: Double,
     val temperature: Double,
     val connections: MutableMap<GasNode, GasConnection>,
-)
+) {
+    fun applyChanges(changes: GasNodeChangesData) {
+        TODO()
+    }
+}
