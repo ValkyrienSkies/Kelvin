@@ -1,6 +1,6 @@
 package org.valkyrienskies.kelvin
 
-class GasGraph {
+class GasGraphImpl : GasGraph {
     private val nodes: MutableMap<GasNodeIdentifier, GasNode> = HashMap()
 
     /**
@@ -38,11 +38,11 @@ class GasGraph {
         TODO()
     }
 
-    fun tick(timeStep: Double, subSteps: Int): GasSimResultFrame {
+    override fun tick(timeStep: Double, subSteps: Int): GasSimResultFrame {
         TODO()
     }
 
-    fun queueChanges(changesFrame: GasSimChangesFrame) {
+    override fun queueChanges(changesFrame: GasSimChangesFrame) {
         TODO()
     }
 }
