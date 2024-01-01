@@ -1,9 +1,7 @@
 package org.valkyrienskies.kelvin
 
-import org.joml.Vector3ic
-
 class GasGraph {
-    private val nodes: MutableMap<Vector3ic, List<Pair<GasNodeId, GasNode>>> = HashMap()
+    private val nodes: MutableMap<GasNodeIdentifier, GasNode> = HashMap()
 
     /**
      * Return true if success
@@ -22,18 +20,29 @@ class GasGraph {
     /**
      * Return true if success
      */
-    fun connect(connections: Pair<GasNodeIdentifier, GasNodeIdentifier>): Boolean {
+    fun connect(connectionCreateData: GasConnectionCreateData): Boolean {
         TODO()
     }
 
     /**
      * Return true if success
      */
-    fun disconnect(connections: Pair<GasNodeIdentifier, GasNodeIdentifier>): Boolean {
+    fun disconnect(connection: Pair<GasNodeIdentifier, GasNodeIdentifier>): Boolean {
         TODO()
     }
 
-    fun tick(timeStep: Double, subSteps: Int) {
+    /**
+     * Return true if success
+     */
+    fun heatNode(identifier: GasNodeIdentifier, deltaJoules: Double): Boolean {
+        TODO()
+    }
+
+    fun tick(timeStep: Double, subSteps: Int): GasSimResultFrame {
+        TODO()
+    }
+
+    fun queueChanges(changesFrame: GasSimChangesFrame) {
         TODO()
     }
 }

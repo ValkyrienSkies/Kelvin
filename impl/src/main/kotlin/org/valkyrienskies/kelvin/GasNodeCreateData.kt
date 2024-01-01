@@ -7,5 +7,4 @@ data class GasNodeCreateData(
     val gasMasses: EnumMap<GasType, Double>,
     val volume: Double,
     val temperature: Double,
-    val radius: Double,
 )
