@@ -1,6 +1,8 @@
 package org.valkyrienskies.kelvin
 
-data class GasConnection(
+import kotlin.math.abs
+
+class GasConnection(
     val from: GasNodeIdentifier,
     val to: GasNodeIdentifier,
     /**
@@ -16,3 +18,7 @@ data class GasConnection(
      */
     var pumpPressureDrop: Double?,
 )
+
+
+
+

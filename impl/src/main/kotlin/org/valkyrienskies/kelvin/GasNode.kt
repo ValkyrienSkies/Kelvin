@@ -12,4 +12,8 @@ data class GasNode(
     fun applyChanges(changes: GasNodeChangesData) {
         TODO()
     }
+
+    fun hasMultipleGasses(): Boolean {
+        return gasMasses.values.size > 1
+    }
 }
