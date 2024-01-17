@@ -6,14 +6,26 @@ data class GasNode(
     val identifier: GasNodeIdentifier,
     val gasMasses: EnumMap<GasType, Double>,
     val volume: Double,
-    val temperature: Double,
+    var temperature: Double,
     val connections: MutableMap<GasNode, GasConnection>,
 ) {
-    fun applyChanges(changes: GasNodeChangesData) {
-        TODO()
-    }
+    fun applyChanges(changes: GasNodeChangesData): GasNodeResultData {
+        gasMasses.keys.forEach {
+            if (changes.deltaGasMasses.contains(it)) {
+                gasMasses[it] = gasMasses[it]!! + changes.deltaGasMasses[it]!!
+            }
+        }
 
-    fun hasMultipleGasses(): Boolean {
-        return gasMasses.values.size > 1
+        val averageSpecificHeat = gasMasses.keys.sumOf { it.specificHeatCapacity } / gasMasses.values.size
+
+        val temperatureChange = (changes.deltaThermalEnergy / (gasMasses.values.sum() * averageSpecificHeat))
+
+        temperature += temperatureChange
+
+        return GasNodeResultData(
+            gasMasses,
+            temperature,
+            changes.directionalDeltaMasses,
+        )
     }
 }

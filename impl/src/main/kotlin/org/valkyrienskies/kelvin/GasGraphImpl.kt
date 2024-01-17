@@ -107,8 +107,9 @@ class GasGraphImpl : GasGraph {
 
         val visitedConnections: HashSet<GasConnection> = HashSet()
 
+        val collectedChangesData: HashMap<Int, GasNodeChangesData> = HashMap()
+        var changesId = 0
         nodes.values.forEach {
-
             it.connections.keys.forEach {itConn ->
                 if (!visitedConnections.contains(it.connections[itConn]!!)) {
                     visitedConnections.add(it.connections[itConn]!!)
@@ -131,21 +132,53 @@ class GasGraphImpl : GasGraph {
 
                         val reverse = flow < 0.0
                         val flowAbs = abs(flow)
-
-                        if (!reverse) {
+                        val returnVal = if (!reverse) {
                             propagateGas(it, itConn, flowAbs)
                         } else {
                             propagateGas(itConn, it, flowAbs)
                         }
+
+                        val fromChanges = returnVal.first
+                        val toChanges = returnVal.second
+
+                        collectedChangesData[changesId] = fromChanges
+                        changesId++
+                        collectedChangesData[changesId] = toChanges
+                        changesId++
                     }
                 }
             }
         }
 
-        TODO("Simulate the thing doofus...")
+        collectedChangesData.values.forEach {
+            if (frameChangeData.containsKey(it.identifier)) {
+                val existing = frameChangeData[it.identifier]!!
+                existing.deltaGasMasses.keys.forEach { gasType ->
+                    existing.deltaGasMasses[gasType] = existing.deltaGasMasses[gasType]!! + it.deltaGasMasses[gasType]!!
+                }
+                existing.deltaThermalEnergy += it.deltaThermalEnergy
+                it.directionalDeltaMasses.keys.forEach { gasNodeIdentifier ->
+                    if (existing.directionalDeltaMasses.containsKey(gasNodeIdentifier)) {
+                        existing.directionalDeltaMasses[gasNodeIdentifier] = existing.directionalDeltaMasses[gasNodeIdentifier]!! + it.directionalDeltaMasses[gasNodeIdentifier]!!
+                    } else {
+                        existing.directionalDeltaMasses[gasNodeIdentifier] = it.directionalDeltaMasses[gasNodeIdentifier]!!
+                    }
+                }
+            } else {
+                frameChangeData[it.identifier] = it
+            }
+        }
+        val results: HashMap<GasNodeIdentifier, GasNodeResultData> = HashMap()
+        //apply changes
+        frameChangeData.values.forEach {
+            val result = nodes[it.identifier]?.applyChanges(it)
+            if (result != null) results[it.identifier] = result
+        }
+
+        return GasSimResultFrame(results)
     }
 
-    fun propagateGas(from: GasNode, to: GasNode, flow: Double): Pair<GasNodeChangesData, GasNodeChangesData> {
+    private fun propagateGas(from: GasNode, to: GasNode, flow: Double): Pair<GasNodeChangesData, GasNodeChangesData> {
         val timeAccFlowRate = flow / 1000.0
 
         val fromGasMasses = from.gasMasses
@@ -155,11 +188,11 @@ class GasGraphImpl : GasGraph {
         val toGasMassesCopy = EnumMap<GasType, Double>(GasType::class.java)
 
         fromGasMasses.keys.forEach {
-            fromGasMassesCopy[it] = fromGasMasses[it]!! - flow
+            fromGasMassesCopy[it] = -flow
         }
 
         toGasMasses.keys.forEach {
-            toGasMassesCopy[it] = toGasMasses[it]!! + flow
+            toGasMassesCopy[it] = flow
         }
 
         val fromAverageSpecificHeat = fromGasMasses.keys.sumOf { it.specificHeatCapacity } / fromGasMasses.values.size
@@ -167,8 +200,8 @@ class GasGraphImpl : GasGraph {
 
         val deltaThermalEnergy = thermalEnergyFrom * timeAccFlowRate
 
-        val fromChanges = GasNodeChangesData(from.identifier, fromGasMassesCopy, -deltaThermalEnergy)
-        val toChanges = GasNodeChangesData(to.identifier, toGasMassesCopy, deltaThermalEnergy)
+        val fromChanges = GasNodeChangesData(from.identifier, fromGasMassesCopy, -deltaThermalEnergy, hashMapOf(to.identifier to flow))
+        val toChanges = GasNodeChangesData(to.identifier, toGasMassesCopy, deltaThermalEnergy, hashMapOf(from.identifier to -flow))
 
         return Pair(fromChanges, toChanges)
     }
@@ -176,7 +209,7 @@ class GasGraphImpl : GasGraph {
     /**
      * Calculates pressure using the ideal gas law.
      */
-    fun calcPressure(mass: Double, volume: Double, temp: Double): Double {
+    private fun calcPressure(mass: Double, volume: Double, temp: Double): Double {
         var pressure = 0.0
         pressure = (mass * idealGasConstant * temp) / volume
         return pressure
@@ -187,11 +220,11 @@ class GasGraphImpl : GasGraph {
      *
      * Calculates the flow of gas based off a pressure differential as dictated by the titular law.
      */
-    fun poisuiellesLaw(pressureOne: Double, pressureTwo: Double, radius: Double, viscosity: Double, pumpPressure: Double = 0.0): Double {
+    private fun poisuiellesLaw(pressureOne: Double, pressureTwo: Double, radius: Double, viscosity: Double, pumpPressure: Double = 0.0): Double {
         return ((pressureOne - pressureTwo + pumpPressure) * radius.pow(4.0)) / ((8.0/Math.PI) * viscosity * (10.0/16.0))
     }
 
-    fun viscosityAverage(gasMasses: EnumMap<GasType, Double>): Double {
+    private fun viscosityAverage(gasMasses: EnumMap<GasType, Double>): Double {
         val totalMass = gasMasses.values.sum()
 
         if (totalMass == 0.0) {

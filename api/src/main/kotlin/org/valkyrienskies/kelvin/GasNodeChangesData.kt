@@ -8,5 +8,6 @@ data class GasNodeChangesData(
     /**
      * Change in thermal energy, in joules
      */
-    val deltaThermalEnergy: Double,
+    var deltaThermalEnergy: Double,
+    val directionalDeltaMasses: HashMap<GasNodeIdentifier, Double>,
 )
