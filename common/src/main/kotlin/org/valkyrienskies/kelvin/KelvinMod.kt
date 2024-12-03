@@ -68,6 +68,10 @@ object KelvinMod {
         return Kelvin
     }
 
+    fun forceGetKelvin(): DuctNetwork<ServerLevel> {
+        return Kelvin
+    }
+
     fun getClientKelvin(): DuctNetwork<ClientLevel> {
         if (KelvinClient.disabled) {
             throw IllegalStateException("Attempted to access Kelvin from the wrong place!")

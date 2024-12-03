@@ -18,6 +18,7 @@ import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
 import org.valkyrienskies.kelvin.networking.KelvinSyncPacket
+import org.valkyrienskies.kelvin.serialization.SerializableDuctNetwork
 import org.valkyrienskies.kelvin.util.GasExplosionDamageCalculator
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toMinecraft
 import java.util.*
@@ -175,12 +176,6 @@ class DuctNetworkServer(
     override fun tick(level: ServerLevel, subSteps: Int) {
         if (disabled) return
 
-        if (syncTimers[level.dimension().location()] == null) {
-            syncTimers[level.dimension().location()] = 200
-        } else {
-            syncTimers[level.dimension().location()] = syncTimers[level.dimension().location()]!! - 1
-        }
-
         val dimensionNodes = if (nodesInDimension[level.dimension().location()] != null) {
             nodesInDimension[level.dimension().location()]!!
         } else {
@@ -190,6 +185,12 @@ class DuctNetworkServer(
 
         if (dimensionNodes.isEmpty()) {
             return
+        }
+
+        if (syncTimers[level.dimension().location()] == null) {
+            syncTimers[level.dimension().location()] = 0
+        } else {
+            syncTimers[level.dimension().location()] = syncTimers[level.dimension().location()]!! - 1
         }
 
         val invalidEdges = edges.keys.filter { it.first !in nodes || it.second !in nodes }
@@ -780,5 +781,22 @@ class DuctNetworkServer(
     override fun sync (level: ServerLevel?, info: ClientKelvinInfo) {
         if (level == null) return
         KelvinSyncPacket(info).sendToAll(level.server)
+    }
+
+    fun toSerializable(): SerializableDuctNetwork {
+        val sNodes: HashMap<DuctNodePos, DuctNode> = HashMap(nodes)
+        val sEdges: HashSet<DuctEdge> = HashSet(edges.values)
+
+        return SerializableDuctNetwork(sNodes, sEdges)
+    }
+
+    fun deserialize(serializable: SerializableDuctNetwork) {
+        for (node in serializable.nodes.values) {
+            addNode(node.pos, node)
+        }
+
+        for (edge in serializable.edges) {
+            addEdge(edge.nodeA, edge.nodeB, edge)
+        }
     }
 }
