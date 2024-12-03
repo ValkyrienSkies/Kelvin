@@ -30,6 +30,7 @@ object KelvinMod {
 
     @JvmStatic
     fun init() {
+        KELVINLOGGER.info("Initializing Kelvin...")
         networkManager = SimpleNetworkManager.create(MOD_ID)
 
         LifecycleEvent.SERVER_BEFORE_START.register {
