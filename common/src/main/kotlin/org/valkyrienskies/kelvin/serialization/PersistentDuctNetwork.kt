@@ -8,11 +8,11 @@ import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
+import org.valkyrienskies.kelvin.util.KelvinJacksonUtil.mapper
 
 class PersistentDuctNetwork: SavedData() {
 
     companion object {
-        val mapper = CBORMapper()
         const val SAVED_DATA_ID = "kelvin_network_data"
         private const val NETWORK_ID = "network"
 
