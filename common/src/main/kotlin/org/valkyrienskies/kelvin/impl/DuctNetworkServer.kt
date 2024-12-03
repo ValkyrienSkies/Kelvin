@@ -1,14 +1,17 @@
 package org.valkyrienskies.kelvin.impl
 
 import net.minecraft.core.BlockPos
+import net.minecraft.resources.ResourceKey
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.util.Mth
 import net.minecraft.world.level.Explosion
+import net.minecraft.world.level.Level
+import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.util.KelvinDamageSources
 import org.valkyrienskies.kelvin.util.GasHeatLevel
 import org.valkyrienskies.kelvin.util.IHeatableBlock
 import org.valkyrienskies.kelvin.api.*
-import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
 import org.valkyrienskies.kelvin.api.edges.*
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
@@ -27,10 +30,11 @@ class DuctNetworkServer(
     override val nodes: HashMap<DuctNodePos, DuctNode> = hashMapOf(),
     override val edges: HashMap<Pair<DuctNodePos, DuctNodePos>, DuctEdge> = hashMapOf(),
     override val nodeInfo: HashMap<DuctNodePos, DuctNodeInfo> = hashMapOf(),
-    override val unloadedNodes: HashSet<DuctNodePos> = hashSetOf()
+    override val unloadedNodes: HashSet<DuctNodePos> = hashSetOf(),
+    override val nodesInDimension: HashMap<ResourceLocation, HashSet<DuctNodePos>> = hashMapOf()
 ) : DuctNetwork<ServerLevel> {
 
-    private var syncTimer = 200
+    private val syncTimers = HashMap<ResourceLocation, Int>()
 
     override fun markLoaded(pos: DuctNodePos) {
         if (!nodes.contains(pos)) {
@@ -74,12 +78,16 @@ class DuctNetworkServer(
 
     override fun addNode(pos: DuctNodePos, node: DuctNode) {
         if (nodes.containsKey(pos) && nodes[pos]!!.behavior == node.behavior) {
-            KELVINLOGGER.logger.info("Node already exists at $pos")
+            KELVINLOGGER.info("Node already exists at $pos")
             return
         }
         nodes[pos] = node
         nodeInfo[pos] = DuctNodeInfo(node.behavior, 273.15, 0.0, HashMap())
-        KELVINLOGGER.logger.info("Added node at $pos")
+        if (nodesInDimension[pos.dimensionId] == null) {
+            nodesInDimension[pos.dimensionId] = hashSetOf()
+        }
+        nodesInDimension[pos.dimensionId]!!.add(pos)
+        KELVINLOGGER.info("Added node at $pos")
     }
 
     override fun removeNode(pos: DuctNodePos) {
@@ -89,12 +97,15 @@ class DuctNetworkServer(
         if (unloadedNodes.contains(pos)) {
             unloadedNodes.remove(pos)
         }
-        if (node != null) KELVINLOGGER.logger.info("Removed node at $pos")
+        if (nodesInDimension[pos.dimensionId] != null) {
+            nodesInDimension[pos.dimensionId]!!.remove(pos)
+        }
+        if (node != null) KELVINLOGGER.info("Removed node at $pos")
     }
 
     override fun addEdge(posA: DuctNodePos, posB: DuctNodePos, edge: DuctEdge) {
         if (getEdgeBetween(posA, posB) != null && getEdgeBetween(posA, posB)!!.type == edge.type) {
-            KELVINLOGGER.logger.info("Edge already exists between $posA and $posB")
+            KELVINLOGGER.info("Edge already exists between $posA and $posB")
             return
         }
         if (posA == posB) {
@@ -103,7 +114,7 @@ class DuctNetworkServer(
         edges[Pair(posA, posB)] = edge
         nodes[posA]?.nodeEdges?.add(edge)
         nodes[posB]?.nodeEdges?.add(edge)
-        KELVINLOGGER.logger.info("Added edge between $posA and $posB")
+        KELVINLOGGER.info("Added edge between $posA and $posB")
     }
 
     override fun removeEdge(posA: DuctNodePos, posB: DuctNodePos) {
@@ -111,7 +122,7 @@ class DuctNetworkServer(
         if (edge != null) {
             nodes[posA]?.nodeEdges?.remove(edge)
             nodes[posB]?.nodeEdges?.remove(edge)
-            KELVINLOGGER.logger.info("Removed edge between $posA and $posB")
+            KELVINLOGGER.info("Removed edge between $posA and $posB")
         }
     }
 
@@ -164,7 +175,22 @@ class DuctNetworkServer(
     override fun tick(level: ServerLevel, subSteps: Int) {
         if (disabled) return
 
-        syncTimer--
+        if (syncTimers[level.dimension().location()] == null) {
+            syncTimers[level.dimension().location()] = 200
+        } else {
+            syncTimers[level.dimension().location()] = syncTimers[level.dimension().location()]!! - 1
+        }
+
+        val dimensionNodes = if (nodesInDimension[level.dimension().location()] != null) {
+            nodesInDimension[level.dimension().location()]!!
+        } else {
+            nodesInDimension[level.dimension().location()] = hashSetOf()
+            nodesInDimension[level.dimension().location()]!!
+        }
+
+        if (dimensionNodes.isEmpty()) {
+            return
+        }
 
         val invalidEdges = edges.keys.filter { it.first !in nodes || it.second !in nodes }
         for (edge in invalidEdges) {
@@ -341,7 +367,7 @@ class DuctNetworkServer(
 //                    else if (bTarget && bFlowOut || aPump && !aTarget && bFlowOut) limit = massB
 //                    else if (!aPump && !bPump) limit = abs(massA/tankMultA-massB/tankMultB)/2.0
 //                    else limit = 0.0
-                    //KELVINLOGGER.logger.info("MassA: $massA, MassB: $massB, Limit: $limit")
+                    //KELVINLOGGER.info("MassA: $massA, MassB: $massB, Limit: $limit")
 
 
 
@@ -416,7 +442,7 @@ class DuctNetworkServer(
 
             if (info.currentPressure > node.maxPressure) {
                 explnodes.add(nodePos)
-                KELVINLOGGER.logger.info("Node at $nodePos exploded due to overpressure. Pressure at time of failure: ${info.currentPressure}")
+                KELVINLOGGER.info("Node at $nodePos exploded due to overpressure. Pressure at time of failure: ${info.currentPressure}")
             }
 
 //            if (info.currentPressure < node.minPressure) {
@@ -473,11 +499,11 @@ class DuctNetworkServer(
         }
 
         explnodes.forEach {
-            level.explode(null, KelvinDamageSources.GAS_EXPLOSION, GasExplosionDamageCalculator(),it.x() + 0.5, it.y() + 0.5, it.z() + 0.5, 1f, true, Explosion.BlockInteraction.BREAK)
+            level.explode(null, KelvinDamageSources.GAS_EXPLOSION, GasExplosionDamageCalculator(),it.x + 0.5, it.y + 0.5, it.z + 0.5, 1f, true, Explosion.BlockInteraction.BREAK)
         }
 
-        if (syncTimer <= 0) {
-            syncTimer = 200
+        if (syncTimers[level.dimension().location()]!! <= 0) {
+            syncTimers[level.dimension().location()] = 200
             val info = ClientKelvinInfo(HashMap(nodeInfo.filterNot { unloadedNodes.contains(it.key) }))
             sync(level, info)
         }
@@ -736,11 +762,11 @@ class DuctNetworkServer(
     }
 
     override fun dump() {
-        KELVINLOGGER.logger.info("Disabling Kelvin...")
+        KELVINLOGGER.info("Disabling Kelvin...")
 
         disabled = true
 
-        KELVINLOGGER.logger.info("Dumping Kelvin information...")
+        KELVINLOGGER.info("Dumping Kelvin information...")
 
         edges.clear()
         nodes.clear()
@@ -748,7 +774,7 @@ class DuctNetworkServer(
 
         unloadedNodes.clear()
 
-        KELVINLOGGER.logger.info("Dumped Kelvin information. Now get out!")
+        KELVINLOGGER.info("Dumped Kelvin information. Now get out!")
     }
 
     override fun sync (level: ServerLevel?, info: ClientKelvinInfo) {

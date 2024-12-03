@@ -1,4 +1,4 @@
-package org.valkyrienskies.kelvin.forge.mixin;
+package org.valkyrienskies.kelvin.forge;
 
 import java.util.List;
 import java.util.Set;

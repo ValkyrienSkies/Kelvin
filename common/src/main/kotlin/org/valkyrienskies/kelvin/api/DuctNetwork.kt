@@ -1,11 +1,14 @@
 package org.valkyrienskies.kelvin.api
 
+import net.minecraft.resources.ResourceKey
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
+import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
-import org.valkyrienskies.kelvin.impl.logger
 import java.util.EnumMap
+import java.util.logging.Logger
 
 /**
  * The main class representing the Duct Network.
@@ -20,6 +23,8 @@ interface DuctNetwork<T: Level> {
     val nodeInfo: HashMap<DuctNodePos, DuctNodeInfo>
 
     val unloadedNodes: HashSet<DuctNodePos>
+
+    val nodesInDimension : HashMap<ResourceLocation, HashSet<DuctNodePos>>
 
     fun markLoaded(pos: DuctNodePos)
     fun markUnloaded(pos: DuctNodePos)
@@ -57,26 +62,26 @@ interface DuctNetwork<T: Level> {
     fun removeNode(pos: DuctNodePos)
 
     fun addEdge(posA: DuctNodePos, posB: DuctNodePos, edge: DuctEdge) {
-        KELVINLOGGER.logger.warn("You can't modify this from here. Called: addEdge")
+        KELVINLOGGER.warn("You can't modify this from here. Called: addEdge")
     }
     fun removeEdge(posA: DuctNodePos, posB: DuctNodePos) {
-        KELVINLOGGER.logger.warn("You can't modify this from here. Called: removeEdge")
+        KELVINLOGGER.warn("You can't modify this from here. Called: removeEdge")
     }
 
     fun modTemperature(pos: DuctNodePos, deltaTemperature: Double) {
-        KELVINLOGGER.logger.warn("You can't modify this from here. Called: modTemperature")
+        KELVINLOGGER.warn("You can't modify this from here. Called: modTemperature")
     }
     fun modPressure(pos: DuctNodePos, deltaPressure: Double) {
-        KELVINLOGGER.logger.warn("You can't modify this from here. Called: modPressure")
+        KELVINLOGGER.warn("You can't modify this from here. Called: modPressure")
     }
     fun modGasMass(pos: DuctNodePos, gasType: GasType, deltaMass: Double) {
-        KELVINLOGGER.logger.warn("You can't modify this from here. Called: modGasMass")
+        KELVINLOGGER.warn("You can't modify this from here. Called: modGasMass")
     }
     fun modGasMassOfTemperature(pos: DuctNodePos, gasType: GasType, deltaMass: Double, gasTemperature: Double) {
-        KELVINLOGGER.logger.warn("You can't modify this from here.")
+        KELVINLOGGER.warn("You can't modify this from here.")
     }
     fun modHeatEnergy(pos: DuctNodePos, deltaEnergy: Double) {
-        KELVINLOGGER.logger.warn("You can't modify this from here. Called: modHeatEnergy")
+        KELVINLOGGER.warn("You can't modify this from here. Called: modHeatEnergy")
     }
 
     // the real meat
@@ -88,7 +93,5 @@ interface DuctNetwork<T: Level> {
 
     companion object {
         const val idealGasConstant = 8.314
-
-        val KELVINLOGGER = logger("fart factory")
     }
 }

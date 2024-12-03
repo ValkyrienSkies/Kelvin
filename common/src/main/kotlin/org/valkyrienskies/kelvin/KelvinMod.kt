@@ -8,14 +8,17 @@ import dev.architectury.networking.simple.SimpleNetworkManager
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.server.level.ServerLevel
 import org.valkyrienskies.kelvin.api.DuctNetwork
-import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.KELVINLOGGER
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
+import org.valkyrienskies.kelvin.impl.logger
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
 import org.valkyrienskies.kelvin.util.KelvinDamageSources
+import java.util.logging.Logger
 
 object KelvinMod {
     const val MOD_ID = "kelvin"
+
+    val KELVINLOGGER = logger("fart factory").logger
 
     lateinit var networkManager: SimpleNetworkManager
 
@@ -36,7 +39,7 @@ object KelvinMod {
 
         TickEvent.SERVER_LEVEL_POST.register {
             Kelvin.tick(it, 10) //todo substeps config
-            KELVINLOGGER.logger.info("dimension id: ${it.dimension()}")
+            println("dimension id: ${it.dimension()}")
         }
 
         KelvinNetworking.init()

@@ -1,8 +1,9 @@
 package org.valkyrienskies.kelvin.impl.client
 
 import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.resources.ResourceLocation
+import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.*
-import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.KELVINLOGGER
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import java.util.*
 import kotlin.collections.HashMap
@@ -20,6 +21,7 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
     //Always empty on Client.
     override val edges = HashMap<Pair<DuctNodePos, DuctNodePos>, DuctEdge>()
     override val unloadedNodes = HashSet<DuctNodePos>()
+    override val nodesInDimension = HashMap<ResourceLocation, HashSet<DuctNodePos>>()
 
     private var ticksSinceLastSync = 0
 
@@ -44,15 +46,15 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
     }
 
     override fun markLoaded(pos: DuctNodePos) {
-        KELVINLOGGER.logger.warn("Client does not have access to this information. [markLoaded]")
+        KELVINLOGGER.warn("Client does not have access to this information. [markLoaded]")
     }
 
     override fun markUnloaded(pos: DuctNodePos) {
-        KELVINLOGGER.logger.warn("Client does not have access to this information. [markUnloaded]")
+        KELVINLOGGER.warn("Client does not have access to this information. [markUnloaded]")
     }
 
     override fun getFlowBetween(from: DuctNodePos, to: DuctNodePos): Double {
-        KELVINLOGGER.logger.warn("Client does not have access to this information. [getFlowBetween]")
+        KELVINLOGGER.warn("Client does not have access to this information. [getFlowBetween]")
         return -1.0
     }
 
@@ -69,17 +71,17 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
     }
 
     override fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge? {
-        KELVINLOGGER.logger.warn("Client does not have access to this information. [getEdgeBetween]")
+        KELVINLOGGER.warn("Client does not have access to this information. [getEdgeBetween]")
         return null
     }
 
     override fun getNodeAt(pos: DuctNodePos): DuctNode? {
-        KELVINLOGGER.logger.warn("Client does not have access to this information. [getNodeAt]")
+        KELVINLOGGER.warn("Client does not have access to this information. [getNodeAt]")
         return null
     }
 
     override fun addNode(pos: DuctNodePos, node: DuctNode) {
-        KELVINLOGGER.logger.warn("Client can't add nodes.")
+        KELVINLOGGER.warn("Client can't add nodes.")
     }
 
     override fun removeNode(pos: DuctNodePos) {
