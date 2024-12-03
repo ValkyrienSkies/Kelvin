@@ -48,7 +48,7 @@ interface DuctNetwork<T: Level> {
     /**
      * Returns the gas volumes at a node from the previous tick.
      */
-    fun getGasMassAt(node: DuctNodePos): EnumMap<GasType, Double>
+    fun getGasMassAt(node: DuctNodePos): HashMap<GasType, Double>
 
     fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge?
     fun getNodeAt(pos: DuctNodePos): DuctNode?
@@ -84,7 +84,7 @@ interface DuctNetwork<T: Level> {
 
     fun dump()
 
-    fun sync(level: T, info: ClientKelvinInfo)
+    fun sync(level: T?, info: ClientKelvinInfo)
 
     companion object {
         const val idealGasConstant = 8.314

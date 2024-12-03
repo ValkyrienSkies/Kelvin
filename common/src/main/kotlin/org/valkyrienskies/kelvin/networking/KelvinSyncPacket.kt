@@ -4,6 +4,7 @@ import dev.architectury.networking.NetworkManager
 import dev.architectury.networking.simple.BaseS2CMessage
 import dev.architectury.networking.simple.MessageDecoder
 import dev.architectury.networking.simple.MessageType
+import net.minecraft.client.Minecraft
 import net.minecraft.network.FriendlyByteBuf
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
@@ -31,7 +32,7 @@ class KelvinSyncPacket: BaseS2CMessage {
 
     override fun handle(context: NetworkManager.PacketContext) {
         context.queue {
-            KelvinMod.getClientKelvin().sync(info)
+            KelvinMod.getClientKelvin().sync(Minecraft.getInstance().level, info)
         }
     }
 }

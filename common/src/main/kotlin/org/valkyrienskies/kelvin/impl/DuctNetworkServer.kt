@@ -60,8 +60,8 @@ class DuctNetworkServer(
         return nodeInfo[node]?.currentTemperature ?: 0.0001
     }
 
-    override fun getGasMassAt(node: DuctNodePos): EnumMap<GasType, Double> {
-        return nodeInfo[node]?.currentGasMasses ?: EnumMap(GasType::class.java)
+    override fun getGasMassAt(node: DuctNodePos): HashMap<GasType, Double> {
+        return nodeInfo[node]?.currentGasMasses ?: HashMap()
     }
 
     override fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge? {
@@ -78,7 +78,7 @@ class DuctNetworkServer(
             return
         }
         nodes[pos] = node
-        nodeInfo[pos] = DuctNodeInfo(node.behavior, 273.15, 0.0, EnumMap<GasType, Double>(GasType::class.java))
+        nodeInfo[pos] = DuctNodeInfo(node.behavior, 273.15, 0.0, HashMap())
         KELVINLOGGER.logger.info("Added node at $pos")
     }
 
@@ -191,11 +191,11 @@ class DuctNetworkServer(
                 var madeNewB = false
 
                 if (nodeA == null) {
-                    nodeInfo[edge.nodeA] = DuctNodeInfo(nodes[edge.nodeA]!!.behavior,273.15, 0.0, EnumMap<GasType, Double>(GasType::class.java))
+                    nodeInfo[edge.nodeA] = DuctNodeInfo(nodes[edge.nodeA]!!.behavior,273.15, 0.0, HashMap<GasType, Double>())
                     madeNewA = true
                 }
                 if (nodeB == null) {
-                    nodeInfo[edge.nodeB] = DuctNodeInfo(nodes[edge.nodeB]!!.behavior,273.15, 0.0, EnumMap<GasType, Double>(GasType::class.java))
+                    nodeInfo[edge.nodeB] = DuctNodeInfo(nodes[edge.nodeB]!!.behavior,273.15, 0.0, HashMap<GasType, Double>())
                     madeNewB = true
                 }
 
@@ -298,9 +298,9 @@ class DuctNetworkServer(
                 nodeA.currentTemperature = max(nodeA.currentTemperature, 0.0001)
                 nodeB.currentTemperature = max(nodeB.currentTemperature, 0.0001)
 
-                val transferredGasses = EnumMap<GasType, Double>(GasType::class.java)
+                val transferredGasses = HashMap<GasType, Double>()
 
-                for (gas in GasType.entries) {
+                for (gas in GasTypeRegistry.GAS_TYPES.values) {
                     if (flowRate == 0.0) {
                         continue
                     }
@@ -498,15 +498,15 @@ class DuctNetworkServer(
         return pressure
     }
 
-    private fun densityFromPressureAverage(gasMasses: EnumMap<GasType, Double>, temp: Double, pressure: Double): Double {
+    private fun densityFromPressureAverage(gasMasses: HashMap<GasType, Double>, temp: Double, pressure: Double): Double {
         val totalMass = gasMasses.values.sum()
         if (totalMass == 0.0) {
             return 0.0
         }
 
-        val massPerGas = EnumMap<GasType, Double>(GasType::class.java)
+        val massPerGas = HashMap<GasType, Double>()
 
-        val gasWeight = EnumMap<GasType, Double>(GasType::class.java)
+        val gasWeight = HashMap<GasType, Double>()
 
         gasMasses.keys.forEach {
             if (gasMasses[it] != 0.0 ) {
@@ -530,15 +530,15 @@ class DuctNetworkServer(
         return density
     }
 
-    private fun dynamicViscosityAverage(gasMasses: EnumMap<GasType, Double>, temp: Double): Double {
+    private fun dynamicViscosityAverage(gasMasses: HashMap<GasType, Double>, temp: Double): Double {
         val totalMass = gasMasses.values.sum()
         if (totalMass == 0.0) {
             return 0.0
         }
 
-        val massPerGas = EnumMap<GasType, Double>(GasType::class.java)
+        val massPerGas = HashMap<GasType, Double>()
 
-        val gasWeight = EnumMap<GasType, Double>(GasType::class.java)
+        val gasWeight = HashMap<GasType, Double>()
 
         gasMasses.keys.forEach {
             if (gasMasses[it] != 0.0 ) {
@@ -609,16 +609,16 @@ class DuctNetworkServer(
         return flowRate
     }
 
-    private fun densityAverage(gasMasses: EnumMap<GasType, Double>): Double {
+    private fun densityAverage(gasMasses: HashMap<GasType, Double>): Double {
         val totalMass = gasMasses.values.sum()
 
         if (totalMass == 0.0) {
             return 0.0
         }
 
-        val massPerGas = EnumMap<GasType, Double>(GasType::class.java)
+        val massPerGas = HashMap<GasType, Double>()
 
-        val gasWeight = EnumMap<GasType, Double>(GasType::class.java)
+        val gasWeight = HashMap<GasType, Double>()
 
         gasMasses.keys.forEach {
             if (gasMasses[it] != 0.0 ) {
@@ -645,16 +645,16 @@ class DuctNetworkServer(
         return density
     }
 
-    private fun viscosityAverage(gasMasses: EnumMap<GasType, Double>): Double {
+    private fun viscosityAverage(gasMasses: HashMap<GasType, Double>): Double {
         val totalMass = gasMasses.values.sum()
 
         if (totalMass == 0.0) {
             return 0.0
         }
 
-        val massPerGas = EnumMap<GasType, Double>(GasType::class.java)
+        val massPerGas = HashMap<GasType, Double>()
 
-        val gasWeight = EnumMap<GasType, Double>(GasType::class.java)
+        val gasWeight = HashMap<GasType, Double>()
 
         gasMasses.keys.forEach {
             if (gasMasses[it] != 0.0 ) {
@@ -675,15 +675,15 @@ class DuctNetworkServer(
         return viscosity
     }
 
-    private fun specificHeatAverage(gasMasses: EnumMap<GasType, Double>): Double {
+    private fun specificHeatAverage(gasMasses: HashMap<GasType, Double>): Double {
         val totalMass = gasMasses.values.sum()
         if (totalMass == 0.0) {
             return 0.0
         }
 
-        val massPerGas = EnumMap<GasType, Double>(GasType::class.java)
+        val massPerGas = HashMap<GasType, Double>()
 
-        val gasWeight = EnumMap<GasType, Double>(GasType::class.java)
+        val gasWeight = HashMap<GasType, Double>()
 
         gasMasses.keys.forEach {
             if (gasMasses[it] != 0.0 ) {
@@ -705,15 +705,15 @@ class DuctNetworkServer(
         return specificHeat
     }
 
-    private fun heatConductivityAverage(gasMasses: EnumMap<GasType, Double>, pressure: Double, temperature: Double): Double {
+    private fun heatConductivityAverage(gasMasses: HashMap<GasType, Double>, pressure: Double, temperature: Double): Double {
         val totalMass = gasMasses.values.sum()
         if (totalMass == 0.0) {
             return 0.0
         }
 
-        val massPerGas = EnumMap<GasType, Double>(GasType::class.java)
+        val massPerGas = HashMap<GasType, Double>()
 
-        val gasWeight = EnumMap<GasType, Double>(GasType::class.java)
+        val gasWeight = HashMap<GasType, Double>()
 
         gasMasses.keys.forEach {
             if (gasMasses[it] != 0.0 ) {
@@ -751,7 +751,8 @@ class DuctNetworkServer(
         KELVINLOGGER.logger.info("Dumped Kelvin information. Now get out!")
     }
 
-    override fun sync (level: ServerLevel, info: ClientKelvinInfo) {
+    override fun sync (level: ServerLevel?, info: ClientKelvinInfo) {
+        if (level == null) return
         KelvinSyncPacket(info).sendToAll(level.server)
     }
 }

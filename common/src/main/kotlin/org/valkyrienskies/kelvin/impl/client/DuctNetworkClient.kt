@@ -33,7 +33,7 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
         ticksSinceLastSync++
     }
 
-    override fun sync(level: ClientLevel, info: ClientKelvinInfo) {
+    override fun sync(level: ClientLevel?, info: ClientKelvinInfo) {
         nodeInfo.clear()
         nodeInfo.putAll(info.nodes)
         ticksSinceLastSync = 0
@@ -64,8 +64,8 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
         return nodeInfo[node]?.currentTemperature ?: -1.0
     }
 
-    override fun getGasMassAt(node: DuctNodePos): EnumMap<GasType, Double> {
-        return nodeInfo[node]?.currentGasMasses ?: EnumMap(GasType::class.java)
+    override fun getGasMassAt(node: DuctNodePos): HashMap<GasType, Double> {
+        return nodeInfo[node]?.currentGasMasses ?: HashMap()
     }
 
     override fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge? {
@@ -90,15 +90,15 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
         return getTemperatureAt(pos) * specificHeatAverage(getGasMassAt(pos)) * getGasMassAt(pos).values.sum()
     }
 
-    private fun specificHeatAverage(gasMasses: EnumMap<GasType, Double>): Double {
+    private fun specificHeatAverage(gasMasses: HashMap<GasType, Double>): Double {
         val totalMass = gasMasses.values.sum()
         if (totalMass == 0.0) {
             return 0.0
         }
 
-        val massPerGas = EnumMap<GasType, Double>(GasType::class.java)
+        val massPerGas = HashMap<GasType, Double>()
 
-        val gasWeight = EnumMap<GasType, Double>(GasType::class.java)
+        val gasWeight = HashMap<GasType, Double>()
 
         gasMasses.keys.forEach {
             if (gasMasses[it] != 0.0 ) {
