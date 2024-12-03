@@ -23,6 +23,7 @@ publishing {
         mavenCommon(MavenPublication) {
             groupId = "org.valkyrienskies.kelvin"
             version = project.version
+            println(version)
             artifactId = rootProject.archives_base_name + "-" + project.name
             from components.java
         }

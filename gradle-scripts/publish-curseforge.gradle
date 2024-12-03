@@ -23,9 +23,6 @@ curseforge {
             addGameVersion project.loader_platform
 
             mainArtifact(remapJar.archiveFile.get().asFile) {
-                relations {
-                    requiredDependency 'valkyrien-skies'
-                }
                 displayName = fileDisplayName
             }
         }

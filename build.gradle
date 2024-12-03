@@ -17,7 +17,8 @@ plugins {
 // Determine the version
 String platform = String.valueOf(loader_platform).toLowerCase()
 
-version = minecraft_version + "-" + platform + "-" + mod_version
+String gitRevision = "git rev-parse HEAD".execute().text.trim()
+version = minecraft_version + "-" + mod_version + "+" + gitRevision.substring(0, 10)
 
 architectury {
     minecraft = rootProject.minecraft_version
@@ -86,6 +87,18 @@ subprojects {
             // configure to output in checkstyle XML format
             reporter "checkstyle"
         }
+    }
+}
+
+tasks.register("writeVersion") {
+    outputFile = file("build/version.txt")
+    version = version.toString()
+
+    inputs.property("version", version)
+    outputs.file(outputFile)
+
+    doLast {
+        outputFile.writeText(version)
     }
 }
 
