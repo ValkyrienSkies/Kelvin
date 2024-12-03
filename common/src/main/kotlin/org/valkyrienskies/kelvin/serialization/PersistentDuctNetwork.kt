@@ -24,7 +24,11 @@ class PersistentDuctNetwork: SavedData() {
         fun load(compoundTag: CompoundTag): PersistentDuctNetwork {
             val network = PersistentDuctNetwork()
 
-            val networkData = compoundTag.getByteArray(NETWORK_ID)
+            val networkData: ByteArray? = compoundTag.getByteArray(NETWORK_ID)
+            if (networkData == null) {
+                KelvinMod.KELVINLOGGER.warn("Network data null.")
+                return createEmpty()
+            }
             try {
                 network.serializableDuctNetwork = deserialize(networkData)
             } catch (e: Exception) {
