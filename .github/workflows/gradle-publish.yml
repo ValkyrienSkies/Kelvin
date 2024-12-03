@@ -49,9 +49,9 @@ jobs:
       - name: Publish to GitHub Packages and VS Maven
         run: ./gradlew publish
         env:
-          ORG_GRADLE_PROJECT_vs_maven_password: ${{ secrets.ORG_GRADLE_PROJECT_VS_MAVEN_PASSWORD }}
-          ORG_GRADLE_PROJECT_vs_maven_url: ${{ secrets.ORG_GRADLE_PROJECT_VS_MAVEN_URL }}
-          ORG_GRADLE_PROJECT_vs_maven_username: ${{ secrets.ORG_GRADLE_PROJECT_VS_MAVEN_USERNAME }}
+          ORG_GRADLE_PROJECT_vs_maven_password: ${{ secrets.REPO_GRADLE_PROJECT_VS_MAVEN_PASSWORD }}
+          ORG_GRADLE_PROJECT_vs_maven_url: ${{ secrets.REPO_GRADLE_PROJECT_VS_MAVEN_URL }}
+          ORG_GRADLE_PROJECT_vs_maven_username: ${{ secrets.REPO_GRADLE_PROJECT_VS_MAVEN_USERNAME }}
       - name: Cleanup Gradle Cache
           # Remove some files from the Gradle cache, so they aren't cached by GitHub Actions.
           # Restoring these files from a GitHub Actions cache might cause problems for future builds.
