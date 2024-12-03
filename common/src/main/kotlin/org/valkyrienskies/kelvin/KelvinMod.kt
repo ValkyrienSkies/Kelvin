@@ -39,7 +39,7 @@ object KelvinMod {
 
         TickEvent.SERVER_LEVEL_POST.register {
             Kelvin.tick(it, 10) //todo substeps config
-            println("dimension id: ${it.dimension()}")
+            //println("dimension id: ${it.dimension()}")
         }
 
         KelvinNetworking.init()
