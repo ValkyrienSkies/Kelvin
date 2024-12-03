@@ -55,6 +55,7 @@ class PersistentDuctNetwork: SavedData() {
         return compoundTag
     }
 
+    // note: i have no idea why we do this but vs2 does so :clueless:
     override fun isDirty(): Boolean {
         return true
     }
