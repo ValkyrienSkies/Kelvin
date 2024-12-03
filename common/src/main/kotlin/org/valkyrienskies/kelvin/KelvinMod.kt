@@ -5,6 +5,9 @@ import dev.architectury.event.events.common.LifecycleEvent
 import dev.architectury.event.events.common.PlayerEvent
 import dev.architectury.event.events.common.TickEvent
 import dev.architectury.networking.simple.SimpleNetworkManager
+import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.server.level.ServerLevel
+import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
@@ -52,16 +55,14 @@ object KelvinMod {
         }
     }
 
-    @JvmStatic
-    fun getKelvin(): DuctNetworkServer {
+    fun getKelvin(): DuctNetwork<ServerLevel> {
         if (Kelvin.disabled) {
             throw IllegalStateException("Attempted to access Kelvin from the wrong place!")
         }
         return Kelvin
     }
 
-    @JvmStatic
-    fun getClientKelvin(): DuctNetworkClient {
+    fun getClientKelvin(): DuctNetwork<ClientLevel> {
         if (KelvinClient.disabled) {
             throw IllegalStateException("Attempted to access Kelvin from the wrong place!")
         }
