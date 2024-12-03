@@ -8,8 +8,8 @@ import net.fabricmc.api.Environment
 import net.fabricmc.api.ModInitializer
 
 object KelvinModFabric: ModInitializer {
+
     override fun onInitialize() {
-        println("sussy")
         init()
     }
 
