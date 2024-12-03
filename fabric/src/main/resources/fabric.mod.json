@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "${mod_id}",
+  "id": "kelvin",
   "version": "${version}",
   "name": "${mod_name}",
   "description": "{$mod_description}",
@@ -11,26 +11,20 @@
     "homepage": "${homepage}",
     "sources": "${sources}"
   },
-  "license": "${mod_license}",
-  "icon": "assets/${mod_id}/icon.png",
+  "license": "Apache-2.0",
+  "icon": "assets/kelvin/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
       {
         "adapter": "kotlin",
-        "value": "org.valkyrienskies.kelvin.KelvinModFabric"
+        "value": "org.valkyrienskies.kelvin.fabric.KelvinModFabric"
       }
     ],
     "client": [
       {
         "adapter": "kotlin",
-        "value": "org.valkyrienskies.kelvin.KelvinModFabric${'$'}Client"
-      }
-    ],
-    "preLaunch": [
-      {
-        "adapter": "kotlin",
-        "value": "org.valkyrienskies.kelvin.ValkyrienPreLaunch"
+        "value": "org.valkyrienskies.kelvin.fabric.KelvinModFabric${'$'}Client"
       }
     ]
   },
