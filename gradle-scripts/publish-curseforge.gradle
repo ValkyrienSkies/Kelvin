@@ -43,8 +43,4 @@ modrinth {
     uploadFile = remapJar
     gameVersions = [project.minecraft_version]
     loaders = [project.loader_platform.toLowerCase()]
-
-    dependencies {
-        required.project 'valkyrien-skies'
-    }
 }

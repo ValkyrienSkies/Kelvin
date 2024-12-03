@@ -43,6 +43,10 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
     override fun dump() {
         nodeInfo.clear()
+
+        KELVINLOGGER.info("Client Kelvin dumped.")
+
+        disabled = true
     }
 
     override fun markLoaded(pos: DuctNodePos) {

@@ -5,10 +5,13 @@ import dev.architectury.event.events.common.LifecycleEvent
 import dev.architectury.event.events.common.PlayerEvent
 import dev.architectury.event.events.common.TickEvent
 import dev.architectury.networking.simple.SimpleNetworkManager
+import dev.architectury.platform.Platform
+import dev.architectury.utils.Env
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.server.level.ServerLevel
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
+import org.valkyrienskies.kelvin.impl.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
 import org.valkyrienskies.kelvin.impl.logger
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
@@ -31,6 +34,7 @@ object KelvinMod {
 
         LifecycleEvent.SERVER_BEFORE_START.register {
             Kelvin.disabled = false
+            KELVINLOGGER.info("Enabling Kelvin...")
         }
 
         LifecycleEvent.SERVER_STOPPED.register {
@@ -44,16 +48,23 @@ object KelvinMod {
 
         KelvinNetworking.init()
         KelvinDamageSources.init()
+
+        KELVINLOGGER.info("Registering gas types...")
+        GasTypeRegistry.init()
+        KELVINLOGGER.info("--- --- ---")
+        KELVINLOGGER.info("Finished registering gas types. We have ${GasTypeRegistry.GAS_TYPES.size} gasses registered!")
+
+        KELVINLOGGER.info("Kelvin has been initialized.")
     }
 
     @JvmStatic
     fun initClient() {
         PlayerEvent.PLAYER_JOIN.register {
-            KelvinClient.disabled = false
+            if (Platform.getEnvironment() == Env.CLIENT) KelvinClient.disabled = false
         }
 
         PlayerEvent.PLAYER_QUIT.register {
-            KelvinClient.disabled = true
+            if (Platform.getEnvironment() == Env.CLIENT) KelvinClient.dump()
         }
 
         ClientTickEvent.CLIENT_LEVEL_POST.register {

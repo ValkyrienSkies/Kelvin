@@ -2,6 +2,7 @@ package org.valkyrienskies.kelvin.impl
 
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
+import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.GasType
 
 object GasTypeRegistry {
@@ -12,7 +13,13 @@ object GasTypeRegistry {
     }
 
     fun registerGasType(modid: String, name: String, gasType: GasType) {
+        KELVINLOGGER.info("Registering gas type $modid:$name...")
         registerGasType(ResourceLocation(modid, name), gasType)
+        KELVINLOGGER.info("Registered gas type $modid:$name, with properties:")
+        KELVINLOGGER.info("Density: ${gasType.density} | Viscosity: ${gasType.viscosity} | Specific Heat Capacity: ${gasType.specificHeatCapacity} | Thermal Conductivity: ${gasType.thermalConductivity}")
+        KELVINLOGGER.info("Sutherland Constant: ${gasType.sutherlandConstant} | Adiabatic Index: ${gasType.adiabaticIndex}")
+        KELVINLOGGER.info("Is it combustible?: ${gasType.combustible} | if so, it's Calorific Value is: ${gasType.calorificValue}")
+        KELVINLOGGER.info("Icon Location: ${gasType.iconLocation}")
     }
 
     fun getGasType(resourceLocation: ResourceLocation): GasType? {
