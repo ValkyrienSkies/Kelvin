@@ -4,13 +4,12 @@ import net.minecraft.core.BlockPos
 import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.util.Mth
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Explosion
 import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
-import org.valkyrienskies.kelvin.util.KelvinDamageSources
-import org.valkyrienskies.kelvin.util.GasHeatLevel
-import org.valkyrienskies.kelvin.util.IHeatableBlock
 import org.valkyrienskies.kelvin.api.*
 import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
 import org.valkyrienskies.kelvin.api.edges.*
@@ -19,9 +18,10 @@ import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
 import org.valkyrienskies.kelvin.networking.KelvinSyncPacket
 import org.valkyrienskies.kelvin.serialization.SerializableDuctNetwork
-import org.valkyrienskies.kelvin.util.GasExplosionDamageCalculator
+import org.valkyrienskies.kelvin.util.*
+import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toMinecraft
-import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 import kotlin.math.*
@@ -32,23 +32,66 @@ class DuctNetworkServer(
     override val edges: HashMap<Pair<DuctNodePos, DuctNodePos>, DuctEdge> = hashMapOf(),
     override val nodeInfo: HashMap<DuctNodePos, DuctNodeInfo> = hashMapOf(),
     override val unloadedNodes: HashSet<DuctNodePos> = hashSetOf(),
-    override val nodesInDimension: HashMap<ResourceLocation, HashSet<DuctNodePos>> = hashMapOf()
+    override val nodesInDimension: HashMap<ResourceLocation, HashSet<DuctNodePos>> = hashMapOf(),
+    override val nodesByChunk: HashMap<KelvinChunkPos, HashSet<DuctNodePos>> = hashMapOf()
 ) : DuctNetwork<ServerLevel> {
 
     private val syncTimers = HashMap<ResourceLocation, Int>()
+
+    private val chunkSyncRequests = HashMap<ResourceLocation, ConcurrentLinkedQueue<Pair<ServerPlayer, KelvinChunkPos>>>().withDefault { ConcurrentLinkedQueue() }
 
     override fun markLoaded(pos: DuctNodePos) {
         if (!nodes.contains(pos)) {
             return
         }
         unloadedNodes.remove(pos)
+        for (edge in edges.keys) {
+            if (edge.first == pos || edge.second == pos) {
+                edges[edge]!!.unloaded = false
+            }
+        }
     }
 
     override fun markUnloaded(pos: DuctNodePos) {
         if (!nodes.contains(pos)) {
             return
         }
-        unloadedNodes.add(pos)
+        val edgesToRemove = HashSet<Pair<DuctNodePos, DuctNodePos>>()
+        for (edge in edges.keys) {
+            if (edge.first == pos || edge.second == pos) {
+                if (edges[edge]!!.unloaded) {
+                    edgesToRemove.add(edge)
+                } else {
+                    edges[edge]!!.unloaded = true
+                }
+            }
+        }
+        for (edge in edgesToRemove) {
+            edges.remove(edge)
+            val toCheck = if (edge.first == pos) edge.second else edge.first
+            if (edges.keys.none { it.first == toCheck || it.second == toCheck }) {
+                removeNode(toCheck)
+            }
+        }
+        if (edges.keys.none { it.first == pos || it.second == pos }) {
+            removeNode(pos)
+        } else {
+            unloadedNodes.add(pos)
+        }
+    }
+
+    override fun markChunkLoaded(pos: KelvinChunkPos) {
+        if (nodesByChunk.contains(pos)) {
+            return
+        }
+        nodesByChunk[pos] = hashSetOf()
+    }
+
+    override fun markChunkUnloaded(pos: KelvinChunkPos) {
+        if (!nodesByChunk.contains(pos)) {
+            return
+        }
+        nodesByChunk.remove(pos)
     }
 
     override fun getFlowBetween(from: DuctNodePos, to: DuctNodePos): Double {
@@ -78,9 +121,11 @@ class DuctNetworkServer(
     }
 
     override fun addNode(pos: DuctNodePos, node: DuctNode) {
-        if (nodes.containsKey(pos) && nodes[pos]!!.behavior == node.behavior) {
+        if (nodes.containsKey(pos) && nodes[pos]!!.behavior == node.behavior && !unloadedNodes.contains(pos)) {
             KELVINLOGGER.info("Node already exists at $pos")
             return
+        } else if (unloadedNodes.contains(pos)) {
+            markLoaded(pos)
         }
         nodes[pos] = node
         nodeInfo[pos] = DuctNodeInfo(node.behavior, 273.15, 0.0, HashMap())
@@ -88,6 +133,7 @@ class DuctNetworkServer(
             nodesInDimension[pos.dimensionId] = hashSetOf()
         }
         nodesInDimension[pos.dimensionId]!!.add(pos)
+        nodesByChunk[KelvinChunkPos(pos.x.toInt() shr 4, pos.z.toInt() shr 4)]?.add(pos)
         KELVINLOGGER.info("Added node at $pos")
     }
 
@@ -105,12 +151,17 @@ class DuctNetworkServer(
     }
 
     override fun addEdge(posA: DuctNodePos, posB: DuctNodePos, edge: DuctEdge) {
-        if (getEdgeBetween(posA, posB) != null && getEdgeBetween(posA, posB)!!.type == edge.type) {
+        if (getEdgeBetween(posA, posB) != null && getEdgeBetween(posA, posB)!!.type == edge.type && !getEdgeBetween(posA, posB)!!.unloaded) {
             KELVINLOGGER.info("Edge already exists between $posA and $posB")
             return
         }
         if (posA == posB) {
             return
+        }
+        if (unloadedNodes.contains(posA) || unloadedNodes.contains(posB)) {
+            edge.unloaded = true
+        } else if (!unloadedNodes.contains(posA) && !unloadedNodes.contains(posB) && edge.unloaded && nodes.containsKey(posA) && nodes.containsKey(posB)) {
+            edge.unloaded = false
         }
         edges[Pair(posA, posB)] = edge
         nodes[posA]?.nodeEdges?.add(edge)
@@ -193,12 +244,12 @@ class DuctNetworkServer(
             syncTimers[level.dimension().location()] = syncTimers[level.dimension().location()]!! - 1
         }
 
-        val invalidEdges = edges.keys.filter { it.first !in nodes || it.second !in nodes }
+        val invalidEdges = edges.keys.filter { (it.first !in nodes || it.second !in nodes) && !edges[it]!!.unloaded }
         for (edge in invalidEdges) {
             edges.remove(edge)
         }
         // TODO: Fix ConcurrentModificationException
-        val edgesToProcess = HashMap(edges)
+        val edgesToProcess = HashMap(edges.filterNot { it.value.unloaded })
         for (step in 1..subSteps) {
             for (edgeKey in edgesToProcess.keys) {
                 val edge = edgesToProcess[edgeKey]!!
@@ -506,7 +557,13 @@ class DuctNetworkServer(
         if (syncTimers[level.dimension().location()]!! <= 0) {
             syncTimers[level.dimension().location()] = 200
             val info = ClientKelvinInfo(HashMap(nodeInfo.filterNot { unloadedNodes.contains(it.key) }))
-            sync(level, info)
+            sync(level, info, false)
+        }
+
+        while (chunkSyncRequests[level.dimension().location()]!!.isNotEmpty()) {
+            val request = chunkSyncRequests[level.dimension().location()]!!.poll()
+            val info = ClientKelvinInfo(HashMap(nodeInfo.filter { it.key.toChunkPos() == request.second }))
+            sync(level, info, true, request.first)
         }
     }
 
@@ -778,25 +835,16 @@ class DuctNetworkServer(
         KELVINLOGGER.info("Dumped Kelvin information. Now get out!")
     }
 
-    override fun sync (level: ServerLevel?, info: ClientKelvinInfo) {
+    override fun sync (level: ServerLevel?, info: ClientKelvinInfo, chunkFlag: Boolean, player: Player?) {
         if (level == null) return
-        KelvinSyncPacket(info).sendToAll(level.server)
+        if (chunkFlag && player != null) {
+            KelvinSyncPacket(info, true).sendTo(player as ServerPlayer)
+        } else {
+            KelvinSyncPacket(info).sendToAll(level.server)
+        }
     }
 
-    fun toSerializable(): SerializableDuctNetwork {
-        val sNodes: HashMap<DuctNodePos, DuctNode> = HashMap(nodes)
-        val sEdges: HashSet<DuctEdge> = HashSet(edges.values)
-
-        return SerializableDuctNetwork(sNodes, sEdges)
-    }
-
-    fun deserialize(serializable: SerializableDuctNetwork) {
-        for (node in serializable.nodes.values) {
-            addNode(node.pos, node)
-        }
-
-        for (edge in serializable.edges) {
-            addEdge(edge.nodeA, edge.nodeB, edge)
-        }
+    fun requestChunkSync(pos: KelvinChunkPos, player: ServerPlayer) {
+        chunkSyncRequests[player.level.dimension().location()]!!.add(Pair(player, pos))
     }
 }

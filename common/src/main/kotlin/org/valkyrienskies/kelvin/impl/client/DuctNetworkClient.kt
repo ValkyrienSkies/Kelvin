@@ -2,9 +2,13 @@ package org.valkyrienskies.kelvin.impl.client
 
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.entity.player.Player
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.*
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
+import org.valkyrienskies.kelvin.networking.KelvinRequestChunkSyncPacket
+import org.valkyrienskies.kelvin.util.KelvinChunkPos
+import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
@@ -22,6 +26,7 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
     override val edges = HashMap<Pair<DuctNodePos, DuctNodePos>, DuctEdge>()
     override val unloadedNodes = HashSet<DuctNodePos>()
     override val nodesInDimension = HashMap<ResourceLocation, HashSet<DuctNodePos>>()
+    override val nodesByChunk = HashMap<KelvinChunkPos, HashSet<DuctNodePos>>()
 
     private var ticksSinceLastSync = 0
 
@@ -35,10 +40,10 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
         ticksSinceLastSync++
     }
 
-    override fun sync(level: ClientLevel?, info: ClientKelvinInfo) {
-        nodeInfo.clear()
-        nodeInfo.putAll(info.nodes)
-        ticksSinceLastSync = 0
+    override fun sync(level: ClientLevel?, info: ClientKelvinInfo, chunkFlag: Boolean, player: Player?) {
+        if (!chunkFlag) nodeInfo.clear()
+        nodeInfo.putAll(info.nodes.filter { nodesByChunk.containsKey(it.key.toChunkPos()) })
+        if (!chunkFlag) ticksSinceLastSync = 0
     }
 
     override fun dump() {
@@ -55,6 +60,19 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
     override fun markUnloaded(pos: DuctNodePos) {
         KELVINLOGGER.warn("Client does not have access to this information. [markUnloaded]")
+    }
+
+    override fun markChunkLoaded(pos: KelvinChunkPos) {
+        nodesByChunk[pos] = HashSet()
+        KelvinRequestChunkSyncPacket(pos).sendToServer()
+    }
+
+    override fun markChunkUnloaded(pos: KelvinChunkPos) {
+        val toRemove = HashSet(nodesByChunk[pos] ?: return)
+        toRemove.forEach {
+            nodeInfo.remove(it)
+        }
+        nodesByChunk.remove(pos)
     }
 
     override fun getFlowBetween(from: DuctNodePos, to: DuctNodePos): Double {

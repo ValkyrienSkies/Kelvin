@@ -13,13 +13,16 @@ import org.valkyrienskies.kelvin.networking.KelvinNetworking.writeToByteArray
 
 class KelvinSyncPacket: BaseS2CMessage {
     val info: ClientKelvinInfo
+    val chunkFlag: Boolean
 
-    constructor(info: ClientKelvinInfo) {
+    constructor(info: ClientKelvinInfo, chunkFlag: Boolean = false) {
         this.info = info
+        this.chunkFlag = chunkFlag
     }
 
     constructor(buf: FriendlyByteBuf) {
         this.info = buf.readByteArray().readClientKelvinInfo()
+        this.chunkFlag = buf.readBoolean()
     }
 
     override fun getType(): MessageType {
@@ -28,11 +31,12 @@ class KelvinSyncPacket: BaseS2CMessage {
 
     override fun write(buf: FriendlyByteBuf) {
         buf.writeByteArray(info.writeToByteArray())
+        buf.writeBoolean(chunkFlag)
     }
 
     override fun handle(context: NetworkManager.PacketContext) {
         context.queue {
-            KelvinMod.getClientKelvin().sync(Minecraft.getInstance().level, info)
+            KelvinMod.getClientKelvin().sync(Minecraft.getInstance().level, info, chunkFlag)
         }
     }
 }

@@ -1,6 +1,7 @@
 package org.valkyrienskies.kelvin.api
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import net.minecraft.server.level.ServerPlayer
@@ -33,7 +34,17 @@ interface DuctEdge {
     var length: Double
     var currentFlowRate: Double
 
+    var unloaded : Boolean
+
     fun interact(player: ServerPlayer): Boolean {
         return false
+    }
+
+    fun markLoaded() {
+        unloaded = false
+    }
+
+    fun markUnloaded() {
+        unloaded = true
     }
 }
