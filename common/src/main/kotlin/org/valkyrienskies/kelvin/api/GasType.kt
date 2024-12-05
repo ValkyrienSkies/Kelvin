@@ -1,7 +1,12 @@
 package org.valkyrienskies.kelvin.api
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import net.minecraft.resources.ResourceLocation
+import org.valkyrienskies.kelvin.util.KelvinKeyMapper
 
+@JsonSerialize(using = KelvinKeyMapper.GasTypeSerializer::class)
+@JsonDeserialize(using = KelvinKeyMapper.GasTypeDeserializer::class)
 data class GasType(
     val name: String,
     val density: Double,              // Density of gas at STP (kg / m^3)
