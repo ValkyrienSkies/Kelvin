@@ -6,7 +6,7 @@ import org.joml.Vector3ic
 
 data class KelvinChunkPos(val x: Int, val z: Int, val dimensionId: ResourceLocation = ResourceLocation("minecraft", "overworld")) {
     override fun toString(): String {
-        return "Chunk Pos (x=$x, y=$z, dimension=$dimensionId)"
+        return "$x, $z, ${dimensionId.namespace}:${dimensionId.path}"
     }
 
     fun toBlockSpaceCoordinates(): Vector3ic {

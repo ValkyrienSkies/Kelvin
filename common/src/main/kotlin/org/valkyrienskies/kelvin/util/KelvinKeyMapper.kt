@@ -5,8 +5,9 @@ import com.fasterxml.jackson.databind.KeyDeserializer
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.api.DuctNodePos
 
-object KelvinKeyDeserializers {
-    class DuctNodePosDeserializer: KeyDeserializer() {
+object KelvinKeyMapper {
+
+    class DuctNodePosKeyDeserializer: KeyDeserializer() {
         override fun deserializeKey(key: String?, ctxt: DeserializationContext?): DuctNodePos? {
             if (key != null) {
                 val parts = key.split(", ")
@@ -25,7 +26,7 @@ object KelvinKeyDeserializers {
         }
     }
 
-    class ChunkPosDeserializer: KeyDeserializer() {
+    class ChunkPosKeyDeserializer: KeyDeserializer() {
         override fun deserializeKey(key: String?, ctxt: DeserializationContext?): KelvinChunkPos? {
             if (key != null) {
                 val parts = key.split(", ")
