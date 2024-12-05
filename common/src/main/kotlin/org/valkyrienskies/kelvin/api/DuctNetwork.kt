@@ -3,10 +3,12 @@ package org.valkyrienskies.kelvin.api
 import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
+import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import java.util.EnumMap
 import java.util.logging.Logger
 
@@ -25,9 +27,13 @@ interface DuctNetwork<T: Level> {
     val unloadedNodes: HashSet<DuctNodePos>
 
     val nodesInDimension : HashMap<ResourceLocation, HashSet<DuctNodePos>>
+    val nodesByChunk : HashMap<KelvinChunkPos, HashSet<DuctNodePos>>
 
     fun markLoaded(pos: DuctNodePos)
     fun markUnloaded(pos: DuctNodePos)
+
+    fun markChunkLoaded(pos: KelvinChunkPos)
+    fun markChunkUnloaded(pos: KelvinChunkPos)
 
     // interfacing with the duct network
     /**
@@ -89,7 +95,7 @@ interface DuctNetwork<T: Level> {
 
     fun dump()
 
-    fun sync(level: T?, info: ClientKelvinInfo)
+    fun sync(level: T?, info: ClientKelvinInfo, chunkFlag: Boolean = false, player: Player? = null)
 
     companion object {
         const val idealGasConstant = 8.314

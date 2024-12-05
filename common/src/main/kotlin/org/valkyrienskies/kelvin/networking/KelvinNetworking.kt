@@ -11,6 +11,7 @@ object KelvinNetworking {
     //packets
     val SYNC_TO_CLIENT = KelvinMod.networkManager.registerS2C("sync_to_client", { buf: FriendlyByteBuf ->  KelvinSyncPacket(buf) })
 
+    val REQUEST_CHUNK_SYNC = KelvinMod.networkManager.registerC2S("request_chunk_sync", { buf: FriendlyByteBuf ->  KelvinRequestChunkSyncPacket(buf) })
 
     fun init() {
 

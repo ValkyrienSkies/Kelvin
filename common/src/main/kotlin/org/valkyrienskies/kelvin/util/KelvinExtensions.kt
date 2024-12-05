@@ -36,4 +36,8 @@ object KelvinExtensions {
     fun Vector3dc.toDuctNodePos(dimension: ResourceLocation = ResourceLocation("minecraft", "overworld")): DuctNodePos {
         return DuctNodePos(this.x(), this.y(), this.z(), dimension)
     }
+
+    fun DuctNodePos.toChunkPos(): KelvinChunkPos {
+        return KelvinChunkPos(this.x.toInt() shr 4, this.z.toInt() shr 4, this.dimensionId)
+    }
 }
