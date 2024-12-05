@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.KeyDeserializer
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.api.DuctNodePos
+import org.valkyrienskies.kelvin.api.GasType
 
 object KelvinKeyMapper {
 
@@ -36,6 +37,31 @@ object KelvinKeyMapper {
                     val dimension = ResourceLocation(parts[2])
                     if (x != null && z != null) {
                         return KelvinChunkPos(x, z, dimension)
+                    }
+                }
+            }
+            return null
+        }
+    }
+
+    class GasTypeKeyDeserializer: KeyDeserializer() {
+        override fun deserializeKey(key: String?, ctxt: DeserializationContext?): GasType? {
+            if (key != null) {
+                val parts = key.split(", ")
+                if (parts.size == 10) {
+                    val name = parts[0]
+                    val density = parts[1].toDoubleOrNull()
+                    val viscosity = parts[2].toDoubleOrNull()
+                    val specificHeatCapacity = parts[3].toDoubleOrNull()
+                    val thermalConductivity = parts[4].toDoubleOrNull()
+                    val sutherlandConstant = parts[5].toDoubleOrNull()
+                    val adiabaticIndex = parts[6].toDoubleOrNull()
+                    val combustible = parts[7].toBoolean()
+                    val calorificValue = parts[8].toDoubleOrNull()
+                    val iconLocation = if (parts[9] == "null") null else ResourceLocation(parts[9])
+
+                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
+                        return GasType(name, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
                     }
                 }
             }

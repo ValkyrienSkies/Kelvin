@@ -13,4 +13,9 @@ data class GasType(
     val combustible: Boolean = false, // Whether the gas can be used as fuel
     val calorificValue: Double = 0.0, // (J / kg) (see https://en.wikipedia.org/wiki/Energy_density), only use if [combustible] is true
     val iconLocation: ResourceLocation? = null
-)
+) {
+    override fun toString(): String {
+        val iconLoc = iconLocation?.toString() ?: "null"
+        return "$name, $density, $viscosity, $specificHeatCapacity, $thermalConductivity, $sutherlandConstant, $adiabaticIndex, $combustible, $calorificValue, $iconLoc"
+    }
+}
