@@ -560,6 +560,10 @@ class DuctNetworkServer(
             sync(level, info, false)
         }
 
+        if (chunkSyncRequests[level.dimension().location()] == null) {
+            chunkSyncRequests[level.dimension().location()] = ConcurrentLinkedQueue()
+        }
+
         while (chunkSyncRequests[level.dimension().location()]!!.isNotEmpty()) {
             val request = chunkSyncRequests[level.dimension().location()]!!.poll()
             val info = ClientKelvinInfo(HashMap(nodeInfo.filter { it.key.toChunkPos() == request.second }))

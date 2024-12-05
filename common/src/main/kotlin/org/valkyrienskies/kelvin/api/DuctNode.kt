@@ -23,7 +23,6 @@ import java.util.*
 interface DuctNode {
     val pos: DuctNodePos
     val behavior: NodeBehaviorType
-    val network: DuctNetwork<ServerLevel>
 
     val nodeEdges: HashSet<DuctEdge>
 

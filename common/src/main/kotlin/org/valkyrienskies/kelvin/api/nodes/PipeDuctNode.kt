@@ -7,7 +7,6 @@ import java.util.HashSet
 class PipeDuctNode(
     override val pos: DuctNodePos,
     override val behavior: NodeBehaviorType,
-    override val network: DuctNetwork<ServerLevel>,
     override val nodeEdges: HashSet<DuctEdge> = HashSet(),
     override val volume: Double,
     override val maxPressure: Double,
@@ -23,8 +22,8 @@ class PipeDuctNode(
     }
 
     companion object {
-        fun DEFAULT(pos: DuctNodePos, network: DuctNetwork<ServerLevel>): PipeDuctNode {
-            return PipeDuctNode(pos, NodeBehaviorType.PIPE, network, volume = 0.05, maxPressure = 16375049.0, maxTemperature = 1478.0)
+        fun DEFAULT(pos: DuctNodePos): PipeDuctNode {
+            return PipeDuctNode(pos, NodeBehaviorType.PIPE, volume = 0.05, maxPressure = 16375049.0, maxTemperature = 1478.0)
         }
     }
 }

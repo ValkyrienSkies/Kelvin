@@ -7,7 +7,6 @@ import java.util.HashSet
 class PocketDuctNode(
     override val pos: DuctNodePos,
     override val behavior: NodeBehaviorType,
-    override val network: DuctNetwork<ServerLevel>,
     override val nodeEdges: HashSet<DuctEdge>,
     override val volume: Double,
     override val maxPressure: Double,
