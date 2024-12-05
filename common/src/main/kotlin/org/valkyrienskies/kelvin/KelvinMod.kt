@@ -88,7 +88,7 @@ object KelvinMod {
                         kelvinData.markChunkLoaded(chunkPos)
                     }
 
-                    if (data != null) {
+                    if (data.isNotEmpty()) {
                         val networkData = KelvinJacksonUtil.mapper.readValue<SerializableDuctNetwork>(data)
                         kelvinData.nodes.forEach {
                             kelvinData.addNode(it.key, it.value)
