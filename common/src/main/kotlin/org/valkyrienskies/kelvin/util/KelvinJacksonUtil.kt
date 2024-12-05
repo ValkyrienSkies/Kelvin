@@ -14,7 +14,7 @@ object KelvinJacksonUtil {
         val module = SimpleModule()
         module.addKeyDeserializer(DuctNodePos::class.java, KelvinKeyMapper.DuctNodePosKeyDeserializer())
         module.addKeyDeserializer(KelvinChunkPos::class.java, KelvinKeyMapper.ChunkPosKeyDeserializer())
-
+        newMapper.registerModule(module)
         newMapper
     }
 }
