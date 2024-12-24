@@ -2,10 +2,11 @@ package org.valkyrienskies.kelvin.util
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.state.BlockState
 
 interface IEdgeBlock {
 
-    fun connectedTo(pos: BlockPos): Boolean
+    fun canConnectTo(state: BlockState): Boolean
 
     fun tryConnectEdge(level: Level, pos: BlockPos)
 
