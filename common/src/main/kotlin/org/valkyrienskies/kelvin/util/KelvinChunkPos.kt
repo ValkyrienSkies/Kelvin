@@ -1,12 +1,16 @@
 package org.valkyrienskies.kelvin.util
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import net.minecraft.resources.ResourceLocation
 import org.joml.Vector3i
 import org.joml.Vector3ic
 
+@JsonSerialize(using = KelvinKeyMapper.ChunkPosSerializer::class)
+@JsonDeserialize(using = KelvinKeyMapper.ChunkPosDeserializer::class)
 data class KelvinChunkPos(val x: Int, val z: Int, val dimensionId: ResourceLocation = ResourceLocation("minecraft", "overworld")) {
     override fun toString(): String {
-        return "Chunk Pos (x=$x, y=$z, dimension=$dimensionId)"
+        return "$x, $z, ${dimensionId.namespace}:${dimensionId.path}"
     }
 
     fun toBlockSpaceCoordinates(): Vector3ic {
