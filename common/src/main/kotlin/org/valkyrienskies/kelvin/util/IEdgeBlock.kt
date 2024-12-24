@@ -6,7 +6,7 @@ import net.minecraft.world.level.block.state.BlockState
 
 interface IEdgeBlock {
 
-    fun canConnectTo(state: BlockState, toPos: BlockPos): Boolean
+    fun canConnectTo(level: Level, from: BlockPos,to: BlockPos): Boolean
 
     fun tryConnectEdge(level: Level, pos: BlockPos)
 
