@@ -21,11 +21,11 @@ object NodeNBTUtil {
     }
 
     fun <T: Level> deserializeNode(pos: DuctNodePos, network: DuctNetwork<T>, tag: CompoundTag) {
-        val clone = tag.copy()
-        val temperature = clone.getDouble("KelvinTemperature")
-        clone.remove("KelvinTemperature")
+        val temperature = tag.getDouble("KelvinTemperature")
+        tag.remove("KelvinTemperature")
 
         for (gasResourceLocation in tag.allKeys) {
+            if (gasResourceLocation == "KelvinTemperature") continue
             val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation(gasResourceLocation)] ?: continue
             network.modGasMass(pos,gasType,tag.getDouble(gasResourceLocation))
         }
