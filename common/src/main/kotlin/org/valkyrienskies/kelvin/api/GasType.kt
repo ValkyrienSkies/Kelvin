@@ -9,6 +9,7 @@ import org.valkyrienskies.kelvin.util.KelvinKeyMapper
 @JsonDeserialize(using = KelvinKeyMapper.GasTypeDeserializer::class)
 data class GasType(
     val name: String,
+    val resourceLocation: ResourceLocation,
     val density: Double,              // Density of gas at STP (kg / m^3)
     val viscosity: Double,            // (kg / (m * s)) (see https://www.sciencedirect.com/topics/engineering/air-viscosity)
     val specificHeatCapacity: Double, // (J / (K * g)
