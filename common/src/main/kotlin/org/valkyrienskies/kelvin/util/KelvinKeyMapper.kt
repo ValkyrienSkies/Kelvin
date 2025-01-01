@@ -67,18 +67,21 @@ object KelvinKeyMapper {
         override fun deserialize(p: JsonParser?, ctxt: DeserializationContext?): GasType {
             if (p != null) {
                 val parts = p.text.split(", ")
-                if (parts.size == 10) {
+                if (parts.size == 11) {
                     val name = parts[0]
-                    val density = parts[1].toDouble()
-                    val viscosity = parts[2].toDouble()
-                    val specificHeatCapacity = parts[3].toDouble()
-                    val thermalConductivity = parts[4].toDouble()
-                    val sutherlandConstant = parts[5].toDouble()
-                    val adiabaticIndex = parts[6].toDouble()
-                    val combustible = parts[7].toBoolean()
-                    val calorificValue = parts[8].toDouble()
-                    val iconLocation = if (parts[9] == "null") null else ResourceLocation(parts[9])
-                    return GasType(name, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                    val resourceLocation = ResourceLocation(parts[1])
+                    val density = parts[2].toDoubleOrNull()
+                    val viscosity = parts[3].toDoubleOrNull()
+                    val specificHeatCapacity = parts[4].toDoubleOrNull()
+                    val thermalConductivity = parts[5].toDoubleOrNull()
+                    val sutherlandConstant = parts[6].toDoubleOrNull()
+                    val adiabaticIndex = parts[7].toDoubleOrNull()
+                    val combustible = parts[8].toBoolean()
+                    val calorificValue = parts[9].toDoubleOrNull()
+                    val iconLocation = if (parts[10] == "null") null else ResourceLocation(parts[10])
+                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
+                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                    } else throw IllegalArgumentException("Invalid GasType string")
                 }
             }
             throw IllegalArgumentException("Invalid GasType string")
@@ -125,20 +128,21 @@ object KelvinKeyMapper {
         override fun deserializeKey(key: String?, ctxt: DeserializationContext?): GasType? {
             if (key != null) {
                 val parts = key.split(", ")
-                if (parts.size == 10) {
+                if (parts.size == 11) {
                     val name = parts[0]
-                    val density = parts[1].toDoubleOrNull()
-                    val viscosity = parts[2].toDoubleOrNull()
-                    val specificHeatCapacity = parts[3].toDoubleOrNull()
-                    val thermalConductivity = parts[4].toDoubleOrNull()
-                    val sutherlandConstant = parts[5].toDoubleOrNull()
-                    val adiabaticIndex = parts[6].toDoubleOrNull()
-                    val combustible = parts[7].toBoolean()
-                    val calorificValue = parts[8].toDoubleOrNull()
-                    val iconLocation = if (parts[9] == "null") null else ResourceLocation(parts[9])
+                    val resourceLocation = ResourceLocation(parts[1])
+                    val density = parts[2].toDoubleOrNull()
+                    val viscosity = parts[3].toDoubleOrNull()
+                    val specificHeatCapacity = parts[4].toDoubleOrNull()
+                    val thermalConductivity = parts[5].toDoubleOrNull()
+                    val sutherlandConstant = parts[6].toDoubleOrNull()
+                    val adiabaticIndex = parts[7].toDoubleOrNull()
+                    val combustible = parts[8].toBoolean()
+                    val calorificValue = parts[9].toDoubleOrNull()
+                    val iconLocation = if (parts[10] == "null") null else ResourceLocation(parts[10])
 
                     if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
-                        return GasType(name, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
                     }
                 }
             }
