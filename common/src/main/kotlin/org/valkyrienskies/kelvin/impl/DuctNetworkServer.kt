@@ -551,7 +551,7 @@ class DuctNetworkServer(
         }
 
         explnodes.forEach {
-            level.explode(null, KelvinDamageSources.GAS_EXPLOSION, GasExplosionDamageCalculator(),it.x + 0.5, it.y + 0.5, it.z + 0.5, 1f, true, Explosion.BlockInteraction.BREAK)
+            level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(),it.x + 0.5, it.y + 0.5, it.z + 0.5, 1f, true, Level.ExplosionInteraction.TNT)
         }
 
         if (syncTimers[level.dimension().location()]!! <= 0) {
@@ -849,6 +849,6 @@ class DuctNetworkServer(
     }
 
     fun requestChunkSync(pos: KelvinChunkPos, player: ServerPlayer) {
-        chunkSyncRequests[player.level.dimension().location()]!!.add(Pair(player, pos))
+        chunkSyncRequests[player.level().dimension().location()]!!.add(Pair(player, pos))
     }
 }
