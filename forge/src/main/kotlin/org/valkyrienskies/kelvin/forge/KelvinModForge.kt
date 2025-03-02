@@ -1,6 +1,7 @@
 package org.valkyrienskies.kelvin.forge
 
 import net.minecraft.server.level.ServerLevel
+import net.minecraftforge.event.AddReloadListenerEvent
 import net.minecraftforge.event.world.ChunkEvent
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.fml.common.Mod
@@ -8,7 +9,9 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.init
 import org.valkyrienskies.kelvin.KelvinMod.initClient
+import org.valkyrienskies.kelvin.impl.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
+import thedarkcolour.kotlinforforge.forge.FORGE_BUS
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
 
 @Mod(KelvinMod.MOD_ID)
@@ -21,7 +24,7 @@ class KelvinModForge {
         }
         init()
 
-        MOD_BUS.addListener { event: ChunkEvent.Load ->
+        FORGE_BUS.addListener { event: ChunkEvent.Load ->
             if (!event.world.isClientSide) {
                 try {
                     KelvinMod.getKelvin().markChunkLoaded(
@@ -38,7 +41,7 @@ class KelvinModForge {
             }
         }
 
-        MOD_BUS.addListener { event: ChunkEvent.Unload ->
+        FORGE_BUS.addListener { event: ChunkEvent.Unload ->
             if (!event.world.isClientSide) {
                 try {
                     KelvinMod.getKelvin().markChunkUnloaded(
@@ -54,6 +57,13 @@ class KelvinModForge {
                 }
             }
         }
+
+        FORGE_BUS.addListener(::registerResourceManagers)
+    }
+
+    private fun registerResourceManagers(event: AddReloadListenerEvent) {
+        event.addListener(KelvinReactionDataLoader.loader)
+
     }
 
     private fun clientSetup(event: FMLClientSetupEvent?) {

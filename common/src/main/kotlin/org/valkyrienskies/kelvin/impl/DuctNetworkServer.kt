@@ -1,7 +1,6 @@
 package org.valkyrienskies.kelvin.impl
 
 import net.minecraft.core.BlockPos
-import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -15,9 +14,7 @@ import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
 import org.valkyrienskies.kelvin.api.edges.*
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
-import org.valkyrienskies.kelvin.networking.KelvinNetworking
 import org.valkyrienskies.kelvin.networking.KelvinSyncPacket
-import org.valkyrienskies.kelvin.serialization.SerializableDuctNetwork
 import org.valkyrienskies.kelvin.util.*
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toMinecraft
@@ -569,6 +566,53 @@ class DuctNetworkServer(
             val info = ClientKelvinInfo(HashMap(nodeInfo.filter { it.key.toChunkPos() == request.second }))
             sync(level, info, true, request.first)
         }
+
+
+        val reactions = KelvinReactionDataLoader.gas_reactions
+        // Process recipes
+        for (node in dimensionNodes) {
+            val gasMasses = getGasMassAt(node)
+            if (gasMasses.size == 0) continue
+
+            for (reaction in reactions.values) {
+                var con = false
+                reaction.requirements.forEach {if (!it.key.apply_requirement(level, node, this, it.value)) { con = true
+                    return@forEach
+                }}
+                if (con) continue
+
+
+                calcReaction(node, gasMasses, reaction.gasses, reaction.result)
+            }
+        }
+    }
+
+    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Int>, outputGasses: HashMap<GasType, Int>) {
+        var totalInputGas = 0
+        var totalOutputGas = 0
+
+        for (gas in inputGasses) {
+            totalInputGas += gas.value
+        }
+
+        for (gas in outputGasses) {
+            totalOutputGas += gas.value
+        }
+
+        var possibleReaction = Double.MAX_VALUE
+
+        for (gas in inputGasses) {
+            if (gas.key !in gasMasses) return
+
+            val thisReaction = totalOutputGas * gasMasses[gas.key]!! * totalInputGas / gas.value
+            if (thisReaction < possibleReaction) possibleReaction = thisReaction
+        }
+
+        for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-possibleReaction * totalInputGas / gas.value)
+
+
+        for (gas in outputGasses) modGasMass(ductNodePos,gas.key,possibleReaction * gas.value / totalOutputGas)
+
     }
 
     /**

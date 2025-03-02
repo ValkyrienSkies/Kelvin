@@ -5,19 +5,20 @@ import dev.architectury.event.events.client.ClientPlayerEvent
 import dev.architectury.event.events.client.ClientTickEvent
 import dev.architectury.event.events.common.ChunkEvent
 import dev.architectury.event.events.common.LifecycleEvent
-import dev.architectury.event.events.common.PlayerEvent
 import dev.architectury.event.events.common.TickEvent
 import dev.architectury.networking.simple.SimpleNetworkManager
 import dev.architectury.platform.Platform
 import dev.architectury.utils.Env
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.chunk.ChunkAccess
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.GasTypeRegistry
+import org.valkyrienskies.kelvin.impl.ReactionRequirementRegistry
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
 import org.valkyrienskies.kelvin.impl.logger
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
@@ -111,6 +112,7 @@ object KelvinMod {
 
         KELVINLOGGER.info("Registering gas types...")
         GasTypeRegistry.init()
+        ReactionRequirementRegistry.init()
         KELVINLOGGER.info("--- --- ---")
         KELVINLOGGER.info("Finished registering gas types. We have ${GasTypeRegistry.GAS_TYPES.size} gasses registered!")
 
@@ -148,5 +150,9 @@ object KelvinMod {
             throw IllegalStateException("Attempted to access Kelvin from the wrong place!")
         }
         return KelvinClient
+    }
+
+    fun asResouceLocation(string: String): ResourceLocation {
+        return ResourceLocation("${MOD_ID}:$string")
     }
 }

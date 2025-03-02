@@ -28,7 +28,6 @@ object NodeNBTUtil {
             if (gasResourceLocation == "KelvinTemperature") continue
 
             val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation(gasResourceLocation)] ?: continue
-            println("$gasResourceLocation $gasType ${tag.getDouble(gasResourceLocation)}")
             network.modGasMass(pos,gasType,tag.getDouble(gasResourceLocation))
         }
         network.modTemperature(pos, temperature)
