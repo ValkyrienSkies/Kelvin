@@ -12,7 +12,7 @@ import org.valkyrienskies.kelvin.api.GasReactionRequirement
 import org.valkyrienskies.kelvin.api.GasType
 
 object KelvinReactionDataLoader {
-    private val gas_reactions = hashMapOf<ResourceLocation, GasReaction>()
+    val gas_reactions = hashMapOf<ResourceLocation, GasReaction>()
     val loader get() = KelvinReactionDataLoader()
 
     class KelvinReactionDataLoader : SimpleJsonResourceReloadListener(Gson(), "kelvin_reactions") {

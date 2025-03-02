@@ -1,6 +1,7 @@
 {
   "gasses": {
-    "kelvin:methane": 1
+    "kelvin:methane": 1,
+    "kelvin:air": 2
   },
   "requirements": {
     "kelvin:min_temperature": 800,
