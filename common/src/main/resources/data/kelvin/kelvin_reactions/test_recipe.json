@@ -1,0 +1,12 @@
+{
+  "gasses": {
+    "kelvin:methane": 1
+  },
+  "requirements": {
+    "kelvin:min_temperature": 800,
+    "kelvin:min_pressure": 1000
+  },
+  "result": {
+    "kelvin:air": 10
+  }
+}
