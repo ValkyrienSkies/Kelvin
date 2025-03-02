@@ -591,18 +591,18 @@ class DuctNetworkServer(
 
         for (gas in gasMasses) gasMoles[gas.key] = (gas.value/gas.key.density)/22.4
 
-        var possibleOutput = Double.MAX_VALUE
+        var reaction_moles = Double.MAX_VALUE
 
         for (gas in inputGasses) {
-            if (gas.key !in gasMoles) return
+            if (gas.key !in gasMoles || gasMoles[gas.key]!! < 0.001) return
 
             val thisOutput =  gasMoles[gas.key]!! / gas.value
-            if (thisOutput < possibleOutput) possibleOutput = thisOutput
+            if (thisOutput < reaction_moles) reaction_moles = thisOutput
         }
 
-        for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-possibleOutput * gas.value * gas.key.density * 22.4)
+        for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-reaction_moles * gas.value * gas.key.density * 22.4)
 
-        for (gas in outputGasses) modGasMass(ductNodePos,gas.key,possibleOutput * gas.value * gas.key.density * 22.4)
+        for (gas in outputGasses) modGasMass(ductNodePos,gas.key,reaction_moles * gas.value * gas.key.density * 22.4)
 
     }
 
