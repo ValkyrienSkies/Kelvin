@@ -7,7 +7,6 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.util.Mth
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Explosion
-import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.*
 import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
@@ -588,30 +587,22 @@ class DuctNetworkServer(
     }
 
     private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Int>, outputGasses: HashMap<GasType, Int>) {
-        var totalInputGas = 0
-        var totalOutputGas = 0
+        val gasMoles = HashMap<GasType, Double>()
+
+        for (gas in gasMasses) gasMoles[gas.key] = (gas.value/gas.key.density)/22.4
+
+        var possibleOutput = Double.MAX_VALUE
 
         for (gas in inputGasses) {
-            totalInputGas += gas.value
+            if (gas.key !in gasMoles) return
+
+            val thisOutput =  gasMoles[gas.key]!! / gas.value
+            if (thisOutput < possibleOutput) possibleOutput = thisOutput
         }
 
-        for (gas in outputGasses) {
-            totalOutputGas += gas.value
-        }
+        for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-possibleOutput * gas.value * gas.key.density * 22.4)
 
-        var possibleReaction = Double.MAX_VALUE
-
-        for (gas in inputGasses) {
-            if (gas.key !in gasMasses) return
-
-            val thisReaction = totalOutputGas * gasMasses[gas.key]!! * totalInputGas / gas.value
-            if (thisReaction < possibleReaction) possibleReaction = thisReaction
-        }
-
-        for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-possibleReaction * totalInputGas / gas.value)
-
-
-        for (gas in outputGasses) modGasMass(ductNodePos,gas.key,possibleReaction * gas.value / totalOutputGas)
+        for (gas in outputGasses) modGasMass(ductNodePos,gas.key,possibleOutput * gas.value * gas.key.density * 22.4)
 
     }
 
