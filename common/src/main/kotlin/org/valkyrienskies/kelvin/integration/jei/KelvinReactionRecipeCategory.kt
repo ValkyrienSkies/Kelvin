@@ -37,14 +37,14 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
         var i = 0
         recipe.gasses.forEach { (type, moles) ->
             val slot = builder.addSlot(RecipeIngredientRole.INPUT, 0, i*17)
-            slot.addIngredient(GAS_INGREDIENT_TYPE, type)
+            slot.addIngredient(GAS_INGREDIENT_TYPE, KelvinGasIngredient(type,moles))
             i++
         }
 
         i = 0
         recipe.result.forEach { (type, moles) ->
             val slot = builder.addSlot(RecipeIngredientRole.OUTPUT, 84, i*17)
-            slot.addIngredient(GAS_INGREDIENT_TYPE, type)
+            slot.addIngredient(GAS_INGREDIENT_TYPE,  KelvinGasIngredient(type,moles))
             i++
         }
     }

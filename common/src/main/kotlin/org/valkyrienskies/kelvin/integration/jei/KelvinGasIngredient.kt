@@ -14,52 +14,54 @@ import net.minecraft.world.item.TooltipFlag
 import org.valkyrienskies.kelvin.KelvinMod.MOD_ID
 import org.valkyrienskies.kelvin.api.GasType
 
-class GasIngredientType: IIngredientType<GasType> {
-    override fun getIngredientClass(): Class<out GasType> {
-        return GasType::class.java
+data class KelvinGasIngredient(val gasType: GasType, val moles: Int)
+
+class GasIngredientType: IIngredientType<KelvinGasIngredient> {
+    override fun getIngredientClass(): Class<out KelvinGasIngredient> {
+        return KelvinGasIngredient::class.java
     }
 }
 
-class GasIngredientHelper: IIngredientHelper<GasType> {
-    override fun getIngredientType(): IIngredientType<GasType> {
+class GasIngredientHelper: IIngredientHelper<KelvinGasIngredient> {
+    override fun getIngredientType(): IIngredientType<KelvinGasIngredient> {
         return GasIngredientType()
     }
 
-    override fun getErrorInfo(ingredient: GasType?): String {
-        return ingredient?.toString() ?: "Null Kelvin GasType"
+    override fun getErrorInfo(ingredient: KelvinGasIngredient?): String {
+        return ingredient?.gasType.toString()
     }
 
-    override fun copyIngredient(ingredient: GasType): GasType {
+    override fun copyIngredient(ingredient: KelvinGasIngredient): KelvinGasIngredient {
         return ingredient
     }
 
-    override fun getResourceId(ingredient: GasType): String {
-        return ingredient.resourceLocation.path
+    override fun getResourceId(ingredient: KelvinGasIngredient): String {
+        return ingredient.gasType.resourceLocation.path
     }
 
-    override fun getModId(ingredient: GasType): String {
+    override fun getModId(ingredient: KelvinGasIngredient): String {
         return MOD_ID
     }
 
-    override fun getUniqueId(ingredient: GasType, context: UidContext): String {
-        return ingredient.resourceLocation.toString()
+    override fun getUniqueId(ingredient: KelvinGasIngredient, context: UidContext): String {
+        return ingredient.gasType.resourceLocation.toString()
     }
 
     // TODO: Make this get lang
-    override fun getDisplayName(ingredient: GasType): String {
-        return ingredient.name
+    override fun getDisplayName(ingredient: KelvinGasIngredient): String {
+        return ingredient.gasType.name
     }
 
 }
 
-class GasIngredientRenderer: IIngredientRenderer<GasType> {
-    override fun getTooltip(ingredient: GasType, tooltipFlag: TooltipFlag): MutableList<Component> {
-        return mutableListOf(TextComponent(ingredient.name).withStyle(ChatFormatting.GOLD))
+class GasIngredientRenderer: IIngredientRenderer<KelvinGasIngredient> {
+    override fun getTooltip(ingredient: KelvinGasIngredient, tooltipFlag: TooltipFlag): MutableList<Component> {
+        return mutableListOf(TextComponent(ingredient.gasType.name).withStyle(ChatFormatting.GOLD))
     }
 
-    override fun render(stack: PoseStack, ingredient: GasType) {
-        if (ingredient.iconLocation == null) return
-        RenderSystem.setShaderTexture(0, ingredient.iconLocation)
+    override fun render(stack: PoseStack, ingredient: KelvinGasIngredient) {
+        if (ingredient.gasType.iconLocation == null) return
+        RenderSystem.setShaderTexture(0, ingredient.gasType.iconLocation)
         GuiComponent.blit(stack, 0, 0, 0, 0f, 0f, 16, 16, 16, 16);
 
         super.render(stack, ingredient)

@@ -21,8 +21,9 @@ class KelvinJeiPlugin: IModPlugin {
     }
 
     override fun registerIngredients(registration: IModIngredientRegistration) {
-        val gasTypes = GasTypeRegistry.GAS_TYPES.values
-        registration.register(GAS_INGREDIENT_TYPE, gasTypes, GasIngredientHelper(), GasIngredientRenderer())
+        val recipes = HashSet<KelvinGasIngredient>()
+        GasTypeRegistry.GAS_TYPES.values.forEach {type -> recipes.add(KelvinGasIngredient(type, 1))}
+        registration.register(GAS_INGREDIENT_TYPE, recipes, GasIngredientHelper(), GasIngredientRenderer())
     }
 
     override fun registerCategories(registration: IRecipeCategoryRegistration) {
