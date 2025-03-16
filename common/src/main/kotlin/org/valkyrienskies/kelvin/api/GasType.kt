@@ -22,6 +22,6 @@ data class GasType(
 ) {
     override fun toString(): String {
         val iconLoc = iconLocation?.toString() ?: "null"
-        return "$name, $density, $viscosity, $specificHeatCapacity, $thermalConductivity, $sutherlandConstant, $adiabaticIndex, $combustible, $calorificValue, $iconLoc"
+        return "{$name, $density, $viscosity, $specificHeatCapacity, $thermalConductivity, $sutherlandConstant, $adiabaticIndex, $combustible, $calorificValue, $iconLoc}"
     }
 }
