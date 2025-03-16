@@ -1,16 +1,21 @@
 package org.valkyrienskies.kelvin.integration.jei
 
+import com.mojang.blaze3d.vertex.PoseStack
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder
 import mezz.jei.api.gui.drawable.IDrawable
+import mezz.jei.api.gui.ingredient.IRecipeSlotsView
 import mezz.jei.api.recipe.IFocusGroup
 import mezz.jei.api.recipe.RecipeIngredientRole
 import mezz.jei.api.recipe.category.IRecipeCategory
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiComponent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.TextComponent
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.GasReaction
 import org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin.Companion.GAS_INGREDIENT_TYPE
+import java.awt.Font
 
 class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
     override fun getTitle(): Component {
@@ -34,6 +39,7 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
     }
 
     override fun setRecipe(builder: IRecipeLayoutBuilder, recipe: GasReaction, focuses: IFocusGroup) {
+
         var i = 0
         recipe.gasses.forEach { (type, moles) ->
             val slot = builder.addSlot(RecipeIngredientRole.INPUT, 0, i*17)
@@ -47,6 +53,32 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
             slot.addIngredient(GAS_INGREDIENT_TYPE,  KelvinGasIngredient(type,moles))
             i++
         }
+    }
+
+    override fun draw(
+        recipe: GasReaction,
+        recipeSlotsView: IRecipeSlotsView,
+        stack: PoseStack,
+        mouseX: Double,
+        mouseY: Double
+    ) {
+        var i = 0
+        recipeSlotsView.getSlotViews(RecipeIngredientRole.INPUT).forEach { slot ->
+            val ingredient = slot.displayedIngredient.get().ingredient as KelvinGasIngredient
+            // TODO: USE LANG
+            Minecraft.getInstance().font.draw(stack, "${ingredient.moles} Moles",17f,i*17f, 5592405)
+            i++
+       }
+
+        i = 0
+        recipeSlotsView.getSlotViews(RecipeIngredientRole.OUTPUT).forEach { slot ->
+            val ingredient = slot.displayedIngredient.get().ingredient as KelvinGasIngredient
+            // TODO: USE LANG
+            Minecraft.getInstance().font.draw(stack, "${ingredient.moles} Moles",101f,i*17f, 5592405)
+            i++
+        }
+
+
     }
 }
 
