@@ -1,6 +1,8 @@
 package org.valkyrienskies.kelvin.impl
 
 import com.google.gson.JsonElement
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.TextComponent
 import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.DuctNetwork
@@ -18,6 +20,12 @@ object DefaultKelvinRequirements {
             return temperature >= doubleValue
         }
 
+        override fun get_text(value: JsonElement): Component {
+            val doubleValue = value.asDouble
+
+            return TextComponent("Minimum Temperature: $doubleValue K")
+        }
+
     }
 
     object maxTemperature: GasReactionRequirement(KelvinMod.asResouceLocation("max_temperature")) {
@@ -26,6 +34,12 @@ object DefaultKelvinRequirements {
 
             val temperature = network.getTemperatureAt(ductNode)
             return temperature <= doubleValue
+        }
+
+        override fun get_text(value: JsonElement): Component {
+            val doubleValue = value.asDouble
+
+            return TextComponent("Maximum Temperature: $doubleValue K")
         }
     }
 
@@ -36,6 +50,12 @@ object DefaultKelvinRequirements {
             val pressure = network.getPressureAt(ductNode)
             return pressure >= doubleValue
         }
+
+        override fun get_text(value: JsonElement): Component {
+            val doubleValue = value.asDouble
+
+            return TextComponent("Minimum Pressure: $doubleValue Pa")
+        }
     }
 
     object maxPressure: GasReactionRequirement(KelvinMod.asResouceLocation("max_pressure")) {
@@ -44,6 +64,12 @@ object DefaultKelvinRequirements {
 
             val pressure = network.getPressureAt(ductNode)
             return pressure <= doubleValue
+        }
+
+        override fun get_text(value: JsonElement): Component {
+            val doubleValue = value.asDouble
+
+            return TextComponent("Maximum Pressure: $doubleValue Pa")
         }
     }
 }

@@ -8,14 +8,12 @@ import mezz.jei.api.recipe.IFocusGroup
 import mezz.jei.api.recipe.RecipeIngredientRole
 import mezz.jei.api.recipe.category.IRecipeCategory
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiComponent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.TextComponent
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.GasReaction
 import org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin.Companion.GAS_INGREDIENT_TYPE
-import java.awt.Font
 
 class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
     override fun getTitle(): Component {
@@ -23,7 +21,7 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
     }
 
     override fun getBackground(): IDrawable {
-        return ImageDrawable(100,100, KelvinMod.asResouceLocation("textures/gui/gas_reaction_recipe_background.png"))
+        return ImageDrawable(150,150, KelvinMod.asResouceLocation("textures/gui/gas_reaction_recipe_background.png"))
     }
 
     override fun getIcon(): IDrawable {
@@ -62,12 +60,15 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
         mouseX: Double,
         mouseY: Double
     ) {
+        var maxI = 0
         var i = 0
         recipeSlotsView.getSlotViews(RecipeIngredientRole.INPUT).forEach { slot ->
             val ingredient = slot.displayedIngredient.get().ingredient as KelvinGasIngredient
             // TODO: USE LANG
+
             Minecraft.getInstance().font.draw(stack, "${ingredient.moles} Moles",17f,i*17f, 5592405)
             i++
+            if (i >= maxI) maxI = i
        }
 
         i = 0
@@ -76,8 +77,14 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
             // TODO: USE LANG
             Minecraft.getInstance().font.draw(stack, "${ingredient.moles} Moles",101f,i*17f, 5592405)
             i++
+            if (i >= maxI) maxI = i
         }
 
+        i = maxI + 2
+        recipe.requirements.forEach { (requirement, value) ->
+            Minecraft.getInstance().font.draw(stack, requirement.get_text(value),0f,i*17f, 5592405)
+            i++
+        }
 
     }
 }
