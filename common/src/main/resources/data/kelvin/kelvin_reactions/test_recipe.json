@@ -7,7 +7,9 @@
     "kelvin:min_temperature": 800,
     "kelvin:min_pressure": 1000
   },
+  "energy": 890400,
   "result": {
-    "kelvin:air": 10
+    "kelvin:exhaust": 1,
+    "kelvin:steam": 2
   }
 }

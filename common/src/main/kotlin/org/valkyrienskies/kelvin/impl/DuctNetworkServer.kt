@@ -575,25 +575,22 @@ class DuctNetworkServer(
 
             for (reaction in reactions.values) {
                 var con = false
-                reaction.requirements.forEach {if (!it.key.apply_requirement(level, node, this, it.value)) { con = true
-                    return@forEach
-                }}
+                reaction.requirements.forEach {if (!it.key.apply_requirement(level, node, this, it.value)) { con = true; return@forEach }}
                 if (con) continue
 
 
-                calcReaction(node, gasMasses, reaction.gasses, reaction.result)
+                calcReaction(node, gasMasses, reaction.gasses, reaction.result, reaction.energy)
             }
         }
     }
 
-    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Int>, outputGasses: HashMap<GasType, Int>) {
+    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Int>, outputGasses: HashMap<GasType, Int>, deltaEnergy: Double) {
         val gasMoles = HashMap<GasType, Double>()
 
         for (gas in gasMasses) gasMoles[gas.key] = (gas.value/gas.key.density)/22.4
 
         var reactionMoles = Double.MAX_VALUE
 
-        if (inputGasses.size == 0) return KELVINLOGGER.error("empty inputGasses in gas reaction.")
 
         for (gas in inputGasses) {
             if (gas.key !in gasMoles || gasMoles[gas.key]!! < 0.001) return
@@ -605,6 +602,8 @@ class DuctNetworkServer(
         for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-reactionMoles * gas.value * gas.key.density * 22.4)
 
         for (gas in outputGasses) modGasMass(ductNodePos,gas.key,reactionMoles * gas.value * gas.key.density * 22.4)
+
+        modHeatEnergy(ductNodePos, deltaEnergy * reactionMoles)
 
     }
 
