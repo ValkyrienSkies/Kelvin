@@ -18,6 +18,19 @@ dependencies {
     api "org.jetbrains.kotlin:kotlin-reflect:1.9.10"
 }
 
+kotlin {
+    // This block configures the Kotlin compiler for this module
+    compilerOptions {
+        // Add your desired free compiler arguments here
+        freeCompilerArgs = [
+                "-Xtype-enhancement-improvements-strict-mode ",
+                "-Xjvm-default=all-compatibility"
+        ]
+
+        // jvmTarget = "17" // Example: Set JVM target version
+    }
+}
+
 publishing {
     publications {
         mavenCommon(MavenPublication) {

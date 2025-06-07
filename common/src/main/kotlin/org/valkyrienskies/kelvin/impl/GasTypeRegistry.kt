@@ -22,6 +22,12 @@ object GasTypeRegistry {
         KELVINLOGGER.info("Icon Location: ${gasType.iconLocation}")
     }
 
+    fun registerGasType(name: String, resourceLocation: ResourceLocation, density: Double, viscosity: Double,
+                        specificHeatCapacity: Double, thermalConductivity: Double, sutherlandConstant: Double,
+                        adiabaticIndex: Double, combustible: Boolean, calorificValue: Double, iconLocation: ResourceLocation? = null) {
+        gas = GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+    }
+
     fun getGasType(resourceLocation: ResourceLocation): GasType? {
         return GAS_TYPES[resourceLocation]
     }

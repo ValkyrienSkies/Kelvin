@@ -44,6 +44,8 @@ object KelvinMod {
         KELVINLOGGER.info("Initializing Kelvin...")
         networkManager = SimpleNetworkManager.create(MOD_ID)
 
+        KelvinParticles.init()
+
         LifecycleEvent.SERVER_BEFORE_START.register {
             Kelvin.disabled = false
             KELVINLOGGER.info("Enabling Kelvin...")
@@ -121,6 +123,8 @@ object KelvinMod {
 
     @JvmStatic
     fun initClient() {
+        KelvinParticles.KelvinClientParticles.init()
+
         ClientPlayerEvent.CLIENT_PLAYER_JOIN.register {
             if (Platform.getEnvironment() == Env.CLIENT) KelvinClient.disabled = false
         }
