@@ -220,6 +220,20 @@ class DuctNetworkServer(
 
     }
 
+    override fun createGasParticle(
+        level: ServerLevel,
+        gasType: GasType,
+        pos: DuctNodePos,
+        x: Double,
+        y: Double,
+        z: Double,
+        xSpeed: Double,
+        ySpeed: Double,
+        zSpeed: Double
+    ) {
+        KELVINLOGGER.warn("Server can't add Particles.")
+    }
+
     override fun tick(level: ServerLevel, subSteps: Int) {
         if (disabled) return
 
