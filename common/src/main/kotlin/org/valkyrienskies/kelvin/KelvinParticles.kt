@@ -4,8 +4,9 @@ import dev.architectury.registry.client.particle.ParticleProviderRegistry
 import dev.architectury.registry.registries.DeferredRegister
 import dev.architectury.registry.registries.RegistrySupplier
 import net.minecraft.core.Registry
+import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticle.DefaultGasParticleType
 import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticleProvider
-import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticleType
+
 
 
 object KelvinParticles {
@@ -16,12 +17,14 @@ object KelvinParticles {
     fun registerDefaultParticle(name: String):  RegistrySupplier<DefaultGasParticleType> {
         val supplier = PARTICLES.register(name) { DefaultGasParticleType() }
         ALL.add(supplier)
+        KelvinMod.KELVINLOGGER.info("Registered particle: ${supplier.id}")
         return supplier
     }
 
     fun init() {
+        KelvinMod.KELVINLOGGER.info("Registering Kelvin default gas particles...")
         PARTICLES.register()
-        KelvinMod.KELVINLOGGER.info("Registered Kelvin default gas particles")
+
     }
 
     object KelvinClientParticles {
@@ -31,8 +34,12 @@ object KelvinParticles {
         }
 
         fun init() {
-            ALL.forEach { entry -> registerDefaultParticle(entry) }
-            KelvinMod.KELVINLOGGER.info("Registered Kelvin default particle providers")
+            KelvinMod.KELVINLOGGER.info("Registering Kelvin default particle providers...")
+            ALL.forEach { entry ->
+                registerDefaultParticle(entry)
+                KelvinMod.KELVINLOGGER.info("Registered particle provider: ${entry.id}")
+            }
+
         }
 
     }

@@ -22,12 +22,6 @@ object GasTypeRegistry {
         KELVINLOGGER.info("Icon Location: ${gasType.iconLocation}")
     }
 
-    fun registerGasType(name: String, resourceLocation: ResourceLocation, density: Double, viscosity: Double,
-                        specificHeatCapacity: Double, thermalConductivity: Double, sutherlandConstant: Double,
-                        adiabaticIndex: Double, combustible: Boolean, calorificValue: Double, iconLocation: ResourceLocation? = null) {
-        gas = GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
-    }
-
     fun getGasType(resourceLocation: ResourceLocation): GasType? {
         return GAS_TYPES[resourceLocation]
     }
@@ -37,15 +31,15 @@ object GasTypeRegistry {
     }
 
     fun init () {
-        val air = GasType("Air",ResourceLocation(KelvinMod.MOD_ID, "air"), 1.293, 1.716e-5, 1.005, 0.026)
-        val exhaust = GasType("Exhaust", ResourceLocation(KelvinMod.MOD_ID, "exhaust"), 1.98, 1.10e-5, 2.2, 0.031)
-        val steam = GasType("Steam", ResourceLocation(KelvinMod.MOD_ID, "steam"), 1.98, 1.716e-5, 2.2, 0.031)
+        val air = GasType.withDefaultParticlePicker("Air",ResourceLocation(KelvinMod.MOD_ID, "air"), 1.293, 1.716e-5, 1.005, 0.026)
+        val exhaust = GasType.withDefaultParticlePicker("Exhaust", ResourceLocation(KelvinMod.MOD_ID, "exhaust"), 1.98, 1.10e-5, 2.2, 0.031)
+        val steam = GasType.withDefaultParticlePicker("Steam", ResourceLocation(KelvinMod.MOD_ID, "steam"), 1.98, 1.716e-5, 2.2, 0.031)
 
 
-        val phlogiston = GasType("Phlogiston",ResourceLocation(KelvinMod.MOD_ID, "phlogiston"), 3.0, 2.0e-5, 14.30, 0.240, 150.0, 1.008, true, 3.5e+8)
-        val helium = GasType("Helium",ResourceLocation(KelvinMod.MOD_ID, "helium"),0.166, 1.96e-5, 5.1832, 0.151, 79.4, 1.66)
-        val hydrogen = GasType("Hydrogen",ResourceLocation(KelvinMod.MOD_ID, "hydrogen"), 0.08988, 0.88e-5, 14.30, 0.18, 72.0, 1.4, true, 1.418e+8)
-        val methane = GasType("Methane",ResourceLocation(KelvinMod.MOD_ID, "methane"), 0.657, 1.10e-5, 2.2, 0.031, 90.0, 16.0, true, 5.55e+7)
+        val phlogiston = GasType.withDefaultParticlePicker("Phlogiston",ResourceLocation(KelvinMod.MOD_ID, "phlogiston"), 3.0, 2.0e-5, 14.30, 0.240, 150.0, 1.008, true, 3.5e+8)
+        val helium = GasType.withDefaultParticlePicker("Helium",ResourceLocation(KelvinMod.MOD_ID, "helium"),0.166, 1.96e-5, 5.1832, 0.151, 79.4, 1.66)
+        val hydrogen = GasType.withDefaultParticlePicker("Hydrogen",ResourceLocation(KelvinMod.MOD_ID, "hydrogen"), 0.08988, 0.88e-5, 14.30, 0.18, 72.0, 1.4, true, 1.418e+8)
+        val methane = GasType.withDefaultParticlePicker("Methane",ResourceLocation(KelvinMod.MOD_ID, "methane"), 0.657, 1.10e-5, 2.2, 0.031, 90.0, 16.0, true, 5.55e+7)
 
 
         registerGasType(air)

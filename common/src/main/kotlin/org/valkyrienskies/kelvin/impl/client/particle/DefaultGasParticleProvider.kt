@@ -1,7 +1,5 @@
 package org.valkyrienskies.kelvin.impl.client.particle
 
-import net.fabricmc.api.EnvType
-import net.fabricmc.api.Environment
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.particle.Particle
 import net.minecraft.client.particle.ParticleProvider
@@ -22,7 +20,6 @@ class DefaultGasParticleProvider(private val sprite: SpriteSet): ParticleProvide
     ): Particle {
         val particle = DefaultGasParticle(level,x,y,z,xSpeed,ySpeed,zSpeed)
         particle.setSpriteFromAge(sprite)
-        level.isClientSide
         return particle
     }
 
