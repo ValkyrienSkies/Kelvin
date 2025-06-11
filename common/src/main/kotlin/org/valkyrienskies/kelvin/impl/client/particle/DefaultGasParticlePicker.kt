@@ -9,13 +9,13 @@ import org.valkyrienskies.kelvin.api.KelvinParticlePicker
 /*
 The default ParticlePicker. Allows you to make a ParticlePicker which always returns a single ParticleType
  */
-class DefaultGasParticlePicker(val particleType: SimpleParticleType) : KelvinParticlePicker() {
+class DefaultGasParticlePicker(val particleOptions: ParticleOptions) : KelvinParticlePicker() {
 
     override fun chooseParticleOptions(
         level: Level,
         ductNodePos: DuctNodePos
     ): ParticleOptions {
-        return particleType
+        return particleOptions
     }
 
 }
