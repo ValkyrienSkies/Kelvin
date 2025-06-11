@@ -6,7 +6,7 @@ import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
-import org.valkyrienskies.kelvin.impl.GasTypeRegistry
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 
 object NodeNBTUtil {
     fun <T: Level> serializeNode(pos: DuctNodePos, network: DuctNetwork<T>, tag: CompoundTag) {

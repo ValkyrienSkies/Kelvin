@@ -80,7 +80,7 @@ object KelvinKeyMapper {
                     val iconLocation = if (parts[10] == "null") null else ResourceLocation(parts[10])
                     if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
                         //TODO: SERIALIZE PARTICLE PICKER
-                        return GasType.withDefaultParticlePicker(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
                     } else throw IllegalArgumentException("Invalid GasType string")
                 }
             }
@@ -143,7 +143,7 @@ object KelvinKeyMapper {
 
                     if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
                         //TODO: SERIALIZE PARTICLE PICKER
-                        return GasType.withDefaultParticlePicker(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
                     }
                 }
             }

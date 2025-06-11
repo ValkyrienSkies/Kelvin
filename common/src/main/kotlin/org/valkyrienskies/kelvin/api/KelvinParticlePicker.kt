@@ -6,7 +6,7 @@ import net.minecraft.world.level.Level
 /*
 A class for defining a ParticleTypePicker, which kelvin uses to pick out a ParticleType for anything it uses Particles for
  */
-abstract class KelvinParticleTypePicker {
+abstract class KelvinParticlePicker {
     abstract fun chooseParticleOptions(level: Level, ductNodePos: DuctNodePos): ParticleOptions
 }
 

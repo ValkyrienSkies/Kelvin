@@ -6,6 +6,7 @@ import net.minecraft.world.entity.player.Player
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.*
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
+import org.valkyrienskies.kelvin.impl.registry.GasParticlePickerRegistry
 import org.valkyrienskies.kelvin.networking.KelvinRequestChunkSyncPacket
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
@@ -122,7 +123,8 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
         x: Double, y: Double, z: Double,
         xSpeed: Double, ySpeed: Double, zSpeed: Double
     ) {
-        val particleOptions = gasType.particleTypePicker.chooseParticleOptions(level, pos)
+        val particleTypePicker = GasParticlePickerRegistry.getParticlePicker(gasType) ?: return KELVINLOGGER.error("${gasType.resourceLocation} lacks a ParticlePicker")
+        val particleOptions = particleTypePicker.chooseParticleOptions(level, pos)
         level.addParticle(particleOptions, x, y, z, xSpeed, ySpeed, zSpeed)
     }
 
