@@ -3,6 +3,9 @@ package org.valkyrienskies.kelvin.api
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import net.minecraft.resources.ResourceLocation
+import org.valkyrienskies.kelvin.KelvinParticles
+import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticlePicker
+import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 import org.valkyrienskies.kelvin.util.KelvinKeyMapper
 
 @JsonSerialize(using = KelvinKeyMapper.GasTypeSerializer::class)
@@ -20,8 +23,10 @@ data class GasType(
     val calorificValue: Double = 0.0, // (J / kg) (see https://en.wikipedia.org/wiki/Energy_density), only use if [combustible] is true
     val iconLocation: ResourceLocation? = null
 ) {
+
     override fun toString(): String {
         val iconLoc = iconLocation?.toString() ?: "null"
         return "{$name, $density, $viscosity, $specificHeatCapacity, $thermalConductivity, $sutherlandConstant, $adiabaticIndex, $combustible, $calorificValue, $iconLoc}"
     }
+
 }

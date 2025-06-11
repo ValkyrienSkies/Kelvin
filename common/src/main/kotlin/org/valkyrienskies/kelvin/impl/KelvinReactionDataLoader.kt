@@ -10,6 +10,8 @@ import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.GasReaction
 import org.valkyrienskies.kelvin.api.GasReactionRequirement
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
+import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 
 object KelvinReactionDataLoader {
     val gas_reactions = hashMapOf<ResourceLocation, GasReaction>()
@@ -22,7 +24,6 @@ object KelvinReactionDataLoader {
             resourceManager: ResourceManager,
             profiler: ProfilerFiller
         ) {
-            println("Applying Data loader")
             gas_reactions.clear()
             objects.forEach { (location, element) ->
                 try {
@@ -76,9 +77,12 @@ object KelvinReactionDataLoader {
                 result[gasType] = gasParts
             }
 
-            val parsed_reaction = GasReaction(gasses, requirements, result)
-            println(parsed_reaction)
-            gas_reactions[origin] = parsed_reaction
+
+            val energy = if (jObject.has("energy")) jObject["energy"].asDouble else 0.0
+
+            val parsedReaction = GasReaction(gasses = gasses, requirements = requirements, energy = energy, result = result)
+            println(parsedReaction)
+            gas_reactions[origin] = parsedReaction
 
         }
     }

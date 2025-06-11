@@ -1,16 +1,12 @@
 package org.valkyrienskies.kelvin.api
 
-import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
-import java.util.EnumMap
-import java.util.logging.Logger
 
 /**
  * The main class representing the Duct Network.
@@ -73,7 +69,6 @@ interface DuctNetwork<T: Level> {
     fun removeEdge(posA: DuctNodePos, posB: DuctNodePos) {
         KELVINLOGGER.warn("You can't modify this from here. Called: removeEdge")
     }
-
     fun modTemperature(pos: DuctNodePos, deltaTemperature: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modTemperature")
     }
@@ -89,6 +84,8 @@ interface DuctNetwork<T: Level> {
     fun modHeatEnergy(pos: DuctNodePos, deltaEnergy: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modHeatEnergy")
     }
+
+    fun createGasParticle(level: T, gasType: GasType, pos: DuctNodePos, x: Double, y: Double, z: Double, xSpeed: Double, ySpeed: Double, zSpeed: Double)
 
     // the real meat
     fun tick(level: T, subSteps: Int = 1)

@@ -13,6 +13,7 @@ import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
 import org.valkyrienskies.kelvin.api.edges.*
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.networking.KelvinSyncPacket
 import org.valkyrienskies.kelvin.util.*
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
@@ -218,6 +219,20 @@ class DuctNetworkServer(
 
         modTemperature(pos, deltaTemp-temp)
 
+    }
+
+    override fun createGasParticle(
+        level: ServerLevel,
+        gasType: GasType,
+        pos: DuctNodePos,
+        x: Double,
+        y: Double,
+        z: Double,
+        xSpeed: Double,
+        ySpeed: Double,
+        zSpeed: Double
+    ) {
+        KELVINLOGGER.warn("Server can't add Particles.")
     }
 
     override fun tick(level: ServerLevel, subSteps: Int) {
@@ -575,25 +590,22 @@ class DuctNetworkServer(
 
             for (reaction in reactions.values) {
                 var con = false
-                reaction.requirements.forEach {if (!it.key.apply_requirement(level, node, this, it.value)) { con = true
-                    return@forEach
-                }}
+                reaction.requirements.forEach {if (!it.key.apply_requirement(level, node, this, it.value)) { con = true; return@forEach }}
                 if (con) continue
 
 
-                calcReaction(node, gasMasses, reaction.gasses, reaction.result)
+                calcReaction(node, gasMasses, reaction.gasses, reaction.result, reaction.energy)
             }
         }
     }
 
-    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Int>, outputGasses: HashMap<GasType, Int>) {
+    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Int>, outputGasses: HashMap<GasType, Int>, deltaEnergy: Double) {
         val gasMoles = HashMap<GasType, Double>()
 
         for (gas in gasMasses) gasMoles[gas.key] = (gas.value/gas.key.density)/22.4
 
         var reactionMoles = Double.MAX_VALUE
 
-        if (inputGasses.size == 0) return KELVINLOGGER.error("empty inputGasses in gas reaction.")
 
         for (gas in inputGasses) {
             if (gas.key !in gasMoles || gasMoles[gas.key]!! < 0.001) return
@@ -605,6 +617,8 @@ class DuctNetworkServer(
         for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-reactionMoles * gas.value * gas.key.density * 22.4)
 
         for (gas in outputGasses) modGasMass(ductNodePos,gas.key,reactionMoles * gas.value * gas.key.density * 22.4)
+
+        modHeatEnergy(ductNodePos, deltaEnergy * reactionMoles)
 
     }
 
