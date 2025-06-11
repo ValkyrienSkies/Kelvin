@@ -10,6 +10,8 @@ import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.GasReaction
 import org.valkyrienskies.kelvin.api.GasReactionRequirement
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
+import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 
 object KelvinReactionDataLoader {
     val gas_reactions = hashMapOf<ResourceLocation, GasReaction>()

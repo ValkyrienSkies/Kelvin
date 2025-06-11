@@ -17,10 +17,11 @@ import net.minecraft.world.level.chunk.ChunkAccess
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
-import org.valkyrienskies.kelvin.impl.GasTypeRegistry
-import org.valkyrienskies.kelvin.impl.ReactionRequirementRegistry
+import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
 import org.valkyrienskies.kelvin.impl.logger
+import org.valkyrienskies.kelvin.impl.registry.GasParticlePickerRegistry
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
 import org.valkyrienskies.kelvin.serialization.SerializableDuctNetwork
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
@@ -115,6 +116,7 @@ object KelvinMod {
         KELVINLOGGER.info("Registering gas types...")
         GasTypeRegistry.init()
         ReactionRequirementRegistry.init()
+        GasParticlePickerRegistry.init()
         KELVINLOGGER.info("--- --- ---")
         KELVINLOGGER.info("Finished registering gas types. We have ${GasTypeRegistry.GAS_TYPES.size} gasses registered!")
 

@@ -13,6 +13,7 @@ import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
 import org.valkyrienskies.kelvin.api.edges.*
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.networking.KelvinSyncPacket
 import org.valkyrienskies.kelvin.util.*
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
