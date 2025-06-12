@@ -75,12 +75,10 @@ object KelvinKeyMapper {
                     val thermalConductivity = parts[5].toDoubleOrNull()
                     val sutherlandConstant = parts[6].toDoubleOrNull()
                     val adiabaticIndex = parts[7].toDoubleOrNull()
-                    val combustible = parts[8].toBoolean()
-                    val calorificValue = parts[9].toDoubleOrNull()
-                    val iconLocation = ResourceLocation(parts[10])
-                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
+                    val iconLocation = ResourceLocation(parts[8])
+                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null) {
                         //TODO: SERIALIZE PARTICLE PICKER
-                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, iconLocation)
                     } else throw IllegalArgumentException("Invalid GasType string")
                 }
             }
@@ -137,13 +135,11 @@ object KelvinKeyMapper {
                     val thermalConductivity = parts[5].toDoubleOrNull()
                     val sutherlandConstant = parts[6].toDoubleOrNull()
                     val adiabaticIndex = parts[7].toDoubleOrNull()
-                    val combustible = parts[8].toBoolean()
-                    val calorificValue = parts[9].toDoubleOrNull()
-                    val iconLocation = ResourceLocation(parts[10])
+                    val iconLocation = ResourceLocation(parts[8])
 
-                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
+                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null) {
                         //TODO: SERIALIZE PARTICLE PICKER
-                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, iconLocation)
                     }
                 }
             }
