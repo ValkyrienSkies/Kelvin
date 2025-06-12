@@ -19,7 +19,7 @@ class ImageDrawable(private val width: Int, private val height: Int, private val
 
     override fun draw(stack: PoseStack, xOffset: Int, yOffset: Int) {
         RenderSystem.setShaderTexture(0, location)
-        GuiComponent.blit(stack, xOffset, yOffset, 0, 0f, 0f, width, height, height, width);
+        GuiComponent.blit(stack, xOffset, yOffset, 0, 0f, 0f, width, height, height, width)
 
     }
 }

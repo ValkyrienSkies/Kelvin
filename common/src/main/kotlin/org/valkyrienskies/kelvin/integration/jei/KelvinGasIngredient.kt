@@ -61,7 +61,7 @@ class GasIngredientRenderer: IIngredientRenderer<KelvinGasIngredient> {
 
     override fun render(stack: PoseStack, ingredient: KelvinGasIngredient) {
         RenderSystem.setShaderTexture(0, ingredient.gasType.iconLocation)
-        GuiComponent.blit(stack, 0, 0, 0, 0f, 0f, 16, 16, 16, 16);
+        GuiComponent.blit(stack, 0, 0, 0, 0f, 0f, 16, 16, 16, 16)
 
         super.render(stack, ingredient)
     }
