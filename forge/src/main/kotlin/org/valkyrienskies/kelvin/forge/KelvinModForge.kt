@@ -23,18 +23,12 @@ import thedarkcolour.kotlinforforge.forge.MOD_BUS
 class KelvinModForge {
     init {
         MOD_BUS.addListener { event: FMLClientSetupEvent? ->
-            clientSetup(
-                event
-            )
+            println("CLIENT SET UP")
+            clientSetup(event)
         }
 
         EventBuses.registerModEventBus(KelvinMod.MOD_ID, getModBus());
-
-
-        MOD_BUS.addListener { event: FMLCommonSetupEvent ->
-            init()
-        }
-
+        init()
 
         FORGE_BUS.addListener { event: ChunkEvent.Load ->
             if (!event.world.isClientSide) {

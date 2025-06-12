@@ -30,6 +30,7 @@ object KelvinParticles {
     object KelvinClientParticles {
 
         fun registerDefaultParticle(supplier: RegistrySupplier<DefaultGasParticleType>) {
+            KelvinMod.KELVINLOGGER.info("Registered particle provider: ${supplier.id}")
             ParticleProviderRegistry.register(supplier.get(), ::DefaultGasParticleProvider)
         }
 
