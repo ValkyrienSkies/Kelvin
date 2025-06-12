@@ -1,11 +1,13 @@
 package org.valkyrienskies.kelvin.forge
 
+import dev.architectury.platform.forge.EventBuses
 import net.minecraft.server.level.ServerLevel
 import net.minecraftforge.event.AddReloadListenerEvent
 import net.minecraftforge.event.world.ChunkEvent
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.init
 import org.valkyrienskies.kelvin.KelvinMod.initClient
@@ -22,6 +24,8 @@ class KelvinModForge {
                 event
             )
         }
+
+        EventBuses.registerModEventBus(KelvinMod.MOD_ID, getModBus());
         init()
 
         FORGE_BUS.addListener { event: ChunkEvent.Load ->

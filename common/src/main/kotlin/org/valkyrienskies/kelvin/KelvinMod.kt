@@ -45,7 +45,7 @@ object KelvinMod {
         KELVINLOGGER.info("Initializing Kelvin...")
         networkManager = SimpleNetworkManager.create(MOD_ID)
 
-        KelvinParticles.init()
+
 
         LifecycleEvent.SERVER_BEFORE_START.register {
             Kelvin.disabled = false
@@ -109,7 +109,7 @@ object KelvinMod {
         }
 
 
-
+        KelvinParticles.init()
         KelvinNetworking.init()
         KelvinDamageSources.init()
 

@@ -57,7 +57,6 @@ dependencies {
 
     //JEI
     modCompileOnly  "mezz.jei:jei-${rootProject.minecraft_version}-fabric-api:${rootProject.jei_version}"
-    modRuntimeOnly  "mezz.jei:jei-${rootProject.minecraft_version}-fabric:${rootProject.jei_version}"
 
     // Mod menu
     modImplementation("com.terraformersmc:modmenu:3.2.3")

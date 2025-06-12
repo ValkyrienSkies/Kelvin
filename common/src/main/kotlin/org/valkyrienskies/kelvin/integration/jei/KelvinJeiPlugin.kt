@@ -10,7 +10,7 @@ import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.MOD_ID
 import org.valkyrienskies.kelvin.api.GasReaction
-import org.valkyrienskies.kelvin.impl.GasTypeRegistry
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.KelvinReactionDataLoader
 
 
