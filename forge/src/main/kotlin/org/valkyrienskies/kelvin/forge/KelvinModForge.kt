@@ -2,15 +2,18 @@ package org.valkyrienskies.kelvin.forge
 
 import dev.architectury.platform.forge.EventBuses
 import net.minecraft.server.level.ServerLevel
+import net.minecraftforge.client.event.ParticleFactoryRegisterEvent
 import net.minecraftforge.event.AddReloadListenerEvent
+import net.minecraftforge.event.RegistryEvent
 import net.minecraftforge.event.world.ChunkEvent
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.init
 import org.valkyrienskies.kelvin.KelvinMod.initClient
+import org.valkyrienskies.kelvin.KelvinParticles
 import org.valkyrienskies.kelvin.impl.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import thedarkcolour.kotlinforforge.forge.FORGE_BUS
@@ -26,7 +29,12 @@ class KelvinModForge {
         }
 
         EventBuses.registerModEventBus(KelvinMod.MOD_ID, getModBus());
-        init()
+
+
+        MOD_BUS.addListener { event: FMLCommonSetupEvent ->
+            init()
+        }
+
 
         FORGE_BUS.addListener { event: ChunkEvent.Load ->
             if (!event.world.isClientSide) {
@@ -63,6 +71,10 @@ class KelvinModForge {
         }
 
         FORGE_BUS.addListener(::registerResourceManagers)
+
+        MOD_BUS.addListener { event: ParticleFactoryRegisterEvent ->
+            KelvinParticles.KelvinClientParticles.init()
+        }
     }
 
     private fun registerResourceManagers(event: AddReloadListenerEvent) {

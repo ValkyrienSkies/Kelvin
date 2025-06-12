@@ -77,7 +77,7 @@ object KelvinKeyMapper {
                     val adiabaticIndex = parts[7].toDoubleOrNull()
                     val combustible = parts[8].toBoolean()
                     val calorificValue = parts[9].toDoubleOrNull()
-                    val iconLocation = if (parts[10] == "null") null else ResourceLocation(parts[10])
+                    val iconLocation = ResourceLocation(parts[10])
                     if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
                         //TODO: SERIALIZE PARTICLE PICKER
                         return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
@@ -139,7 +139,7 @@ object KelvinKeyMapper {
                     val adiabaticIndex = parts[7].toDoubleOrNull()
                     val combustible = parts[8].toBoolean()
                     val calorificValue = parts[9].toDoubleOrNull()
-                    val iconLocation = if (parts[10] == "null") null else ResourceLocation(parts[10])
+                    val iconLocation = ResourceLocation(parts[10])
 
                     if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
                         //TODO: SERIALIZE PARTICLE PICKER

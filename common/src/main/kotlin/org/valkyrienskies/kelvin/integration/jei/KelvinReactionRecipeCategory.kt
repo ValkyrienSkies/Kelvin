@@ -13,6 +13,7 @@ import net.minecraft.network.chat.TextComponent
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.GasReaction
+import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin.Companion.GAS_INGREDIENT_TYPE
 
 class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
@@ -25,7 +26,7 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
     }
 
     override fun getIcon(): IDrawable {
-        return ImageDrawable(16,16, KelvinMod.asResouceLocation("placeholder"))
+        return ImageDrawable(16,16, GasType.PLACEHOLDER_ICON)
     }
 
     override fun getUid(): ResourceLocation {

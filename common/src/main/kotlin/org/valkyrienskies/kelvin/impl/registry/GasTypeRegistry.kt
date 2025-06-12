@@ -45,7 +45,7 @@ object GasTypeRegistry {
     }
 
     private fun getIcon(name: String): ResourceLocation {
-        return KelvinMod.asResouceLocation("textures/icons/$name")
+        return KelvinMod.asResouceLocation("textures/icons/$name.png")
     }
 
     fun init () {

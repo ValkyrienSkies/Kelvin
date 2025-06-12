@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture
 import net.minecraft.server.packs.resources.ResourceManager
 import net.minecraft.util.profiling.ProfilerFiller
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener
+import org.valkyrienskies.kelvin.KelvinParticles
 import java.util.concurrent.Executor
 
 
@@ -74,6 +75,7 @@ object KelvinModFabric: ModInitializer {
     class Client : ClientModInitializer {
         override fun onInitializeClient() {
             initClient()
+            KelvinParticles.KelvinClientParticles.init()
         }
     }
 }

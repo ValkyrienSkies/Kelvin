@@ -1,6 +1,7 @@
 package org.valkyrienskies.kelvin
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import dev.architectury.event.events.client.ClientLifecycleEvent
 import dev.architectury.event.events.client.ClientPlayerEvent
 import dev.architectury.event.events.client.ClientTickEvent
 import dev.architectury.event.events.common.ChunkEvent
@@ -9,6 +10,7 @@ import dev.architectury.event.events.common.TickEvent
 import dev.architectury.networking.simple.SimpleNetworkManager
 import dev.architectury.platform.Platform
 import dev.architectury.utils.Env
+import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
@@ -17,16 +19,17 @@ import net.minecraft.world.level.chunk.ChunkAccess
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
-import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
 import org.valkyrienskies.kelvin.impl.logger
 import org.valkyrienskies.kelvin.impl.registry.GasParticlePickerRegistry
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
+import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
 import org.valkyrienskies.kelvin.serialization.SerializableDuctNetwork
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import org.valkyrienskies.kelvin.util.KelvinDamageSources
 import org.valkyrienskies.kelvin.util.KelvinJacksonUtil
+
 
 object KelvinMod {
     const val MOD_ID = "kelvin"
@@ -39,6 +42,7 @@ object KelvinMod {
 
     val Kelvin: DuctNetworkServer = DuctNetworkServer()
     val KelvinClient: DuctNetworkClient = DuctNetworkClient()
+
 
     @JvmStatic
     fun init() {
@@ -125,7 +129,7 @@ object KelvinMod {
 
     @JvmStatic
     fun initClient() {
-        KelvinParticles.KelvinClientParticles.init()
+
 
         ClientPlayerEvent.CLIENT_PLAYER_JOIN.register {
             if (Platform.getEnvironment() == Env.CLIENT) KelvinClient.disabled = false
@@ -138,6 +142,8 @@ object KelvinMod {
         ClientTickEvent.CLIENT_LEVEL_POST.register {
             KelvinClient.tick(it, 10) //todo substeps config
         }
+
+
     }
 
     fun getKelvin(): DuctNetwork<ServerLevel> {
