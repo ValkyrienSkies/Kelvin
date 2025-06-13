@@ -14,7 +14,6 @@ class ParticleSpawnerBlock(properties: Properties) : Block(properties) {
     override fun animateTick(state: BlockState, level: Level, pos: BlockPos, random: Random) {
         val kelvin = KelvinMod.KelvinClient
 
-        println("spawning particle")
 
         kelvin.createGasParticle(
             level as ClientLevel,

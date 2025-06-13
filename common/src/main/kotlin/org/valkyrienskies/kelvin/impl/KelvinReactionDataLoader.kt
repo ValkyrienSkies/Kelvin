@@ -3,8 +3,8 @@ package org.valkyrienskies.kelvin.impl
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener
 import net.minecraft.server.packs.resources.ResourceManager
+import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener
 import net.minecraft.util.profiling.ProfilerFiller
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.GasReaction
@@ -81,7 +81,6 @@ object KelvinReactionDataLoader {
             val energy = if (jObject.has("energy")) jObject["energy"].asDouble else 0.0
 
             val parsedReaction = GasReaction(gasses = gasses, requirements = requirements, energy = energy, result = result)
-            println(parsedReaction)
             gas_reactions[origin] = parsedReaction
 
         }

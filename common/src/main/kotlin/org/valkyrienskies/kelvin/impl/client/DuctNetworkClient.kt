@@ -123,7 +123,6 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
     ) {
         val particleTypePicker = GasParticlePickerRegistry.getParticlePicker(gasType) ?: return KELVINLOGGER.error("${gasType.resourceLocation} lacks a ParticlePicker")
         val particleOptions = particleTypePicker.chooseParticleOptions(level, pos)
-        println(particleOptions)
         level.addParticle(particleOptions, x, y, z, xSpeed, ySpeed, zSpeed)
     }
 
