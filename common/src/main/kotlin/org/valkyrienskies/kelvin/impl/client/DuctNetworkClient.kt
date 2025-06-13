@@ -10,8 +10,6 @@ import org.valkyrienskies.kelvin.impl.registry.GasParticlePickerRegistry
 import org.valkyrienskies.kelvin.networking.KelvinRequestChunkSyncPacket
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
-import kotlin.collections.HashMap
-import kotlin.collections.HashSet
 import kotlin.math.abs
 
 class DuctNetworkClient: DuctNetwork<ClientLevel> {
@@ -125,6 +123,7 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
     ) {
         val particleTypePicker = GasParticlePickerRegistry.getParticlePicker(gasType) ?: return KELVINLOGGER.error("${gasType.resourceLocation} lacks a ParticlePicker")
         val particleOptions = particleTypePicker.chooseParticleOptions(level, pos)
+        println(particleOptions)
         level.addParticle(particleOptions, x, y, z, xSpeed, ySpeed, zSpeed)
     }
 

@@ -13,12 +13,15 @@ import java.util.*
 class ParticleSpawnerBlock(properties: Properties) : Block(properties) {
     override fun animateTick(state: BlockState, level: Level, pos: BlockPos, random: Random) {
         val kelvin = KelvinMod.KelvinClient
+
+        println("spawning particle")
+
         kelvin.createGasParticle(
             level as ClientLevel,
             GasTypeRegistry.GAS_TYPES.values.shuffled().first(),
             pos.toDuctNodePos(level.dimension().location()),
             pos.x.toDouble(),
-            pos.y.toDouble(),
+            pos.y.toDouble() + 1.0,
             pos.z.toDouble(),
             0.0,
             1.0,

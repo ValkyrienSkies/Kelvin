@@ -4,7 +4,6 @@ import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinParticles
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinParticlePicker
-import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticle
 import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticlePicker
 
 
@@ -27,10 +26,9 @@ object GasParticlePickerRegistry {
     }
 
     fun registerWithDefaultParticlePicker(gasType: GasType) {
-        KelvinParticles.registerDefaultParticle(gasType.resourceLocation.path)
-        val particlePicker = DefaultGasParticlePicker(DefaultGasParticle.DefaultGasParticleType())
-        register(gasType.resourceLocation, gasType, particlePicker)
-
+        KelvinParticles.registerDefaultParticle(gasType.resourceLocation.path).listen {
+            register(gasType.resourceLocation, gasType, DefaultGasParticlePicker(it.type))
+        }
     }
 
     fun getParticlePicker(resourceLocation: ResourceLocation): KelvinParticlePicker? {
