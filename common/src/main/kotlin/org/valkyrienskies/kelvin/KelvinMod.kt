@@ -1,7 +1,6 @@
 package org.valkyrienskies.kelvin
 
 import com.fasterxml.jackson.module.kotlin.readValue
-import dev.architectury.event.events.client.ClientLifecycleEvent
 import dev.architectury.event.events.client.ClientPlayerEvent
 import dev.architectury.event.events.client.ClientTickEvent
 import dev.architectury.event.events.common.ChunkEvent
@@ -10,7 +9,6 @@ import dev.architectury.event.events.common.TickEvent
 import dev.architectury.networking.simple.SimpleNetworkManager
 import dev.architectury.platform.Platform
 import dev.architectury.utils.Env
-import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
@@ -18,6 +16,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.chunk.ChunkAccess
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
+import org.valkyrienskies.kelvin.debug.KelvinBlocks
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
 import org.valkyrienskies.kelvin.impl.logger
@@ -116,6 +115,8 @@ object KelvinMod {
         KelvinParticles.init()
         KelvinNetworking.init()
         KelvinDamageSources.init()
+
+        KelvinBlocks.init()
 
         KELVINLOGGER.info("Registering gas types...")
         GasTypeRegistry.init()
