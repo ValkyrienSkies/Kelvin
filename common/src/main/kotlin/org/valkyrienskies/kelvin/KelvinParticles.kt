@@ -3,7 +3,7 @@ package org.valkyrienskies.kelvin
 import dev.architectury.registry.client.particle.ParticleProviderRegistry
 import dev.architectury.registry.registries.DeferredRegister
 import dev.architectury.registry.registries.RegistrySupplier
-import net.minecraft.core.Registry
+import net.minecraft.core.registries.Registries
 import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticle.DefaultGasParticleType
 import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticleProvider
 
@@ -12,7 +12,7 @@ import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticleProvider
 object KelvinParticles {
 
     val ALL: HashSet<RegistrySupplier<DefaultGasParticleType>> = HashSet()
-    val PARTICLES = DeferredRegister.create(KelvinMod.MOD_ID, Registry.PARTICLE_TYPE_REGISTRY)
+    val PARTICLES = DeferredRegister.create(KelvinMod.MOD_ID, Registries.PARTICLE_TYPE)
 
     fun registerDefaultParticle(name: String):  RegistrySupplier<DefaultGasParticleType> {
         val supplier = PARTICLES.register(name) { DefaultGasParticleType() }

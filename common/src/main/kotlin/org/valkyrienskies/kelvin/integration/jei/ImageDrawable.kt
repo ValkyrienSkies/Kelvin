@@ -1,9 +1,7 @@
 package org.valkyrienskies.kelvin.integration.jei
 
-import com.mojang.blaze3d.systems.RenderSystem
-import com.mojang.blaze3d.vertex.PoseStack
 import mezz.jei.api.gui.drawable.IDrawable
-import net.minecraft.client.gui.GuiComponent
+import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.resources.ResourceLocation
 
 
@@ -17,9 +15,8 @@ class ImageDrawable(private val width: Int, private val height: Int, private val
         return height
     }
 
-    override fun draw(stack: PoseStack, xOffset: Int, yOffset: Int) {
-        RenderSystem.setShaderTexture(0, location)
-        GuiComponent.blit(stack, xOffset, yOffset, 0, 0f, 0f, width, height, height, width)
-
+    override fun draw(guiGraphics: GuiGraphics, xOffset: Int, yOffset: Int) {
+        guiGraphics.blit(location, xOffset, yOffset, 0, 0f, 0f, width, height, height, width)
     }
+
 }

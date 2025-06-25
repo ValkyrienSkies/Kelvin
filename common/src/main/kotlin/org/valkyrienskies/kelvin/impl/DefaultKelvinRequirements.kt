@@ -2,7 +2,6 @@ package org.valkyrienskies.kelvin.impl
 
 import com.google.gson.JsonElement
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.TextComponent
 import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.DuctNetwork
@@ -23,7 +22,7 @@ object DefaultKelvinRequirements {
         override fun get_text(value: JsonElement): Component {
             val doubleValue = value.asDouble
 
-            return TextComponent("Minimum Temperature: $doubleValue K")
+            return Component.literal("Minimum Temperature: $doubleValue K")
         }
 
     }
@@ -39,7 +38,7 @@ object DefaultKelvinRequirements {
         override fun get_text(value: JsonElement): Component {
             val doubleValue = value.asDouble
 
-            return TextComponent("Maximum Temperature: $doubleValue K")
+            return Component.literal("Maximum Temperature: $doubleValue K")
         }
     }
 
@@ -54,7 +53,7 @@ object DefaultKelvinRequirements {
         override fun get_text(value: JsonElement): Component {
             val doubleValue = value.asDouble
 
-            return TextComponent("Minimum Pressure: $doubleValue Pa")
+            return Component.literal("Minimum Pressure: $doubleValue Pa")
         }
     }
 
@@ -69,7 +68,7 @@ object DefaultKelvinRequirements {
         override fun get_text(value: JsonElement): Component {
             val doubleValue = value.asDouble
 
-            return TextComponent("Maximum Pressure: $doubleValue Pa")
+            return Component.literal("Maximum Pressure: $doubleValue Pa")
         }
     }
 }

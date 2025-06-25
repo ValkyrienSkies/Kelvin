@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.MOD_ID
 import org.valkyrienskies.kelvin.api.GasReaction
-import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.KelvinReactionDataLoader
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 
 
 @JeiPlugin
@@ -35,7 +35,7 @@ class KelvinJeiPlugin: IModPlugin {
     override fun registerRecipes(registration: IRecipeRegistration) {
         super.registerRecipes(registration)
         val recipes = KelvinReactionDataLoader.gas_reactions.values
-        registration.addRecipes(recipes, KelvinMod.asResouceLocation("gas_reaction_recipe")) // TODO: Figure out how to use the other non-deprecated method.
+        registration.addRecipes(GAS_REACTION_RECIPE_TYPE, recipes.toList())
     }
 
 

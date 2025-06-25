@@ -1,41 +1,35 @@
 package org.valkyrienskies.kelvin.integration.jei
 
-import com.mojang.blaze3d.vertex.PoseStack
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder
 import mezz.jei.api.gui.drawable.IDrawable
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView
 import mezz.jei.api.recipe.IFocusGroup
 import mezz.jei.api.recipe.RecipeIngredientRole
+import mezz.jei.api.recipe.RecipeType
 import mezz.jei.api.recipe.category.IRecipeCategory
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.TextComponent
-import net.minecraft.resources.ResourceLocation
-import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.GasReaction
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin.Companion.GAS_INGREDIENT_TYPE
 
 class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
-    override fun getTitle(): Component {
-        return TextComponent("Gas Reaction")
+
+    override fun getRecipeType(): RecipeType<GasReaction> {
+        return KelvinJeiPlugin.GAS_REACTION_RECIPE_TYPE
     }
 
-    override fun getBackground(): IDrawable {
-        return ImageDrawable(150,150, KelvinMod.asResouceLocation("textures/gui/gas_reaction_recipe_background.png"))
+    override fun getTitle(): Component {
+
+        return Component.literal("Gas Reaction")
     }
+
 
     override fun getIcon(): IDrawable {
         return ImageDrawable(16,16, GasType.PLACEHOLDER_ICON)
     }
 
-    override fun getUid(): ResourceLocation {
-        return KelvinMod.asResouceLocation("gas_reaction_recipe")
-    }
-
-    override fun getRecipeClass(): Class<out GasReaction> {
-        return GasReaction::class.java
-    }
 
     override fun setRecipe(builder: IRecipeLayoutBuilder, recipe: GasReaction, focuses: IFocusGroup) {
 
@@ -57,7 +51,7 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
     override fun draw(
         recipe: GasReaction,
         recipeSlotsView: IRecipeSlotsView,
-        stack: PoseStack,
+        guiGraphics: GuiGraphics,
         mouseX: Double,
         mouseY: Double
     ) {
@@ -66,27 +60,26 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
         recipeSlotsView.getSlotViews(RecipeIngredientRole.INPUT).forEach { slot ->
             val ingredient = slot.displayedIngredient.get().ingredient as KelvinGasIngredient
             // TODO: USE LANG
-
-            Minecraft.getInstance().font.draw(stack, "${ingredient.moles} Moles",17f,i*17f, 5592405)
+            guiGraphics.drawString(Minecraft.getInstance().font, "${ingredient.moles} Moles", 17, i * 17, 5592405)
             i++
             if (i >= maxI) maxI = i
-       }
+        }
 
         i = 0
         recipeSlotsView.getSlotViews(RecipeIngredientRole.OUTPUT).forEach { slot ->
             val ingredient = slot.displayedIngredient.get().ingredient as KelvinGasIngredient
             // TODO: USE LANG
-            Minecraft.getInstance().font.draw(stack, "${ingredient.moles} Moles",101f,i*17f, 5592405)
+            guiGraphics.drawString(Minecraft.getInstance().font, "${ingredient.moles} Moles", 101, i * 17, 5592405)
             i++
             if (i >= maxI) maxI = i
         }
 
         i = maxI + 2
         recipe.requirements.forEach { (requirement, value) ->
-            Minecraft.getInstance().font.draw(stack, requirement.get_text(value),0f,i*17f, 5592405)
+            guiGraphics.drawString(Minecraft.getInstance().font, requirement.get_text(value).string, 0, i * 17, 5592405)
             i++
         }
-
     }
+
 }
 

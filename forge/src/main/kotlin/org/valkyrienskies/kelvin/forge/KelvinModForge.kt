@@ -2,9 +2,9 @@ package org.valkyrienskies.kelvin.forge
 
 import dev.architectury.platform.forge.EventBuses
 import net.minecraft.server.level.ServerLevel
-import net.minecraftforge.client.event.ParticleFactoryRegisterEvent
+import net.minecraftforge.client.event.RegisterParticleProvidersEvent
 import net.minecraftforge.event.AddReloadListenerEvent
-import net.minecraftforge.event.world.ChunkEvent
+import net.minecraftforge.event.level.ChunkEvent
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
@@ -30,13 +30,13 @@ class KelvinModForge {
         init()
 
         FORGE_BUS.addListener { event: ChunkEvent.Load ->
-            if (!event.world.isClientSide) {
+            if (!event.level.isClientSide) {
                 try {
                     KelvinMod.getKelvin().markChunkLoaded(
                         KelvinChunkPos(
                             event.chunk.pos.x,
                             event.chunk.pos.z,
-                            (event.world as ServerLevel).dimension().location()
+                            (event.level as ServerLevel).dimension().location()
                         )
                     )
                 } catch (e: IllegalStateException) {
@@ -47,13 +47,13 @@ class KelvinModForge {
         }
 
         FORGE_BUS.addListener { event: ChunkEvent.Unload ->
-            if (!event.world.isClientSide) {
+            if (!event.level.isClientSide) {
                 try {
                     KelvinMod.getKelvin().markChunkUnloaded(
                         KelvinChunkPos(
                             event.chunk.pos.x,
                             event.chunk.pos.z,
-                            (event.world as ServerLevel).dimension().location()
+                            (event.level as ServerLevel).dimension().location()
                         )
                     )
                 } catch (e: IllegalStateException) {
@@ -65,7 +65,7 @@ class KelvinModForge {
 
         FORGE_BUS.addListener(::registerResourceManagers)
 
-        MOD_BUS.addListener { event: ParticleFactoryRegisterEvent ->
+        MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
             KelvinParticles.KelvinClientParticles.init()
         }
     }
