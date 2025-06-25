@@ -5,26 +5,30 @@ import dev.architectury.event.events.client.ClientPlayerEvent
 import dev.architectury.event.events.client.ClientTickEvent
 import dev.architectury.event.events.common.ChunkEvent
 import dev.architectury.event.events.common.LifecycleEvent
-import dev.architectury.event.events.common.PlayerEvent
 import dev.architectury.event.events.common.TickEvent
 import dev.architectury.networking.simple.SimpleNetworkManager
 import dev.architectury.platform.Platform
 import dev.architectury.utils.Env
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.chunk.ChunkAccess
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
+import org.valkyrienskies.kelvin.debug.KelvinBlocks
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
-import org.valkyrienskies.kelvin.impl.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
 import org.valkyrienskies.kelvin.impl.logger
+import org.valkyrienskies.kelvin.impl.registry.GasParticlePickerRegistry
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
+import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
 import org.valkyrienskies.kelvin.serialization.SerializableDuctNetwork
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import org.valkyrienskies.kelvin.util.KelvinDamageSources
 import org.valkyrienskies.kelvin.util.KelvinJacksonUtil
+
 
 object KelvinMod {
     const val MOD_ID = "kelvin"
@@ -38,10 +42,13 @@ object KelvinMod {
     val Kelvin: DuctNetworkServer = DuctNetworkServer()
     val KelvinClient: DuctNetworkClient = DuctNetworkClient()
 
+
     @JvmStatic
     fun init() {
         KELVINLOGGER.info("Initializing Kelvin...")
         networkManager = SimpleNetworkManager.create(MOD_ID)
+
+
 
         LifecycleEvent.SERVER_BEFORE_START.register {
             Kelvin.disabled = false
@@ -105,12 +112,16 @@ object KelvinMod {
         }
 
 
-
+        KelvinParticles.init()
         KelvinNetworking.init()
         KelvinDamageSources.init()
 
+        KelvinBlocks.init()
+
         KELVINLOGGER.info("Registering gas types...")
         GasTypeRegistry.init()
+        ReactionRequirementRegistry.init()
+        GasParticlePickerRegistry.init()
         KELVINLOGGER.info("--- --- ---")
         KELVINLOGGER.info("Finished registering gas types. We have ${GasTypeRegistry.GAS_TYPES.size} gasses registered!")
 
@@ -119,6 +130,8 @@ object KelvinMod {
 
     @JvmStatic
     fun initClient() {
+
+
         ClientPlayerEvent.CLIENT_PLAYER_JOIN.register {
             if (Platform.getEnvironment() == Env.CLIENT) KelvinClient.disabled = false
         }
@@ -130,6 +143,8 @@ object KelvinMod {
         ClientTickEvent.CLIENT_LEVEL_POST.register {
             KelvinClient.tick(it, 10) //todo substeps config
         }
+
+
     }
 
     fun getKelvin(): DuctNetwork<ServerLevel> {
@@ -148,5 +163,9 @@ object KelvinMod {
             throw IllegalStateException("Attempted to access Kelvin from the wrong place!")
         }
         return KelvinClient
+    }
+
+    fun asResouceLocation(string: String): ResourceLocation {
+        return ResourceLocation("${MOD_ID}:$string")
     }
 }

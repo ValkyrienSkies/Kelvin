@@ -16,12 +16,12 @@ enum class GasHeatLevel: StringRepresentable {
     }
 
     override fun getSerializedName(): String {
-        return name.toLowerCase(Locale.ROOT)
+        return name.lowercase(Locale.ROOT)
     }
 
     companion object {
         fun byIndex(index: Int): GasHeatLevel {
-            return values()[index]
+            return entries[index]
         }
     }
 }

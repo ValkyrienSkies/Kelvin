@@ -14,5 +14,4 @@ class ApertureDuctEdge(
     override var radius: Double = 0.125, override var length: Double = 0.5, override var currentFlowRate: Double = 0.0,
     override var aperture: Double = 0.0,
     override var unloaded: Boolean = false
-) : DuctEdge, ApertureEdge {
-}
+) : DuctEdge, ApertureEdge
