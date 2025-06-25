@@ -1,0 +1,15 @@
+{
+  "gasses": {
+    "kelvin:methane": 1,
+    "kelvin:air": 2
+  },
+  "requirements": {
+    "kelvin:min_temperature": 800,
+    "kelvin:min_pressure": 1000
+  },
+  "energy": 890400,
+  "result": {
+    "kelvin:exhaust": 1,
+    "kelvin:steam": 2
+  }
+}

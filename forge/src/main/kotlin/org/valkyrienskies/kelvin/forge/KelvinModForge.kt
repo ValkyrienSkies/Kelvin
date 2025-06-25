@@ -1,7 +1,9 @@
 package org.valkyrienskies.kelvin.forge
 
+import dev.architectury.platform.forge.EventBuses
 import net.minecraft.server.level.ServerLevel
-import net.minecraftforge.common.MinecraftForge
+import net.minecraftforge.client.event.RegisterParticleProvidersEvent
+import net.minecraftforge.event.AddReloadListenerEvent
 import net.minecraftforge.event.level.ChunkEvent
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.fml.common.Mod
@@ -9,7 +11,10 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.init
 import org.valkyrienskies.kelvin.KelvinMod.initClient
+import org.valkyrienskies.kelvin.KelvinParticles
+import org.valkyrienskies.kelvin.impl.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
+import thedarkcolour.kotlinforforge.forge.FORGE_BUS
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
 
 @Mod(KelvinMod.MOD_ID)
@@ -20,28 +25,29 @@ class KelvinModForge {
                 event
             )
         }
+
+        EventBuses.registerModEventBus(KelvinMod.MOD_ID, getModBus())
         init()
 
-        MinecraftForge.EVENT_BUS.addListener { event: ChunkEvent.Load ->
-            val level = event.chunk.worldForge
-            if (level is ServerLevel && !level.isClientSide) {
+        FORGE_BUS.addListener { event: ChunkEvent.Load ->
+            if (!event.level.isClientSide) {
                 try {
                     KelvinMod.getKelvin().markChunkLoaded(
                         KelvinChunkPos(
                             event.chunk.pos.x,
                             event.chunk.pos.z,
-                            level.dimension().location()
+                            (event.level as ServerLevel).dimension().location()
                         )
                     )
                 } catch (e: IllegalStateException) {
-                    KelvinMod.KELVINLOGGER.error("Failed to mark chunk as loaded. Stack Trace:", e)
+                    KelvinMod.KELVINLOGGER.error("Failed to mark chunk as loaded. Stack Trace:")
+                    KelvinMod.KELVINLOGGER.error(e.stackTrace)
                 }
             }
         }
 
-        MinecraftForge.EVENT_BUS.addListener { event: ChunkEvent.Unload ->
-            val level = event.chunk.worldForge
-            if (level is ServerLevel && !level.isClientSide) {
+        FORGE_BUS.addListener { event: ChunkEvent.Unload ->
+            if (!event.level.isClientSide) {
                 try {
                     KelvinMod.getKelvin().markChunkUnloaded(
                         KelvinChunkPos(
@@ -56,6 +62,17 @@ class KelvinModForge {
                 }
             }
         }
+
+        FORGE_BUS.addListener(::registerResourceManagers)
+
+        MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
+            KelvinParticles.KelvinClientParticles.init()
+        }
+    }
+
+    private fun registerResourceManagers(event: AddReloadListenerEvent) {
+        event.addListener(KelvinReactionDataLoader.loader)
+
     }
 
     private fun clientSetup(event: FMLClientSetupEvent?) {

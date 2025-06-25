@@ -1,7 +1,6 @@
 package org.valkyrienskies.kelvin.api.edges
 
 import org.valkyrienskies.kelvin.api.ConnectionType
-import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.GasType
 
@@ -17,7 +16,4 @@ class ApertureFilteredDuctEdge(
     override var blacklist: Boolean = false,
     override var aperture: Double = 0.0,
     override var unloaded: Boolean = false
-) : ApertureEdge, FilteredEdge {
-
-
-}
+) : ApertureEdge, FilteredEdge

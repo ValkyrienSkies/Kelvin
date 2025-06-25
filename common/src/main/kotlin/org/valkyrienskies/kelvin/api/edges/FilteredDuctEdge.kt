@@ -1,6 +1,8 @@
 package org.valkyrienskies.kelvin.api.edges
 
-import org.valkyrienskies.kelvin.api.*
+import org.valkyrienskies.kelvin.api.ConnectionType
+import org.valkyrienskies.kelvin.api.DuctNodePos
+import org.valkyrienskies.kelvin.api.GasType
 
 /**
  * A default edge type that has a filter which only allows certain gas types to flow through it. Its filter can either be a Whitelist or a Blacklist.
@@ -13,6 +15,4 @@ class FilteredDuctEdge(
     override val filter: HashSet<GasType> = HashSet(),
     override var blacklist: Boolean = false,
     override var unloaded: Boolean = false
-) : FilteredEdge {
-
-}
+) : FilteredEdge

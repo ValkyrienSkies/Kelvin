@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.KeyDeserializer
 import com.fasterxml.jackson.databind.SerializerProvider
 import net.minecraft.resources.ResourceLocation
-import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.GasType
 
@@ -76,11 +75,10 @@ object KelvinKeyMapper {
                     val thermalConductivity = parts[5].toDoubleOrNull()
                     val sutherlandConstant = parts[6].toDoubleOrNull()
                     val adiabaticIndex = parts[7].toDoubleOrNull()
-                    val combustible = parts[8].toBoolean()
-                    val calorificValue = parts[9].toDoubleOrNull()
-                    val iconLocation = if (parts[10] == "null") null else ResourceLocation(parts[10])
-                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
-                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                    val iconLocation = ResourceLocation(parts[8])
+                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null) {
+                        //TODO: SERIALIZE PARTICLE PICKER
+                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, iconLocation)
                     } else throw IllegalArgumentException("Invalid GasType string")
                 }
             }
@@ -137,12 +135,11 @@ object KelvinKeyMapper {
                     val thermalConductivity = parts[5].toDoubleOrNull()
                     val sutherlandConstant = parts[6].toDoubleOrNull()
                     val adiabaticIndex = parts[7].toDoubleOrNull()
-                    val combustible = parts[8].toBoolean()
-                    val calorificValue = parts[9].toDoubleOrNull()
-                    val iconLocation = if (parts[10] == "null") null else ResourceLocation(parts[10])
+                    val iconLocation = ResourceLocation(parts[8])
 
-                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null && calorificValue != null) {
-                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, combustible, calorificValue, iconLocation)
+                    if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null) {
+                        //TODO: SERIALIZE PARTICLE PICKER
+                        return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, iconLocation)
                     }
                 }
             }

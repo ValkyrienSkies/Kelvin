@@ -6,12 +6,11 @@ import net.minecraft.world.entity.player.Player
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.*
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
+import org.valkyrienskies.kelvin.impl.registry.GasParticlePickerRegistry
 import org.valkyrienskies.kelvin.networking.KelvinRequestChunkSyncPacket
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
-import java.util.*
-import kotlin.collections.HashMap
-import kotlin.collections.HashSet
+import kotlin.math.abs
 
 class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
@@ -36,6 +35,13 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
     override fun tick(level: ClientLevel, subSteps: Int) {
         if (disabled) return
+
+        nodeInfo.forEach { pos, node ->
+            if (abs(node.currentPressure - node.previousPressure) > 1) {
+                val largestGas = node.currentGasMasses.maxBy { (_, amount) -> amount }.key
+                createGasParticle(level, largestGas, pos, pos.x, pos.y, pos.z, 0.0, 0.0, 0.0)
+            }
+        }
 
         ticksSinceLastSync++
     }
@@ -108,6 +114,16 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
     override fun removeNode(pos: DuctNodePos) {
         nodeInfo.remove(pos)
+    }
+
+    override fun createGasParticle(
+        level: ClientLevel, gasType: GasType, pos: DuctNodePos,
+        x: Double, y: Double, z: Double,
+        xSpeed: Double, ySpeed: Double, zSpeed: Double
+    ) {
+        val particleTypePicker = GasParticlePickerRegistry.getParticlePicker(gasType) ?: return KELVINLOGGER.error("${gasType.resourceLocation} lacks a ParticlePicker")
+        val particleOptions = particleTypePicker.chooseParticleOptions(level, pos)
+        level.addParticle(particleOptions, x, y, z, xSpeed, ySpeed, zSpeed)
     }
 
     override fun getHeatEnergy(pos: DuctNodePos): Double {
