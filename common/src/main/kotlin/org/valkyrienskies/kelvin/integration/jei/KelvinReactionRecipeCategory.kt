@@ -10,11 +10,16 @@ import mezz.jei.api.recipe.category.IRecipeCategory
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
+import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.GasReaction
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin.Companion.GAS_INGREDIENT_TYPE
 
 class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
+
+    override fun getBackground(): IDrawable {
+        return ImageDrawable(150, 150, KelvinMod.asResouceLocation("textures/gui/gas_reaction_recipe_background.png"))
+    }
 
     override fun getRecipeType(): RecipeType<GasReaction> {
         return KelvinJeiPlugin.GAS_REACTION_RECIPE_TYPE
@@ -24,7 +29,6 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
 
         return Component.literal("Gas Reaction")
     }
-
 
     override fun getIcon(): IDrawable {
         return ImageDrawable(16,16, GasType.PLACEHOLDER_ICON)
