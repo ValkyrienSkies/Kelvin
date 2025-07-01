@@ -569,7 +569,7 @@ class DuctNetworkServer(
         if (syncTimers[level.dimension().location()]!! <= 0) {
             syncTimers[level.dimension().location()] = 200
             val info = ClientKelvinInfo(HashMap(nodeInfo.filterNot { unloadedNodes.contains(it.key) }))
-            sync(level, info, false)
+            //sync(level, info, false)
         }
 
         if (chunkSyncRequests[level.dimension().location()] == null) {
@@ -579,7 +579,7 @@ class DuctNetworkServer(
         while (chunkSyncRequests[level.dimension().location()]!!.isNotEmpty()) {
             val request = chunkSyncRequests[level.dimension().location()]!!.poll()
             val info = ClientKelvinInfo(HashMap(nodeInfo.filter { it.key.toChunkPos() == request.second }))
-            sync(level, info, true, request.first)
+            //sync(level, info, true, request.first)
         }
 
 
@@ -894,9 +894,9 @@ class DuctNetworkServer(
     override fun sync (level: ServerLevel?, info: ClientKelvinInfo, chunkFlag: Boolean, player: Player?) {
         if (level == null) return
         if (chunkFlag && player != null) {
-            KelvinSyncPacket(info, true).sendTo(player as ServerPlayer)
+            //KelvinSyncPacket(info, true).sendTo(player as ServerPlayer)
         } else {
-            KelvinSyncPacket(info).sendToAll(level.server)
+            //KelvinSyncPacket(info).sendToAll(level.server)
         }
     }
 

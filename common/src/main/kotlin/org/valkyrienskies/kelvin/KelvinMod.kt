@@ -64,52 +64,52 @@ object KelvinMod {
             //println("dimension id: ${it.dimension()}")
         }
 
-        ChunkEvent.SAVE_DATA.register { chunkAccess: ChunkAccess, serverLevel: ServerLevel, tag: CompoundTag ->
-            try {
-                val kelvinData = getKelvin()
-                val chunkPos = KelvinChunkPos(chunkAccess.pos.x, chunkAccess.pos.z, serverLevel.dimension().location())
+//        ChunkEvent.SAVE_DATA.register { chunkAccess: ChunkAccess, serverLevel: ServerLevel, tag: CompoundTag ->
+//            try {
+//                val kelvinData = getKelvin()
+//                val chunkPos = KelvinChunkPos(chunkAccess.pos.x, chunkAccess.pos.z, serverLevel.dimension().location())
+//
+//                val chunkData = kelvinData.nodesByChunk[chunkPos] ?: HashSet<DuctNodePos>()
+//
+//                val data = SerializableDuctNetwork(HashMap(kelvinData.nodes.filter { chunkData.contains(it.key) }), kelvinData.edges.values.filter { chunkData.contains(it.nodeA) || chunkData.contains(it.nodeB) }.toHashSet())
+//
+//                if (data.nodes.isNotEmpty()) {
+//                    tag.putByteArray(chunkSaveID, KelvinJacksonUtil.mapper.writeValueAsBytes(data))
+//                }
+//            } catch (e: IllegalStateException) {
+//                KELVINLOGGER.error("Failed to save Kelvin data for chunk at ${chunkAccess.pos}. Stack Trace:")
+//                KELVINLOGGER.error(e.stackTrace)
+//            }
+//        }
 
-                val chunkData = kelvinData.nodesByChunk[chunkPos] ?: HashSet<DuctNodePos>()
-
-                val data = SerializableDuctNetwork(HashMap(kelvinData.nodes.filter { chunkData.contains(it.key) }), kelvinData.edges.values.filter { chunkData.contains(it.nodeA) || chunkData.contains(it.nodeB) }.toHashSet())
-
-                if (data.nodes.isNotEmpty()) {
-                    tag.putByteArray(chunkSaveID, KelvinJacksonUtil.mapper.writeValueAsBytes(data))
-                }
-            } catch (e: IllegalStateException) {
-                KELVINLOGGER.error("Failed to save Kelvin data for chunk at ${chunkAccess.pos}. Stack Trace:")
-                KELVINLOGGER.error(e.stackTrace)
-            }
-        }
-
-        ChunkEvent.LOAD_DATA.register { chunkAccess: ChunkAccess, serverLevel: ServerLevel?, tag: CompoundTag ->
-            if (serverLevel != null) {
-                try {
-                    val kelvinData = getKelvin()
-                    val chunkPos =
-                        KelvinChunkPos(chunkAccess.pos.x, chunkAccess.pos.z, serverLevel.dimension().location())
-
-                    val data = tag.getByteArray(chunkSaveID)
-
-                    if (!kelvinData.nodesByChunk.containsKey(chunkPos)) {
-                        kelvinData.markChunkLoaded(chunkPos)
-                    }
-
-                    if (data.isNotEmpty()) {
-                        val networkData = KelvinJacksonUtil.mapper.readValue<SerializableDuctNetwork>(data)
-                        kelvinData.nodes.forEach {
-                            kelvinData.addNode(it.key, it.value)
-                        }
-                        networkData.edges.forEach {
-                            kelvinData.addEdge(it.nodeA, it.nodeB, it)
-                        }
-                    }
-                } catch (e: IllegalStateException) {
-                    KELVINLOGGER.error("Failed to load Kelvin data for chunk at ${chunkAccess.pos}. Stack Trace:")
-                    KELVINLOGGER.error(e.stackTrace)
-                }
-            }
-        }
+//        ChunkEvent.LOAD_DATA.register { chunkAccess: ChunkAccess, serverLevel: ServerLevel?, tag: CompoundTag ->
+//            if (serverLevel != null) {
+//                try {
+//                    val kelvinData = getKelvin()
+//                    val chunkPos =
+//                        KelvinChunkPos(chunkAccess.pos.x, chunkAccess.pos.z, serverLevel.dimension().location())
+//
+//                    val data = tag.getByteArray(chunkSaveID)
+//
+//                    if (!kelvinData.nodesByChunk.containsKey(chunkPos)) {
+//                        kelvinData.markChunkLoaded(chunkPos)
+//                    }
+//
+//                    if (data.isNotEmpty()) {
+//                        val networkData = KelvinJacksonUtil.mapper.readValue<SerializableDuctNetwork>(data)
+//                        kelvinData.nodes.forEach {
+//                            kelvinData.addNode(it.key, it.value)
+//                        }
+//                        networkData.edges.forEach {
+//                            kelvinData.addEdge(it.nodeA, it.nodeB, it)
+//                        }
+//                    }
+//                } catch (e: IllegalStateException) {
+//                    KELVINLOGGER.error("Failed to load Kelvin data for chunk at ${chunkAccess.pos}. Stack Trace:")
+//                    KELVINLOGGER.error(e.stackTrace)
+//                }
+//            }
+//        }
 
 
         KelvinParticles.init()
@@ -145,6 +145,18 @@ object KelvinMod {
         }
 
 
+    }
+
+    fun getKelvinByPlatform(): DuctNetwork<*>? {
+        return if (Kelvin.disabled) {
+            if (KelvinClient.disabled) {
+                null
+            } else {
+                KelvinClient
+            }
+        } else {
+            Kelvin
+        }
     }
 
     fun getKelvin(): DuctNetwork<ServerLevel> {

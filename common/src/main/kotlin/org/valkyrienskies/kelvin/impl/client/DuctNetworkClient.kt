@@ -10,6 +10,7 @@ import org.valkyrienskies.kelvin.impl.registry.GasParticlePickerRegistry
 import org.valkyrienskies.kelvin.networking.KelvinRequestChunkSyncPacket
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
+import kotlin.math.abs
 
 class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
@@ -34,7 +35,15 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
     override fun tick(level: ClientLevel, subSteps: Int) {
         if (disabled) return
-        ticksSinceLastSync++
+
+        nodeInfo.forEach { pos, node ->
+            if (abs(node.currentPressure - node.previousPressure) > 1) {
+                val largestGas = node.currentGasMasses.maxBy { (_, amount) -> amount }.key
+                createGasParticle(level, largestGas, pos, pos.x, pos.y, pos.z, 0.0, 0.0, 0.0)
+            }
+        }
+
+        //ticksSinceLastSync++
     }
 
     override fun sync(level: ClientLevel?, info: ClientKelvinInfo, chunkFlag: Boolean, player: Player?) {
@@ -61,7 +70,7 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
     override fun markChunkLoaded(pos: KelvinChunkPos) {
         nodesByChunk[pos] = HashSet()
-        KelvinRequestChunkSyncPacket(pos).sendToServer()
+        //KelvinRequestChunkSyncPacket(pos).sendToServer()
     }
 
     override fun markChunkUnloaded(pos: KelvinChunkPos) {
