@@ -154,4 +154,4 @@ workflows:
                 - /.*\/main/
           context:
             - valkyrien_maven
-            - github_maven
+            #- github_maven
