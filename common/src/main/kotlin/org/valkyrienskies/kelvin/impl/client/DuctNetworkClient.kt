@@ -43,7 +43,7 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
             }
         }
 
-        ticksSinceLastSync++
+        //ticksSinceLastSync++
     }
 
     override fun sync(level: ClientLevel?, info: ClientKelvinInfo, chunkFlag: Boolean, player: Player?) {
@@ -70,7 +70,7 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
 
     override fun markChunkLoaded(pos: KelvinChunkPos) {
         nodesByChunk[pos] = HashSet()
-        KelvinRequestChunkSyncPacket(pos).sendToServer()
+        //KelvinRequestChunkSyncPacket(pos).sendToServer()
     }
 
     override fun markChunkUnloaded(pos: KelvinChunkPos) {
