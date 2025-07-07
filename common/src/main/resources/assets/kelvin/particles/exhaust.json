@@ -1,12 +1,16 @@
 {
   "textures": [
-    "minecraft:generic_7",
-    "minecraft:generic_6",
-    "minecraft:generic_5",
-    "minecraft:generic_4",
-    "minecraft:generic_3",
-    "minecraft:generic_2",
-    "minecraft:generic_1",
-    "minecraft:generic_0"
+    "kelvin:exhaust_0",
+    "kelvin:exhaust_1",
+    "kelvin:exhaust_2",
+    "kelvin:exhaust_3",
+    "kelvin:exhaust_4",
+    "kelvin:exhaust_5",
+    "kelvin:exhaust_6",
+    "kelvin:exhaust_7",
+    "kelvin:exhaust_8",
+    "kelvin:exhaust_9",
+    "kelvin:exhaust_10",
+    "kelvin:exhaust_11"
   ]
 }
