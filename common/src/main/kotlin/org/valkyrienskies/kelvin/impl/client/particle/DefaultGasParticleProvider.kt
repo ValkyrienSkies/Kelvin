@@ -18,7 +18,7 @@ class DefaultGasParticleProvider(private val sprite: SpriteSet): ParticleProvide
         ySpeed: Double,
         zSpeed: Double
     ): Particle {
-        val particle = DefaultGasParticle(level,x,y,z,xSpeed,ySpeed,zSpeed)
+        val particle = DefaultGasParticle(level, x, y, z, xSpeed, ySpeed, zSpeed, sprite)
         particle.setSpriteFromAge(sprite)
         return particle
     }
