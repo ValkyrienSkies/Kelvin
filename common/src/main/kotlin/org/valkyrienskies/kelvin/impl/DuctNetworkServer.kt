@@ -1,6 +1,5 @@
 package org.valkyrienskies.kelvin.impl
 
-import net.minecraft.core.BlockPos
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -17,10 +16,8 @@ import org.valkyrienskies.kelvin.api.edges.PumpEdge
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
-import org.valkyrienskies.kelvin.networking.KelvinSyncPacket
 import org.valkyrienskies.kelvin.util.*
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
-import org.valkyrienskies.kelvin.util.KelvinExtensions.toMinecraft
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.*
 
@@ -492,7 +489,6 @@ class DuctNetworkServer(
             }
         }
 
-        val nodesToSync = HashMap<DuctNodePos, GasHeatLevel>()
         val explnodes = HashSet<DuctNodePos>()
 
         val nodeInfoToProcess = HashMap(nodeInfo)
@@ -513,54 +509,6 @@ class DuctNetworkServer(
 //                // todo wuh oh spaghettio prepare to implodeio
 //            }
             //copilot wrote this so im immortalizing it
-
-
-            /** Update visual heat level of ducts based on temperature thresholds:
-            COOL:      < 20% of max temp
-            WARM:      20-40% of max temp
-            HOT:       40-60% of max temp
-            VERY_HOT:  60-80% of max temp  
-            SUPER_HOT: 80-100% of max temp
-            MOLTEN:    >= 100% of max temp
-            */ 
-            if (info.currentTemperature < (node.maxTemperature/5) && info.previousTemperatureLevel != 0) {
-                info.previousTemperatureLevel = 0
-                if (level.getBlockState(BlockPos(nodePos.toMinecraft())).block is IHeatableBlock) {
-                    nodesToSync[nodePos] = GasHeatLevel.COOL
-                }
-            } else if (info.currentTemperature >= (node.maxTemperature/5) && info.currentTemperature < ((2 * node.maxTemperature)/5) && info.previousTemperatureLevel != 1) {
-                info.previousTemperatureLevel = 1
-                if (level.getBlockState(BlockPos(nodePos.toMinecraft())).block is IHeatableBlock) {
-                    nodesToSync[nodePos] = GasHeatLevel.WARM
-                }
-            } else if (info.currentTemperature >= ((2 * node.maxTemperature)/5) && info.currentTemperature < ((3 * node.maxTemperature)/5) && info.previousTemperatureLevel != 2) {
-                info.previousTemperatureLevel = 2
-                if (level.getBlockState(BlockPos(nodePos.toMinecraft())).block is IHeatableBlock) {
-                    nodesToSync[nodePos] = GasHeatLevel.HOT
-                }
-            } else if (info.currentTemperature >= ((3 * node.maxTemperature)/5) && info.currentTemperature < ((4 * node.maxTemperature)/5) && info.previousTemperatureLevel != 3) {
-                info.previousTemperatureLevel = 3
-                if (level.getBlockState(BlockPos(nodePos.toMinecraft())).block is IHeatableBlock) {
-                    nodesToSync[nodePos] = GasHeatLevel.VERY_HOT
-                }
-            } else if (info.currentTemperature >= ((4 * node.maxTemperature)/5) && info.currentTemperature < node.maxTemperature && info.previousTemperatureLevel != 4) {
-                info.previousTemperatureLevel = 4
-                if (level.getBlockState(BlockPos(nodePos.toMinecraft())).block is IHeatableBlock) {
-                    nodesToSync[nodePos] = GasHeatLevel.SUPER_HOT
-                }
-            } else if (info.currentTemperature >= node.maxTemperature && info.previousTemperatureLevel != 5) {
-                info.previousTemperatureLevel = 5
-                if (level.getBlockState(BlockPos(nodePos.toMinecraft())).block is IHeatableBlock) {
-                    nodesToSync[nodePos] = GasHeatLevel.MOLTEN
-                }
-            }
-        }
-
-        for (node in nodesToSync.keys) {
-            val state = level.getBlockState(BlockPos(node.toMinecraft()))
-            if (state.hasProperty(IHeatableBlock.GAS_HEAT_LEVEL)) state.setValue(IHeatableBlock.GAS_HEAT_LEVEL, nodesToSync[node]!!)
-            level.setBlockAndUpdate(BlockPos(node.toMinecraft()), state)
-        }
 
         explnodes.forEach {
             level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(),it.x + 0.5, it.y + 0.5, it.z + 0.5, 1f, true, Level.ExplosionInteraction.TNT)
@@ -593,7 +541,6 @@ class DuctNetworkServer(
                 var con = false
                 reaction.requirements.forEach {if (!it.key.apply_requirement(level, node, this, it.value)) { con = true; return@forEach }}
                 if (con) continue
-
 
                 calcReaction(node, gasMasses, reaction.gasses, reaction.result, reaction.energy)
             }
