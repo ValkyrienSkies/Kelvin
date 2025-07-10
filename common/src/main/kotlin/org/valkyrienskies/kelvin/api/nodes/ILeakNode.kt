@@ -1,14 +1,15 @@
 package org.valkyrienskies.kelvin.api.nodes
 
+import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.NodeBehaviorType
 
 interface ILeakNode {
 
-    abstract fun leakFromPos(fromPos: DuctNodePos)
+    abstract fun leakFromPos(level: Level, fromPos: DuctNodePos)
 
-    fun getLeakRatio(): Double {
+    fun getLeakRatio(level: Level): Double {
         return 0.0
     }
 

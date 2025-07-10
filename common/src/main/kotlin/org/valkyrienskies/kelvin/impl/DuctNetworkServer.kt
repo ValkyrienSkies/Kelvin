@@ -506,7 +506,7 @@ class DuctNetworkServer(
             }
 
             if (node is ILeakNode) {
-                val ratio = (node as ILeakNode).getLeakRatio()
+                val ratio = (node as ILeakNode).getLeakRatio(level)
                 for ((gas, value) in getGasMassAt(nodePos)) modGasMass(nodePos, gas, -value*ratio)
 
             }
@@ -519,12 +519,12 @@ class DuctNetworkServer(
         explnodes.forEach {
             for ((pair, edge) in edges.filter { (pair, edge) -> pair.first == it }) {
                 if (nodes[pair.second] !is ILeakNode) continue
-                (nodes[pair.second] as ILeakNode).leakFromPos(it)
+                (nodes[pair.second] as ILeakNode).leakFromPos(level, it)
             }
 
             for ((pair, edge) in edges.filter { (pair, edge) -> pair.second == it }) {
                 if (nodes[pair.first] !is ILeakNode) continue
-                (nodes[pair.first] as ILeakNode).leakFromPos(it)
+                (nodes[pair.first] as ILeakNode).leakFromPos(level, it)
             }
 
             level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(),it.x + 0.5, it.y + 0.5, it.z + 0.5, 1f, true, Level.ExplosionInteraction.TNT)
