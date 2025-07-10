@@ -17,7 +17,7 @@ class GasExplosionDamageCalculator : ExplosionDamageCalculator() {
         state: BlockState,
         fluid: FluidState
     ): Optional<Float> {
-        if (state.block is IHeatableBlock) {
+        if (state.block is INodeBlock) {
             return Optional.of(0.0f)
         }
         return super.getBlockExplosionResistance(explosion, reader, pos, state, fluid)
@@ -30,7 +30,7 @@ class GasExplosionDamageCalculator : ExplosionDamageCalculator() {
         state: BlockState,
         power: Float
     ): Boolean {
-        if (state.block is IHeatableBlock) {
+        if (state.block is INodeBlock) {
             return true
         }
         return super.shouldBlockExplode(explosion, reader, pos, state, power)
