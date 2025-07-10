@@ -8,6 +8,8 @@ interface ILeakNode {
 
     abstract fun leakFromPos(fromPos: DuctNodePos)
 
-    abstract fun getLeakRatio(): Double
+    fun getLeakRatio(): Double {
+        return 0.0
+    }
 
 }
