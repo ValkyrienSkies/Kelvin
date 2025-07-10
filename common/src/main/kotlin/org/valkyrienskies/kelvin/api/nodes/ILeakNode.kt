@@ -7,8 +7,6 @@ import org.valkyrienskies.kelvin.api.NodeBehaviorType
 
 interface ILeakNode {
 
-    abstract fun leakFromPos(level: Level, fromPos: DuctNodePos)
-
     fun getLeakRatio(level: Level): Double {
         return 0.0
     }

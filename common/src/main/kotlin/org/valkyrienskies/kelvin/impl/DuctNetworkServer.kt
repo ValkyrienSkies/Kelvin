@@ -517,16 +517,6 @@ class DuctNetworkServer(
             //copilot wrote this so im immortalizing it
 
         explnodes.forEach {
-            for ((pair, edge) in edges.filter { (pair, edge) -> pair.first == it }) {
-                if (nodes[pair.second] !is ILeakNode) continue
-                (nodes[pair.second] as ILeakNode).leakFromPos(level, it)
-            }
-
-            for ((pair, edge) in edges.filter { (pair, edge) -> pair.second == it }) {
-                if (nodes[pair.first] !is ILeakNode) continue
-                (nodes[pair.first] as ILeakNode).leakFromPos(level, it)
-            }
-
             level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(),it.x + 0.5, it.y + 0.5, it.z + 0.5, 1f, true, Level.ExplosionInteraction.TNT)
         }
 
