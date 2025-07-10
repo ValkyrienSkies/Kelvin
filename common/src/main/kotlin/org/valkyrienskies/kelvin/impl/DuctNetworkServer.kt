@@ -504,7 +504,7 @@ class DuctNetworkServer(
                 explnodes.add(nodePos)
                 KELVINLOGGER.info("Node at $nodePos exploded due to overpressure. Pressure at time of failure: ${info.currentPressure}")
             }
-
+        }
 //            if (info.currentPressure < node.minPressure) {
 //                // todo wuh oh spaghettio prepare to implodeio
 //            }
