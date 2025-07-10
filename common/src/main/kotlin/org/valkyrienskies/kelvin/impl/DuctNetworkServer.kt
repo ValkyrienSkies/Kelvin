@@ -13,6 +13,7 @@ import org.valkyrienskies.kelvin.api.edges.ApertureEdge
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
 import org.valkyrienskies.kelvin.api.edges.PumpEdge
+import org.valkyrienskies.kelvin.api.nodes.ILeakNode
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
@@ -493,9 +494,8 @@ class DuctNetworkServer(
 
         val nodeInfoToProcess = HashMap(nodeInfo)
         for (nodePos in nodeInfoToProcess.keys) {
-            if (nodeInfo[nodePos] == null || nodes[nodePos] == null) {
-                continue
-            }
+            if (nodeInfo[nodePos] == null || nodes[nodePos] == null) continue
+
 
             val node = nodes[nodePos]!!
             val info = nodeInfo[nodePos]!!
@@ -504,6 +504,12 @@ class DuctNetworkServer(
                 explnodes.add(nodePos)
                 KELVINLOGGER.info("Node at $nodePos exploded due to overpressure. Pressure at time of failure: ${info.currentPressure}")
             }
+
+            if (node is ILeakNode) {
+                val ratio = (node as ILeakNode).getLeakRatio()
+                for ((gas, value) in getGasMassAt(nodePos)) modGasMass(nodePos, gas, -value*ratio)
+
+            }
         }
 //            if (info.currentPressure < node.minPressure) {
 //                // todo wuh oh spaghettio prepare to implodeio
@@ -511,6 +517,16 @@ class DuctNetworkServer(
             //copilot wrote this so im immortalizing it
 
         explnodes.forEach {
+            for ((pair, edge) in edges.filter { (pair, edge) -> pair.first == it }) {
+                if (nodes[pair.second] !is ILeakNode) continue
+                (nodes[pair.second] as ILeakNode).leakFromPos(it)
+            }
+
+            for ((pair, edge) in edges.filter { (pair, edge) -> pair.second == it }) {
+                if (nodes[pair.first] !is ILeakNode) continue
+                (nodes[pair.first] as ILeakNode).leakFromPos(it)
+            }
+
             level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(),it.x + 0.5, it.y + 0.5, it.z + 0.5, 1f, true, Level.ExplosionInteraction.TNT)
         }
 
