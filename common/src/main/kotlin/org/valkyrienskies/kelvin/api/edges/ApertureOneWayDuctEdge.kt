@@ -7,7 +7,7 @@ import org.valkyrienskies.kelvin.api.DuctNodePos
 /**
  * A default edge type that has an aperture and restricts flow to one direction.
  */
-class ApertureOneWayDuctEdge(
+open class ApertureOneWayDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,

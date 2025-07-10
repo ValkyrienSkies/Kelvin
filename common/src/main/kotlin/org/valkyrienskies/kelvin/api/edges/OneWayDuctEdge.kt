@@ -9,7 +9,7 @@ import org.valkyrienskies.kelvin.api.DuctNodePos
 /**
  * A default edge type that has a one-way connection between two nodes. Its directionality can be changed.
  */
-class OneWayDuctEdge(
+open class OneWayDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,

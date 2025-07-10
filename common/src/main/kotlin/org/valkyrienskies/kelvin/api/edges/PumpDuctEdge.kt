@@ -9,7 +9,7 @@ import org.valkyrienskies.kelvin.api.DuctNodePos
 /**
  * A default edge type that has a pump connection between two nodes. It applies its pump Pressure to the flow rate calculations
  */
-class PumpDuctEdge(
+open class PumpDuctEdge(
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,
     override var target: DuctNodePos,

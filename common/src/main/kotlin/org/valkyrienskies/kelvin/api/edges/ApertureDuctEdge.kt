@@ -7,7 +7,7 @@ import org.valkyrienskies.kelvin.api.DuctNodePos
 /**
  * A default edge type that has an aperture. An aperture can restrict or block flow through the edge.
  */
-class ApertureDuctEdge(
+open class ApertureDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,

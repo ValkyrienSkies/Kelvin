@@ -4,7 +4,7 @@ import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNodePos
 
-class PipeDuctEdge(
+open class PipeDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,

@@ -6,7 +6,7 @@ import org.valkyrienskies.kelvin.api.*
 /**
  * A default edge type that has both a one-way connection between its nodes and a filter that only allows certain gasses to flow through it. Its directionality can be changed. Its filter can either be a Whitelist or a Blacklist.
  */
-class FilteredOneWayDuctEdge(
+open class FilteredOneWayDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,

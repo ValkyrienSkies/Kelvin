@@ -8,7 +8,7 @@ import org.valkyrienskies.kelvin.api.GasType
 /**
  * A default edge type that has an aperture, a filter, and restricts flow to one-way.
  */
-class AllInOneDuctEdge(
+open class AllInOneDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,

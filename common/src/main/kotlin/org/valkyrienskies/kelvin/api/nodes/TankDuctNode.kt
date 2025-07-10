@@ -4,7 +4,7 @@ import net.minecraft.server.level.ServerLevel
 import org.valkyrienskies.kelvin.api.*
 import java.util.HashSet
 
-class TankDuctNode(
+open class TankDuctNode(
     override val pos: DuctNodePos,
     override val behavior: NodeBehaviorType,
     override val nodeEdges: HashSet<DuctEdge> = HashSet(),

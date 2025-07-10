@@ -7,7 +7,7 @@ import org.valkyrienskies.kelvin.api.GasType
 /**
  * A default edge type that has a filter which only allows certain gas types to flow through it. Its filter can either be a Whitelist or a Blacklist.
  */
-class FilteredDuctEdge(
+open class FilteredDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,

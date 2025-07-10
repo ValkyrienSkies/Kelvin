@@ -7,7 +7,7 @@ import org.valkyrienskies.kelvin.api.GasType
 /**
  * A default edge type that has both an aperture and a filter.
  */
-class ApertureFilteredDuctEdge(
+open class ApertureFilteredDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,
