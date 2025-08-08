@@ -77,8 +77,20 @@ repositories {
     }
 }
 
+if (project.hasProperty("CustomReleaseVersion")) {
+    // Remove release/ from the version if present
+    version = project.property("CustomReleaseVersion").replaceFirst("^release/", "")
+} else {
+    String gitRevision = "git rev-parse HEAD".execute().text.trim()
+    if (gitRevision.isEmpty()) {
+        gitRevision = 'unknown'
+    }
+
+    version = minecraft_version + '-'+ mod_version + '-' + "forge" + '-' + (gitRevision.length() >= 10 ? gitRevision.substring(0, 10) : gitRevision)
+}
+
 processResources {
-    inputs.property "version", project.version
+    inputs.property "version", version
 
     def props = project.properties
     props['vs2_version'] = project.vs2_version.substring(0, project.vs2_version.indexOf('+'))
