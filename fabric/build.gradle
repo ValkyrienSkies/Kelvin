@@ -65,19 +65,6 @@ dependencies {
     }
 }
 
-
-if (project.hasProperty("CustomReleaseVersion")) {
-    // Remove release/ from the version if present
-    version = project.property("CustomReleaseVersion").replaceFirst("^release/", "")
-} else {
-    String gitRevision = "git rev-parse HEAD".execute().text.trim()
-    if (gitRevision.isEmpty()) {
-        gitRevision = 'unknown'
-    }
-
-    version = minecraft_version + '-'+ mod_version + '-' + "fabric" + '-' + (gitRevision.length() >= 10 ? gitRevision.substring(0, 10) : gitRevision)
-}
-
 processResources {
     inputs.property "version", project.version
 
