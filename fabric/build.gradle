@@ -75,7 +75,7 @@ if (project.hasProperty("CustomReleaseVersion")) {
         gitRevision = 'unknown'
     }
 
-    version = minecraft_version + '-'+ mod_version + '-' + "fabriv" + '-' + (gitRevision.length() >= 10 ? gitRevision.substring(0, 10) : gitRevision)
+    version = minecraft_version + '-'+ mod_version + '-' + "fabric" + '-' + (gitRevision.length() >= 10 ? gitRevision.substring(0, 10) : gitRevision)
 }
 
 processResources {
