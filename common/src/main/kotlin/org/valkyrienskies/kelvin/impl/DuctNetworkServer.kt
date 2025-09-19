@@ -13,6 +13,7 @@ import org.valkyrienskies.kelvin.api.edges.ApertureEdge
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
 import org.valkyrienskies.kelvin.api.edges.PumpEdge
+import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.ILeakNode
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
@@ -345,12 +346,18 @@ class DuctNetworkServer(
                     }
                 }
 
-
                 if (flowRate.isInfinite() || flowRate.isNaN()) {
                     flowRate = 0.0
                 }
 
+                if (edge is SmartEdge && edge.filter != SmartEdge.FilterType.NONE) {
+                    val toCheck: Double
+                    if (flowRate > 0) toCheck = if (edge.filter == SmartEdge.FilterType.PRESSURE) pressureA else nodeA.currentTemperature
+                    else toCheck =  if (edge.filter == SmartEdge.FilterType.PRESSURE) pressureB else nodeB.currentTemperature
 
+                    val checked = if (edge.moreThan) toCheck >= edge.comparisonValue else toCheck <= edge.comparisonValue
+                    if (!checked) continue
+                }
 
                 if (flowRate>0) {
                     flowRate = flowRate.coerceAtMost(totalGasMassA)
@@ -361,6 +368,8 @@ class DuctNetworkServer(
 
                 val flowRateA = -flowRate
                 val flowRateB = flowRate
+
+
 
                 var totalDeltaMassA = 0.0
                 var totalDeltaMassB = 0.0
