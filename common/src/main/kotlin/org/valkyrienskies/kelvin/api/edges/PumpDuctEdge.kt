@@ -1,9 +1,7 @@
 package org.valkyrienskies.kelvin.api.edges
 
-import net.minecraft.server.level.ServerPlayer
 import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
-import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodePos
 
 /**
@@ -24,7 +22,6 @@ open class PumpDuctEdge(
         if (target==nodeA) target = nodeB
         else target = nodeA
     }
-
 
 
 }

@@ -1,5 +1,6 @@
 package org.valkyrienskies.kelvin.api.edges
 
+import net.minecraft.nbt.CompoundTag
 import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNodePos
@@ -16,4 +17,22 @@ open class SmartDuctEdge(
     override var filter = SmartEdge.FilterType.NONE
     override var comparisonValue = 0.0
     override var moreThan = false
+
+    override fun serialize(tag: CompoundTag): CompoundTag {
+
+        tag.putInt("filter", filter.ordinal)
+        tag.putDouble("comparisonValue", comparisonValue)
+        tag.putBoolean("moreThan", moreThan)
+
+        return super.serialize(tag)
+    }
+
+    override fun deserialize(tag: CompoundTag) {
+
+        filter = SmartEdge.FilterType.entries[tag.getInt("filter")]
+        comparisonValue = tag.getDouble("comparisonValue")
+        moreThan = tag.getBoolean("moreThan")
+
+        super.deserialize(tag)
+    }
 }

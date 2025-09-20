@@ -1,9 +1,9 @@
 package org.valkyrienskies.kelvin.api.edges
 
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerPlayer
 import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
-import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodePos
 
 /**
@@ -21,5 +21,19 @@ open class OneWayDuctEdge(
     override fun interact(player: ServerPlayer): Boolean {
         reversed = !reversed
         return reversed
+    }
+
+    override fun serialize(tag: CompoundTag): CompoundTag {
+
+        tag.putBoolean("reversed", reversed)
+
+        return super.serialize(tag)
+    }
+
+    override fun deserialize(tag: CompoundTag) {
+
+        reversed = tag.getBoolean("reversed")
+
+        super.deserialize(tag)
     }
 }

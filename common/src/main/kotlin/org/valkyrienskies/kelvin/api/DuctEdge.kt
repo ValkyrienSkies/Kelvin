@@ -1,9 +1,8 @@
 package org.valkyrienskies.kelvin.api
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect
-import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerPlayer
 import org.valkyrienskies.kelvin.api.edges.*
 
@@ -47,4 +46,10 @@ interface DuctEdge {
     fun markUnloaded() {
         unloaded = true
     }
+
+    fun serialize(tag: CompoundTag): CompoundTag {
+        return tag
+    }
+
+    fun deserialize(tag: CompoundTag) {}
 }

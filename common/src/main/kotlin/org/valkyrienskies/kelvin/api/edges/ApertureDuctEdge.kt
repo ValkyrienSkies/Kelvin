@@ -1,5 +1,6 @@
 package org.valkyrienskies.kelvin.api.edges
 
+import net.minecraft.nbt.CompoundTag
 import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNodePos
@@ -14,4 +15,20 @@ open class ApertureDuctEdge(
     override var radius: Double = 0.125, override var length: Double = 0.5, override var currentFlowRate: Double = 0.0,
     override var aperture: Double = 0.0,
     override var unloaded: Boolean = false
-) : DuctEdge, ApertureEdge
+) : DuctEdge, ApertureEdge {
+
+
+    override fun serialize(tag: CompoundTag): CompoundTag {
+
+        tag.putDouble("aperature", aperture)
+
+        return super.serialize(tag)
+    }
+
+    override fun deserialize(tag: CompoundTag) {
+
+        aperture = tag.getDouble("aperature")
+
+        super.deserialize(tag)
+    }
+}
