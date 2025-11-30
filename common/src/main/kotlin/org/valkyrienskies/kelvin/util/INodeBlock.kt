@@ -1,6 +1,5 @@
 package org.valkyrienskies.kelvin.util
 
-import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.world.level.BlockGetter
@@ -25,14 +24,14 @@ interface INodeBlock {
         }
     }
 
-    fun nodeAddClient(state: BlockState, level: ClientLevel, pos: BlockPos) {
+    fun nodeAddClient(state: BlockState, level: Level, pos: BlockPos) {
         KelvinMod.getClientKelvin().addNode(
             pos.toDuctNodePos(level.dimension().location()),
             createNode(pos.toDuctNodePos(level.dimension().location()))
         )
     }
 
-    fun nodeRemoveClient(state: BlockState, level: ClientLevel, pos: BlockPos) {
+    fun nodeRemoveClient(state: BlockState, level: Level, pos: BlockPos) {
         KelvinMod.getClientKelvin().removeNode(pos.toDuctNodePos(level.dimension().location()))
     }
 
@@ -42,7 +41,7 @@ interface INodeBlock {
                 KelvinMod.getKelvin().removeNode(pos.toDuctNodePos(level.dimension().location()))
             }
         } else {
-            nodeRemoveClient(state, level as ClientLevel, pos)
+            nodeRemoveClient(state, level, pos)
         }
     }
 
