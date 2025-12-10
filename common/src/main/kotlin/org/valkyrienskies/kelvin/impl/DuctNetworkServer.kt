@@ -176,7 +176,10 @@ class DuctNetworkServer(
     }
 
     override fun modTemperature(pos: DuctNodePos, deltaTemperature: Double) {
-        if (deltaTemperature.isNaN() || deltaTemperature.isInfinite()) nodeInfo[pos]?.currentTemperature = 0.0001
+        if (deltaTemperature.isNaN() || deltaTemperature.isInfinite()) {
+            nodeInfo[pos]?.currentTemperature = 0.0001
+            return
+        }
         nodeInfo[pos]?.currentTemperature = max(nodeInfo[pos]?.currentTemperature?.plus(deltaTemperature) ?: 0.0001, 0.0001)
     }
 
