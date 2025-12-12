@@ -1,5 +1,6 @@
 package org.valkyrienskies.kelvin.impl.recipe
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import net.minecraft.resources.ResourceLocation
@@ -48,4 +49,34 @@ object KelvinGasRecipeSerializer {
         return GasBaseRecipe(inputGasses, requirements, energy, resultGasses)
     }
 
+    fun write(obj: JsonObject, recipe: GasBaseRecipe): JsonObject {
+
+        val inputGasses = JsonObject()
+        val resultGasses = JsonObject()
+        val requirements = JsonObject()
+
+        for (gas in recipe.gasses) {
+            val entry = JsonObject()
+            entry.addProperty("unit", "kg")
+            entry.addProperty("amount", gas.value)
+            inputGasses.add(gas.key.resourceLocation.toString(), entry)
+        }
+
+        for (gas in recipe.result) {
+            val entry = JsonObject()
+            entry.addProperty("unit", "kg")
+            entry.addProperty("amount", gas.value)
+            resultGasses.add(gas.key.resourceLocation.toString(), entry)
+        }
+
+        for (requirement in recipe.requirements) {
+            requirements.add(requirement.key.resourceLocation.toString(), requirement.value)
+        }
+
+        obj.add("input_gasses", inputGasses)
+        obj.add("result_gasses", resultGasses)
+        obj.add("requirements", requirements)
+
+        return obj
+    }
 }
