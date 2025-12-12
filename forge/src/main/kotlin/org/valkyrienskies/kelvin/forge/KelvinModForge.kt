@@ -64,10 +64,6 @@ class KelvinModForge {
         }
 
         FORGE_BUS.addListener(::registerResourceManagers)
-
-        MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
-            KelvinParticles.KelvinClientParticles.init()
-        }
     }
 
     private fun registerResourceManagers(event: AddReloadListenerEvent) {
@@ -76,6 +72,9 @@ class KelvinModForge {
     }
 
     private fun clientSetup(event: FMLClientSetupEvent?) {
+        MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
+            KelvinParticles.KelvinClientParticles.init()
+        }
         initClient()
     }
 
