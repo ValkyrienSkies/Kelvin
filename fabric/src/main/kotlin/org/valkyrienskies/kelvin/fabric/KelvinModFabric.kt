@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
-import org.valkyrienskies.kelvin.impl.KelvinReactionDataLoader
+import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import net.minecraft.server.packs.PackType.SERVER_DATA
 import net.minecraft.server.packs.resources.PreparableReloadListener

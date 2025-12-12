@@ -9,8 +9,9 @@ import mezz.jei.api.registration.IRecipeRegistration
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.MOD_ID
-import org.valkyrienskies.kelvin.api.GasReaction
-import org.valkyrienskies.kelvin.impl.KelvinReactionDataLoader
+import org.valkyrienskies.kelvin.api.recipe.GasBaseRecipe
+import org.valkyrienskies.kelvin.api.recipe.KelvinGasIngredient
+import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 
 
@@ -22,7 +23,7 @@ class KelvinJeiPlugin: IModPlugin {
 
     override fun registerIngredients(registration: IModIngredientRegistration) {
         val recipes = HashSet<KelvinGasIngredient>()
-        GasTypeRegistry.GAS_TYPES.values.forEach {type -> recipes.add(KelvinGasIngredient(type, 1))}
+        GasTypeRegistry.GAS_TYPES.values.forEach {type -> recipes.add(KelvinGasIngredient(type, 1.0))}
         registration.register(GAS_INGREDIENT_TYPE, recipes, GasIngredientHelper(), GasIngredientRenderer())
     }
 
@@ -41,7 +42,7 @@ class KelvinJeiPlugin: IModPlugin {
 
 
     companion object {
-        val GAS_REACTION_RECIPE_TYPE: RecipeType<GasReaction> = RecipeType.create(MOD_ID, "gas_reaction_recipe", GasReaction::class.java)
+        val GAS_REACTION_RECIPE_TYPE: RecipeType<GasBaseRecipe> = RecipeType.create(MOD_ID, "gas_reaction_recipe", GasBaseRecipe::class.java)
         val GAS_INGREDIENT_TYPE = GasIngredientType()
     }
 }

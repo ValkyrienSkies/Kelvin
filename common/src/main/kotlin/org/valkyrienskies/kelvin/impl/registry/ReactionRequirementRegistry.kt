@@ -2,8 +2,8 @@ package org.valkyrienskies.kelvin.impl.registry
 
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
-import org.valkyrienskies.kelvin.api.GasReactionRequirement
-import org.valkyrienskies.kelvin.impl.DefaultKelvinRequirements
+import org.valkyrienskies.kelvin.api.recipe.GasReactionRequirement
+import org.valkyrienskies.kelvin.impl.recipe.DefaultKelvinRequirements
 
 object ReactionRequirementRegistry {
     val REACTION_REQUIREMENTS = HashMap<ResourceLocation, GasReactionRequirement>()

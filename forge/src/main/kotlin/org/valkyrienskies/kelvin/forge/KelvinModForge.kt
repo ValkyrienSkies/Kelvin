@@ -12,7 +12,7 @@ import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.init
 import org.valkyrienskies.kelvin.KelvinMod.initClient
 import org.valkyrienskies.kelvin.KelvinParticles
-import org.valkyrienskies.kelvin.impl.KelvinReactionDataLoader
+import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import thedarkcolour.kotlinforforge.forge.FORGE_BUS
 import thedarkcolour.kotlinforforge.forge.MOD_BUS

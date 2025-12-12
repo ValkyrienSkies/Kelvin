@@ -1,7 +1,13 @@
 {
-  "gasses": {
-    "kelvin:methane": 1,
-    "kelvin:air": 2
+  "input_gasses": {
+    "kelvin:methane": {
+      "amount": 1,
+      "unit": "moles"
+    },
+    "kelvin:air": {
+      "amount": 2,
+      "unit": "moles"
+    }
   },
   "requirements": {
     "kelvin:min_temperature": 800,
@@ -9,8 +15,14 @@
     "kelvin:max_temperature": 2300
   },
   "energy": 890400,
-  "result": {
-    "kelvin:exhaust": 1,
-    "kelvin:steam": 2
+  "result_gasses": {
+    "kelvin:exhaust": {
+      "amount": 1,
+      "unit": "moles"
+    },
+    "kelvin:steam": {
+      "amount": 2,
+      "unit": "moles"
+    }
   }
 }

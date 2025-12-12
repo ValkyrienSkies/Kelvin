@@ -10,8 +10,8 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.TooltipFlag
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.api.recipe.KelvinGasIngredient
 
-data class KelvinGasIngredient(val gasType: GasType, val moles: Int)
 
 class GasIngredientType: IIngredientType<KelvinGasIngredient> {
     override fun getIngredientClass(): Class<out KelvinGasIngredient> {

@@ -11,17 +11,18 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
 import org.valkyrienskies.kelvin.KelvinMod
-import org.valkyrienskies.kelvin.api.GasReaction
+import org.valkyrienskies.kelvin.api.recipe.GasBaseRecipe
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.api.recipe.KelvinGasIngredient
 import org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin.Companion.GAS_INGREDIENT_TYPE
 
-class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
+class KelvinReactionRecipeCategory : IRecipeCategory<GasBaseRecipe> {
 
     override fun getBackground(): IDrawable {
         return ImageDrawable(150, 150, KelvinMod.asResouceLocation("textures/gui/gas_reaction_recipe_background.png"))
     }
 
-    override fun getRecipeType(): RecipeType<GasReaction> {
+    override fun getRecipeType(): RecipeType<GasBaseRecipe> {
         return KelvinJeiPlugin.GAS_REACTION_RECIPE_TYPE
     }
 
@@ -35,25 +36,25 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
     }
 
 
-    override fun setRecipe(builder: IRecipeLayoutBuilder, recipe: GasReaction, focuses: IFocusGroup) {
+    override fun setRecipe(builder: IRecipeLayoutBuilder, recipe: GasBaseRecipe, focuses: IFocusGroup) {
 
         var i = 0
-        recipe.gasses.forEach { (type, moles) ->
+        recipe.gasses.forEach { (type, mass) ->
             val slot = builder.addSlot(RecipeIngredientRole.INPUT, 0, i*17)
-            slot.addIngredient(GAS_INGREDIENT_TYPE, KelvinGasIngredient(type,moles))
+            slot.addIngredient(GAS_INGREDIENT_TYPE, KelvinGasIngredient(type,mass))
             i++
         }
 
         i = 0
-        recipe.result.forEach { (type, moles) ->
+        recipe.result.forEach { (type, mass) ->
             val slot = builder.addSlot(RecipeIngredientRole.OUTPUT, 84, i*17)
-            slot.addIngredient(GAS_INGREDIENT_TYPE,  KelvinGasIngredient(type,moles))
+            slot.addIngredient(GAS_INGREDIENT_TYPE, KelvinGasIngredient(type, mass))
             i++
         }
     }
 
     override fun draw(
-        recipe: GasReaction,
+        recipe: GasBaseRecipe,
         recipeSlotsView: IRecipeSlotsView,
         guiGraphics: GuiGraphics,
         mouseX: Double,
@@ -64,7 +65,7 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
         recipeSlotsView.getSlotViews(RecipeIngredientRole.INPUT).forEach { slot ->
             val ingredient = slot.displayedIngredient.get().ingredient as KelvinGasIngredient
             // TODO: USE LANG
-            guiGraphics.drawString(Minecraft.getInstance().font, "${ingredient.moles} Moles", 17, i * 17, 5592405)
+            guiGraphics.drawString(Minecraft.getInstance().font, "${ingredient.mass} kg", 17, i * 17, 5592405)
             i++
             if (i >= maxI) maxI = i
         }
@@ -73,7 +74,7 @@ class KelvinReactionRecipeCategory : IRecipeCategory<GasReaction> {
         recipeSlotsView.getSlotViews(RecipeIngredientRole.OUTPUT).forEach { slot ->
             val ingredient = slot.displayedIngredient.get().ingredient as KelvinGasIngredient
             // TODO: USE LANG
-            guiGraphics.drawString(Minecraft.getInstance().font, "${ingredient.moles} Moles", 101, i * 17, 5592405)
+            guiGraphics.drawString(Minecraft.getInstance().font, "${ingredient.mass} kg", 101, i * 17, 5592405)
             i++
             if (i >= maxI) maxI = i
         }

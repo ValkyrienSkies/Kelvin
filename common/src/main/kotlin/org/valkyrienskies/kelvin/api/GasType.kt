@@ -25,6 +25,13 @@ data class GasType(
         return "{$name, $density, $viscosity, $specificHeatCapacity, $thermalConductivity, $sutherlandConstant, $adiabaticIndex, $iconLoc}"
     }
 
+    fun molesToMass(moles: Double): Double {
+        return moles * density * 22.4
+    }
+
+    fun massToMoles(mass: Double): Double {
+        return mass / (density * 22.4)
+    }
 
     companion object {
         val PLACEHOLDER_ICON = KelvinMod.asResouceLocation("textures/icons/placeholder.png")

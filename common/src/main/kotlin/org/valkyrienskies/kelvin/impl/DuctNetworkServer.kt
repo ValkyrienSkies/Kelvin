@@ -17,6 +17,7 @@ import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.ILeakNode
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
+import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.util.*
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
@@ -562,26 +563,21 @@ class DuctNetworkServer(
         }
     }
 
-    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Int>, outputGasses: HashMap<GasType, Int>, deltaEnergy: Double) {
-        val gasMoles = HashMap<GasType, Double>()
+    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Double>, outputGasses: HashMap<GasType, Double>, deltaEnergy: Double) {
 
-        for (gas in gasMasses) gasMoles[gas.key] = (gas.value/gas.key.density)/22.4
-
-        var reactionMoles = Double.MAX_VALUE
-
-
+        var reactionAmount = Double.MAX_VALUE
         for (gas in inputGasses) {
-            if (gas.key !in gasMoles || gasMoles[gas.key]!! < 0.001) return
+            if (gas.key !in gasMasses || gasMasses[gas.key]!! < 0.0001) return
 
-            val thisOutput =  gasMoles[gas.key]!! / gas.value
-            if (thisOutput < reactionMoles) reactionMoles = thisOutput
+            val thisOutput =  gasMasses[gas.key]!! / gas.value
+            if (thisOutput < reactionAmount) reactionAmount = thisOutput
         }
 
-        for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-reactionMoles * gas.value * gas.key.density * 22.4)
+        for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-reactionAmount * gas.value)
 
-        for (gas in outputGasses) modGasMass(ductNodePos,gas.key,reactionMoles * gas.value * gas.key.density * 22.4)
+        for (gas in outputGasses) modGasMass(ductNodePos,gas.key,reactionAmount * gas.value)
 
-        modHeatEnergy(ductNodePos, deltaEnergy * reactionMoles)
+        modHeatEnergy(ductNodePos, deltaEnergy * reactionAmount)
 
     }
 

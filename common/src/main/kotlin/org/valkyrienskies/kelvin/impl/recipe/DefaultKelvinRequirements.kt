@@ -1,4 +1,4 @@
-package org.valkyrienskies.kelvin.impl
+package org.valkyrienskies.kelvin.impl.recipe
 
 import com.google.gson.JsonElement
 import net.minecraft.network.chat.Component
@@ -6,7 +6,7 @@ import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
-import org.valkyrienskies.kelvin.api.GasReactionRequirement
+import org.valkyrienskies.kelvin.api.recipe.GasReactionRequirement
 
 object DefaultKelvinRequirements {
     val defaultRequirements = listOf(minTemperature, maxTemperature, minPressure, maxPressure)
@@ -72,6 +72,3 @@ object DefaultKelvinRequirements {
         }
     }
 }
-
-
-

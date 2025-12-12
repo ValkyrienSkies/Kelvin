@@ -1,9 +1,11 @@
-package org.valkyrienskies.kelvin.api
+package org.valkyrienskies.kelvin.api.recipe
 
 import com.google.gson.JsonElement
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.Level
+import org.valkyrienskies.kelvin.api.DuctNetwork
+import org.valkyrienskies.kelvin.api.DuctNodePos
 
 
 abstract class GasReactionRequirement(val resourceLocation: ResourceLocation) {
