@@ -1,6 +1,5 @@
 package org.valkyrienskies.kelvin.impl.recipe
 
-import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import net.minecraft.resources.ResourceLocation
@@ -10,7 +9,6 @@ import org.valkyrienskies.kelvin.api.recipe.GasBaseRecipe
 import org.valkyrienskies.kelvin.api.recipe.GasReactionRequirement
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
-import kotlin.collections.set
 
 object KelvinGasRecipeSerializer {
 
@@ -40,6 +38,8 @@ object KelvinGasRecipeSerializer {
         val inputGasses = parseGasList(jObject["input_gasses"].asJsonObject) ?: return null
         val resultGasses = parseGasList(jObject["result_gasses"].asJsonObject) ?: return null
         val requirements = HashMap<GasReactionRequirement, JsonElement>()
+
+        if (jObject.has("requirements"))
         for (entry in jObject["requirements"].asJsonObject.entrySet()) {
             val reactionRequirement = ReactionRequirementRegistry.getReactionRequirement(ResourceLocation(entry.key)) ?: return null
             requirements[reactionRequirement] = entry.value
@@ -76,6 +76,7 @@ object KelvinGasRecipeSerializer {
         obj.add("input_gasses", inputGasses)
         obj.add("result_gasses", resultGasses)
         obj.add("requirements", requirements)
+        obj.addProperty("energy", recipe.energy)
 
         return obj
     }
