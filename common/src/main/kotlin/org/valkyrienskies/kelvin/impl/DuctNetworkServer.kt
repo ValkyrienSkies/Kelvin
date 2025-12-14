@@ -337,7 +337,7 @@ class DuctNetworkServer(
 
             if (node is ILeakNode) {
                 val ratio = (node as ILeakNode).getLeakRatio(level)
-                for ((gas, value) in getGasMassAt(nodePos)) removeGas(nodePos, gas, -value*ratio)
+                for ((gas, value) in getGasMassAt(nodePos)) removeGas(nodePos, gas, value*ratio)
 
             }
         }
