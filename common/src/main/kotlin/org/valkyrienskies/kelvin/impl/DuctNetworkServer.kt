@@ -22,6 +22,7 @@ import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry.DEBUG_REGISTRY
 import org.valkyrienskies.kelvin.util.*
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
+import org.valkyrienskies.kelvin.util.KelvinExtensions.toMinecraft
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.*
 
@@ -313,7 +314,8 @@ class DuctNetworkServer(
         // todo: make classic behavior vs new impl configurable?
         simulateJacobi(subSteps) // simulateClassic(subSteps)
 
-        val explnodes = HashSet<DuctNodePos>()
+        val explnodes = HashMap<DuctNodePos, Double>()
+        val melted = HashSet<DuctNodePos>()
 
         val nodeInfoToProcess = HashMap(nodeInfo)
         for (nodePos in nodeInfoToProcess.keys) {
@@ -324,13 +326,18 @@ class DuctNetworkServer(
             val info = nodeInfo[nodePos]!!
 
             if (info.currentPressure > node.maxPressure) {
-                explnodes.add(nodePos)
-                KELVINLOGGER.info("Node at $nodePos exploded due to overpressure. Pressure at time of failure: ${info.currentPressure}")
+                explnodes[nodePos] = abs(info.currentPressure - node.maxPressure)
+                KELVINLOGGER.info("Node at $nodePos exploded due to Overpressure. Pressure at time of failure: ${info.currentPressure}")
+            }
+
+            if (info.currentTemperature > node.maxTemperature) {
+                melted.add(nodePos)
+                KELVINLOGGER.info("Node at $nodePos reached its Melting Point. Temperature at time of failure: ${info.currentTemperature}")
             }
 
             if (node is ILeakNode) {
                 val ratio = (node as ILeakNode).getLeakRatio(level)
-                for ((gas, value) in getGasMassAt(nodePos)) modGasMass(nodePos, gas, -value*ratio)
+                for ((gas, value) in getGasMassAt(nodePos)) removeGas(nodePos, gas, -value*ratio)
 
             }
         }
@@ -339,8 +346,12 @@ class DuctNetworkServer(
 //            }
             //copilot wrote this so im immortalizing it
 
-        explnodes.forEach {
-            level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(),it.x + 0.5, it.y + 0.5, it.z + 0.5, 1f, true, Level.ExplosionInteraction.TNT)
+        explnodes.forEach { pos, pressureExcess ->
+            level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(pressureExcess),pos.x + 0.5, pos.y + 0.5, pos.z + 0.5, min(max(1.0, pressureExcess / 1000.0), 10.0).toFloat(), true, Level.ExplosionInteraction.TNT)
+        }
+
+        melted.forEach {
+            level.destroyBlock(it.toMinecraft(), true)
         }
 
         if (syncTimers[level.dimension().location()]!! <= 0) {

@@ -8,7 +8,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.material.FluidState
 import java.util.*
 
-class GasExplosionDamageCalculator : ExplosionDamageCalculator() {
+class GasExplosionDamageCalculator(val overpressure: Double = 0.0) : ExplosionDamageCalculator() {
 
     override fun getBlockExplosionResistance(
         explosion: Explosion,
@@ -20,7 +20,13 @@ class GasExplosionDamageCalculator : ExplosionDamageCalculator() {
         if (state.block is INodeBlock) {
             return Optional.of(0.0f)
         }
-        return super.getBlockExplosionResistance(explosion, reader, pos, state, fluid)
+        val superResult = super.getBlockExplosionResistance(explosion, reader, pos, state, fluid)
+        if (superResult.isPresent) {
+            val resistance = superResult.get()
+            val adjustedResistance = resistance / (1.0f + overpressure.toFloat())
+            return Optional.of(adjustedResistance)
+        }
+        return superResult
     }
 
     override fun shouldBlockExplode(
