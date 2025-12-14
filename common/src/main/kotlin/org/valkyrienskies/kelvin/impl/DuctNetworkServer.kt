@@ -224,15 +224,50 @@ class DuctNetworkServer(
         }
         val energy = getHeatEnergy(pos)
         val result = (energy+deltaEnergy).coerceAtLeast(0.001)
-        val gasMasses = getGasMassAt(pos)
-        val mass = gasMasses.values.sum()
 
-        if (mass < 0.001) return
         nodeInfo[pos]?.currentEnergy = result
     }
 
     override fun modVolume(pos: DuctNodePos, deltaVolume: Double) {
         nodeInfo[pos]?.volumeChange = nodeInfo[pos]?.volumeChange?.plus(deltaVolume) ?: 0.0
+    }
+
+    override fun addGas(pos: DuctNodePos, gasType: GasType, amount: Double, energyDelta: Double): Boolean {
+        val node = nodes[pos] ?: return false
+        nodeInfo[pos]?.currentGasMasses?.put(gasType, nodeInfo[pos]?.currentGasMasses?.get(gasType)?.plus(amount) ?: amount)
+        modHeatEnergy(pos, energyDelta)
+        return true
+    }
+
+    override fun addGasAtTemperature(pos: DuctNodePos, gasType: GasType, amount: Double, temperature: Double): Boolean {
+        val node = nodes[pos] ?: return false
+        val specificHeat = (gasType.specificHeatCapacity * 1000.0) / gasType.adiabaticIndex
+        val energyToAdd = amount * specificHeat * temperature
+        nodeInfo[pos]?.currentGasMasses?.put(gasType, nodeInfo[pos]?.currentGasMasses?.get(gasType)?.plus(amount) ?: amount)
+        modHeatEnergy(pos, energyToAdd)
+        return true
+    }
+
+    override fun removeGas(pos: DuctNodePos, gasType: GasType, amount: Double): Boolean {
+        val node = nodes[pos] ?: return false
+        var amountToRemove = amount
+        val currentAmount = nodeInfo[pos]?.currentGasMasses?.get(gasType) ?: 0.0
+        if (currentAmount < amount) {
+            amountToRemove = currentAmount
+        }
+        val sourceTemp = getHeatEnergy(pos) / mixtureCapacity(nodeInfo[pos]!!.currentGasMasses)
+        // now, let's make sure we remove the appropriate amount of thermal energy from the system
+        val cv = (gasType.specificHeatCapacity * 1000.0) / gasType.adiabaticIndex
+        var energyToRemove = amountToRemove * cv * sourceTemp
+        if (energyToRemove.isNaN() || energyToRemove.isInfinite()) {
+            energyToRemove = 0.0
+        }
+        if (energyToRemove > getHeatEnergy(pos)) {
+            energyToRemove = getHeatEnergy(pos)
+        }
+        modGasMass(pos, gasType, -amountToRemove)
+        modHeatEnergy(pos, -energyToRemove)
+        return true
     }
 
     override fun createGasParticle(
@@ -930,8 +965,9 @@ class DuctNetworkServer(
                 edgeMdot[p.edge] = (edgeMdot[p.edge] ?: 0.0) + mdotEffective
             }
             for (p in pendingPassiveTransfers) {
-                delta[p.srcPos]!!.deltaEnergy -= p.dE
-                delta[p.dstPos]!!.deltaEnergy += p.dE
+                // ensure we can actually pull that much=
+                delta[p.srcPos]!!.deltaEnergy -= p.dE * 0.5
+                delta[p.dstPos]!!.deltaEnergy += p.dE * 0.5
             }
 
             for ((edge, mdot) in edgeMdot) edge.currentFlowRate = mdot
@@ -1200,8 +1236,6 @@ class DuctNetworkServer(
         // (meters)
         val pipeRoughness = 0.00012
         val pipeDiameter = radius * 2.0
-
-
 
         if (pressureOne <= 0.0001 && pumpPressure > 0.0) {
             pressureDrop = min(pressureDrop, 0.0)

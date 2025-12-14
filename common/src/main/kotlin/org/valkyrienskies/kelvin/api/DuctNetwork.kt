@@ -75,9 +75,11 @@ interface DuctNetwork<T: Level> {
     fun modPressure(pos: DuctNodePos, deltaPressure: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modPressure")
     }
+    @Deprecated("Only used internally.")
     fun modGasMass(pos: DuctNodePos, gasType: GasType, deltaMass: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modGasMass")
     }
+    @Deprecated("Only used internally.")
     fun modGasMassOfTemperature(pos: DuctNodePos, gasType: GasType, deltaMass: Double, gasTemperature: Double) {
         KELVINLOGGER.warn("You can't modify this from here.")
     }
@@ -86,6 +88,19 @@ interface DuctNetwork<T: Level> {
     }
     fun modVolume(pos: DuctNodePos, deltaVolume: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modVolume")
+    }
+
+    fun addGas(pos: DuctNodePos, gasType: GasType, amount: Double, energyDelta: Double) : Boolean {
+        KELVINLOGGER.warn("You can't modify this from here. Called: addGas")
+        return false
+    }
+    fun addGasAtTemperature(pos: DuctNodePos, gasType: GasType, amount: Double, temperature: Double): Boolean {
+        KELVINLOGGER.warn("You can't modify this from here. Called: addGasAtTemperature")
+        return false
+    }
+    fun removeGas(pos: DuctNodePos, gasType: GasType, amount: Double): Boolean {
+        KELVINLOGGER.warn("You can't modify this from here. Called: removeGas")
+        return false
     }
 
     fun createGasParticle(level: T, gasType: GasType, pos: DuctNodePos, x: Double, y: Double, z: Double, xSpeed: Double, ySpeed: Double, zSpeed: Double)
