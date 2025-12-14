@@ -84,6 +84,9 @@ interface DuctNetwork<T: Level> {
     fun modHeatEnergy(pos: DuctNodePos, deltaEnergy: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modHeatEnergy")
     }
+    fun modVolume(pos: DuctNodePos, deltaVolume: Double) {
+        KELVINLOGGER.warn("You can't modify this from here. Called: modVolume")
+    }
 
     fun createGasParticle(level: T, gasType: GasType, pos: DuctNodePos, x: Double, y: Double, z: Double, xSpeed: Double, ySpeed: Double, zSpeed: Double)
 

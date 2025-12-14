@@ -65,4 +65,11 @@ object GasTypeRegistry {
         register(hydrogen)
         register(methane)
     }
+
+    //for testing purposes
+    val DEBUG_REGISTRY: Map<String, GasType> = mutableMapOf(
+        Pair("test_air", GasType("Test Air",ResourceLocation(KelvinMod.MOD_ID, "test_air"), 1.293, 1.716e-5, 1.005, 0.026)),
+        Pair("test_helium", GasType("Test Helium",ResourceLocation(KelvinMod.MOD_ID, "test_helium"), 0.166, 1.96e-5, 5.1832, 0.151, 79.4, 1.66)),
+        Pair("test_hydrogen", GasType("Test Hydrogen",ResourceLocation(KelvinMod.MOD_ID, "test_hydrogen"), 0.08988, 0.88e-5, 14.30, 0.18, 72.0, 1.4)),
+        )
 }

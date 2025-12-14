@@ -1,0 +1,7 @@
+[22:14:09] [Test worker/INFO]: Added node at 0.0, 0.0, 0.0, minecraft:overworld
+[22:14:09] [Test worker/INFO]: Added node at 1.0, 0.0, 0.0, minecraft:overworld
+[22:14:09] [Test worker/INFO]: Added node at 2.0, 0.0, 0.0, minecraft:overworld
+[22:14:09] [Test worker/INFO]: Added node at 3.0, 0.0, 0.0, minecraft:overworld
+[22:14:09] [Test worker/INFO]: Added edge between 0.0, 0.0, 0.0, minecraft:overworld and 1.0, 0.0, 0.0, minecraft:overworld
+[22:14:09] [Test worker/INFO]: Added edge between 1.0, 0.0, 0.0, minecraft:overworld and 2.0, 0.0, 0.0, minecraft:overworld
+[22:14:09] [Test worker/INFO]: Added edge between 2.0, 0.0, 0.0, minecraft:overworld and 3.0, 0.0, 0.0, minecraft:overworld
