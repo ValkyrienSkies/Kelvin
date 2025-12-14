@@ -47,23 +47,23 @@ object GasTypeRegistry {
 
     fun init () {
         val air = GasType("Air",ResourceLocation(KelvinMod.MOD_ID, "air"), 1.293, 1.716e-5, 1.005, 0.026, iconLocation = getIcon("air"))
-        val exhaust = GasType("Exhaust", ResourceLocation(KelvinMod.MOD_ID, "exhaust"), 1.98, 1.10e-5, 2.2, 0.031, iconLocation = getIcon("exhaust"))
-        val steam = GasType("Steam", ResourceLocation(KelvinMod.MOD_ID, "steam"), 1.98, 1.716e-5, 2.2, 0.031, iconLocation = getIcon("steam"))
-
-
-        val phlogiston = GasType("Phlogiston",ResourceLocation(KelvinMod.MOD_ID, "phlogiston"), 3.0, 2.0e-5, 14.30, 0.240, 150.0, 1.008,  iconLocation = getIcon("phlogiston"))
-        val helium = GasType("Helium",ResourceLocation(KelvinMod.MOD_ID, "helium"),0.166, 1.96e-5, 5.1832, 0.151, 79.4, 1.66, iconLocation = getIcon("helium"))
-        val hydrogen = GasType("Hydrogen",ResourceLocation(KelvinMod.MOD_ID, "hydrogen"), 0.08988, 0.88e-5, 14.30, 0.18, 72.0, 1.4, iconLocation = getIcon("hydrogen"))
-        val methane = GasType("Methane",ResourceLocation(KelvinMod.MOD_ID, "methane"), 0.657, 1.10e-5, 2.2, 0.031, 90.0, 16.0, iconLocation = getIcon("methane"))
+//        val exhaust = GasType("Exhaust", ResourceLocation(KelvinMod.MOD_ID, "exhaust"), 1.98, 1.10e-5, 2.2, 0.031, iconLocation = getIcon("exhaust"), fantasyName = "Smog")
+//        val steam = GasType("Steam", ResourceLocation(KelvinMod.MOD_ID, "steam"), 1.98, 1.716e-5, 2.2, 0.031, iconLocation = getIcon("steam"))
+//
+//
+//        val phlogiston = GasType("Phlogiston",ResourceLocation(KelvinMod.MOD_ID, "phlogiston"), 3.0, 2.0e-5, 14.30, 0.240, 150.0, 1.008,  iconLocation = getIcon("phlogiston"))
+//        val helium = GasType("Helium",ResourceLocation(KelvinMod.MOD_ID, "helium"),0.166, 1.96e-5, 5.1832, 0.151, 79.4, 1.66, iconLocation = getIcon("helium"), fantasyName = "Aether")
+//        val hydrogen = GasType("Hydrogen",ResourceLocation(KelvinMod.MOD_ID, "hydrogen"), 0.08988, 0.88e-5, 14.30, 0.18, 72.0, 1.4, iconLocation = getIcon("hydrogen"), fantasyName = "Stellane")
+//        val methane = GasType("Methane",ResourceLocation(KelvinMod.MOD_ID, "methane"), 0.657, 1.10e-5, 2.2, 0.031, 90.0, 16.0, iconLocation = getIcon("methane"), fantasyName = "Bog")
 
 
         register(air)
-        register(exhaust)
-        register(steam)
-        register(phlogiston)
-        register(helium)
-        register(hydrogen)
-        register(methane)
+//        register(exhaust)
+//        register(steam)
+//        register(phlogiston)
+//        register(helium)
+//        register(hydrogen)
+//        register(methane)
     }
 
     //for testing purposes
