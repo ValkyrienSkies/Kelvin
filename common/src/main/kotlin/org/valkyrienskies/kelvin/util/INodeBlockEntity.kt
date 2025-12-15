@@ -22,6 +22,7 @@ interface INodeBlockEntity {
         if (!client) {
             compound.putString("NodeType", KelvinMod.getKelvin().nodeInfo[pos]?.nodeType?.name ?: NodeBehaviorType.PIPE.name)
             compound.putDouble("KelvinPressure", KelvinMod.getKelvin().getPressureAt(pos))
+
         }
         tag.put("kelvin_node_data", compound)
     }
@@ -32,7 +33,7 @@ interface INodeBlockEntity {
             return
         }
         val kelvin = if (client) KelvinMod.getClientKelvin() else KelvinMod.getKelvin()
-        val info = kelvin.nodeInfo.computeIfAbsent(pos) { t -> DuctNodeInfo(NodeBehaviorType.valueOf(nodeData.getString("NodeType")), 273.15, 0.0, hashMapOf()) }
+        val info = kelvin.nodeInfo.computeIfAbsent(pos) { t -> DuctNodeInfo(NodeBehaviorType.valueOf(nodeData.getString("NodeType")), 273.15, 0.0, hashMapOf(), nodeData.getDouble("KelvinVolume") ?: 0.0) }
 
         val temperature = nodeData.getDouble("KelvinTemperature")
 

@@ -130,7 +130,7 @@ class DuctNetworkServer(
             markLoaded(pos)
         }
         nodes[pos] = node
-        nodeInfo[pos] = DuctNodeInfo(node.behavior, 273.15, 0.0, HashMap())
+        nodeInfo[pos] = DuctNodeInfo(node.behavior, 273.15, 0.0, HashMap(), node.volume)
         if (nodesInDimension[pos.dimensionId] == null) {
             nodesInDimension[pos.dimensionId] = hashSetOf()
         }
@@ -426,11 +426,11 @@ class DuctNetworkServer(
                 var madeNewB = false
 
                 if (nodeA == null) {
-                    nodeInfo[edge.nodeA] = DuctNodeInfo(nodes[edge.nodeA]!!.behavior,273.15, 0.0, HashMap<GasType, Double>())
+                    nodeInfo[edge.nodeA] = DuctNodeInfo(nodes[edge.nodeA]!!.behavior,273.15, 0.0, HashMap<GasType, Double>(), nodeDataA.volume)
                     madeNewA = true
                 }
                 if (nodeB == null) {
-                    nodeInfo[edge.nodeB] = DuctNodeInfo(nodes[edge.nodeB]!!.behavior,273.15, 0.0, HashMap<GasType, Double>())
+                    nodeInfo[edge.nodeB] = DuctNodeInfo(nodes[edge.nodeB]!!.behavior,273.15, 0.0, HashMap<GasType, Double>(), nodeDataB.volume)
                     madeNewB = true
                 }
 
@@ -663,7 +663,7 @@ class DuctNetworkServer(
             for (nodeKey in nodes.keys) {
                 val info = nodeInfo[nodeKey]
                 if (info == null) {
-                    nodeInfo[nodeKey] = DuctNodeInfo(nodes[nodeKey]!!.behavior,273.15, 0.0, HashMap<GasType, Double>())
+                    nodeInfo[nodeKey] = DuctNodeInfo(nodes[nodeKey]!!.behavior,273.15, 0.0, HashMap<GasType, Double>(), nodes[nodeKey]!!.volume)
                     continue
                 }
                 val capacity = mixtureCapacity(info.currentGasMasses)
