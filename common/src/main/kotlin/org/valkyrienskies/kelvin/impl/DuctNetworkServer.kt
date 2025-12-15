@@ -668,6 +668,7 @@ class DuctNetworkServer(
                 }
                 val capacity = mixtureCapacity(info.currentGasMasses)
                 val volume = nodes[nodeKey]!!.volume + info.volumeChange
+                info.totalVolume = volume
                 val cap = mixtureCapacity(info.currentGasMasses)
                 val initTemp = if (cap > 1e-12) (info.currentEnergy / cap).coerceAtLeast(1e-4) else 273.15
                 val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (nodes[nodeKey] as TankDuctNode).size else 1.0
