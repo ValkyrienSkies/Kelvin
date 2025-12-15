@@ -21,8 +21,9 @@ interface INodeBlockEntity {
         NodeNBTUtil.serializeNode(pos, KelvinMod.getKelvinByPlatform()!!, compound)
         if (!client) {
             compound.putString("NodeType", KelvinMod.getKelvin().nodeInfo[pos]?.nodeType?.name ?: NodeBehaviorType.PIPE.name)
+            compound.putDouble("KelvinVolume", KelvinMod.getKelvin().nodeInfo[pos]?.totalVolume ?: 0.0)
             compound.putDouble("KelvinPressure", KelvinMod.getKelvin().getPressureAt(pos))
-
+            compound.putDouble("KelvinEnergy", KelvinMod.getKelvin().getHeatEnergy(pos))
         }
         tag.put("kelvin_node_data", compound)
     }
@@ -36,6 +37,8 @@ interface INodeBlockEntity {
         val info = kelvin.nodeInfo.computeIfAbsent(pos) { t -> DuctNodeInfo(NodeBehaviorType.valueOf(nodeData.getString("NodeType")), 273.15, 0.0, hashMapOf(), nodeData.getDouble("KelvinVolume") ?: 0.0) }
 
         val temperature = nodeData.getDouble("KelvinTemperature")
+        val volume = nodeData.getDouble("KelvinVolume")
+        val energy = nodeData.getDouble("KelvinEnergy")
 
         for (gasResourceLocation in GasTypeRegistry.GAS_TYPES.keys) {
             if (!nodeData.contains(gasResourceLocation.toString())) continue
@@ -49,6 +52,9 @@ interface INodeBlockEntity {
         } else {
             info.currentPressure
         }
+        info.totalVolume = volume
+        info.currentEnergy = energy
+
         kelvin.nodeInfo[pos] = info
     }
 }
