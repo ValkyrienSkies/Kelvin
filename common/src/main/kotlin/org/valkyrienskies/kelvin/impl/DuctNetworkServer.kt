@@ -347,7 +347,7 @@ class DuctNetworkServer(
             //copilot wrote this so im immortalizing it
 
         explnodes.forEach { pos, pressureExcess ->
-            level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(pressureExcess),pos.x + 0.5, pos.y + 0.5, pos.z + 0.5, min(max(1.0, pressureExcess / 1000.0), 10.0).toFloat(), true, Level.ExplosionInteraction.TNT)
+            level.explode(null, KelvinDamageSources.gasExplosion(level.registryAccess(), null), GasExplosionDamageCalculator(pressureExcess),pos.x + 0.5, pos.y + 0.5, pos.z + 0.5, min(max(1.0, pressureExcess / 10000.0), 10.0).toFloat(), true, Level.ExplosionInteraction.TNT)
         }
 
         melted.forEach {

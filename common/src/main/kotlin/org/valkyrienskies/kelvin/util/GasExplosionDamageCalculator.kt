@@ -23,7 +23,7 @@ class GasExplosionDamageCalculator(val overpressure: Double = 0.0) : ExplosionDa
         val superResult = super.getBlockExplosionResistance(explosion, reader, pos, state, fluid)
         if (superResult.isPresent) {
             val resistance = superResult.get()
-            val adjustedResistance = resistance / (1.0f + overpressure.toFloat())
+            val adjustedResistance = resistance /// (1.0f + overpressure.toFloat()) note: way too fucking strong
             return Optional.of(adjustedResistance)
         }
         return superResult
