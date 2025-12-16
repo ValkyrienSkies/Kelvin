@@ -90,17 +90,17 @@ subprojects {
     }
 }
 
-tasks.register("writeVersion") {
-    outputFile = file("build/version.txt")
-    version = version.toString()
-
-    inputs.property("version", version)
-    outputs.file(outputFile)
-
-    doLast {
-        outputFile.writeText(version)
-    }
-}
+//tasks.register("writeVersion") {
+//    outputFile = file("build/version.txt")
+//    version = version.toString()
+//
+//    inputs.property("version", version)
+//    outputs.file(outputFile)
+//
+//    doLast {
+//        outputFile.writeText(version)
+//    }
+//}
 
 allprojects {
     apply plugin: "java"
