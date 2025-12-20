@@ -26,11 +26,11 @@ data class GasType(
     }
 
     fun molesToMass(moles: Double): Double {
-        return moles * density * 22.4
+        return moles * density * 0.0224
     }
 
     fun massToMoles(mass: Double): Double {
-        return mass / (density * 22.4)
+        return mass / (density * 0.0224)
     }
 
     companion object {
