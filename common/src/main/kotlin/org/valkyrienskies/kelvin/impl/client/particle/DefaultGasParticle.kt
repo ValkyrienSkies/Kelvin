@@ -30,7 +30,7 @@ class DefaultGasParticle(
         try {
             setSpriteFromAge(spriteSet)
         }  catch (e: Exception)  {
-            KelvinMod.KELVINLOGGER.error("Error in tick in DefaultGasParticle. Is a particle missing assets? Error: $e")
+            KelvinMod.KELVINLOGGER.error("Error in tick in DefaultGasParticle. Is a gas particle missing assets? Error: $e")
         }
 
     }
