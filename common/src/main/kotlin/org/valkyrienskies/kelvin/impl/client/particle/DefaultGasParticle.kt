@@ -5,6 +5,7 @@ import net.minecraft.client.particle.ParticleRenderType
 import net.minecraft.client.particle.SpriteSet
 import net.minecraft.client.particle.TextureSheetParticle
 import net.minecraft.core.particles.SimpleParticleType
+import org.valkyrienskies.kelvin.KelvinMod
 
 class DefaultGasParticle(
     level: ClientLevel,
@@ -26,7 +27,12 @@ class DefaultGasParticle(
 
     override fun tick() {
         super.tick()
-        setSpriteFromAge(spriteSet)
+        try {
+            setSpriteFromAge(spriteSet)
+        }  catch (e: Exception)  {
+            KelvinMod.KELVINLOGGER.error("Error in tick in DefaultGasParticle. Is a particle missing assets? Error: $e")
+        }
+
     }
 
     override fun getRenderType(): ParticleRenderType {

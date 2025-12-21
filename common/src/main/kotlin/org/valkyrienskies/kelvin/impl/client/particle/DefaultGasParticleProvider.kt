@@ -26,7 +26,7 @@ class DefaultGasParticleProvider(private val sprite: SpriteSet): ParticleProvide
             particle.setSpriteFromAge(sprite)
             return particle
         } catch (e: Exception)  {
-            KelvinMod.KELVINLOGGER.error("Error in createParticle in DefaultGasParticleProvider. Is a particle missing assets? Error $e")
+            KelvinMod.KELVINLOGGER.error("Error in createParticle in DefaultGasParticleProvider. Is a particle missing assets? Error: $e")
         }
         return DefaultGasParticle(level, x, y, z, xSpeed, ySpeed, zSpeed, sprite)
     }
