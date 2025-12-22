@@ -20,7 +20,7 @@ object KelvinParticles {
 
     fun getOrCreateRegistry(modId: String): DeferredRegister<ParticleType<*>> {
         if (modId !in MODID_TO_PARTICLE_REGISTER)
-            MODID_TO_PARTICLE_REGISTER[modId] = DeferredRegister.create(modId, Registries.PARTICLE_TYPE)
+            MODID_TO_PARTICLE_REGISTER[modId] = DeferredRegister.create(KelvinMod.MOD_ID, Registries.PARTICLE_TYPE)
 
 
         return MODID_TO_PARTICLE_REGISTER[modId]!!
