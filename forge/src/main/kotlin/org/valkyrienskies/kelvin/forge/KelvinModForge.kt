@@ -1,6 +1,7 @@
 package org.valkyrienskies.kelvin.forge
 
 import dev.architectury.platform.forge.EventBuses
+import dev.architectury.platform.forge.EventBuses.getModEventBus
 import net.minecraft.server.level.ServerLevel
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent
 import net.minecraftforge.event.AddReloadListenerEvent
@@ -25,6 +26,11 @@ class KelvinModForge {
                 event
             )
         }
+
+        MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
+            KelvinParticles.KelvinClientParticles.init()
+        }
+
 
         EventBuses.registerModEventBus(KelvinMod.MOD_ID, getModBus())
         init()
@@ -72,9 +78,6 @@ class KelvinModForge {
     }
 
     private fun clientSetup(event: FMLClientSetupEvent?) {
-        MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
-            KelvinParticles.KelvinClientParticles.init()
-        }
         initClient()
     }
 
