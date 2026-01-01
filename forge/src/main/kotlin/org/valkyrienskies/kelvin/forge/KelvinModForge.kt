@@ -3,10 +3,12 @@ package org.valkyrienskies.kelvin.forge
 import dev.architectury.platform.forge.EventBuses
 import dev.architectury.platform.forge.EventBuses.getModEventBus
 import net.minecraft.server.level.ServerLevel
+import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent
 import net.minecraftforge.event.AddReloadListenerEvent
 import net.minecraftforge.event.level.ChunkEvent
 import net.minecraftforge.eventbus.api.IEventBus
+import net.minecraftforge.fml.DistExecutor
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
 import org.valkyrienskies.kelvin.KelvinMod
@@ -27,10 +29,12 @@ class KelvinModForge {
             )
         }
 
-        MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
-            KelvinParticles.KelvinClientParticles.init()
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT) { -> Runnable {
+                MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
+                    KelvinParticles.KelvinClientParticles.init()
+                }
+            }
         }
-
 
         EventBuses.registerModEventBus(KelvinMod.MOD_ID, getModBus())
         init()
