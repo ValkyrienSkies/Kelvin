@@ -31,6 +31,7 @@ class SimulationTest {
             println("Thermal energy: ${info.currentEnergy}")
             println("Volume: ${node.volume + info.volumeChange}")
             println("Pressure: ${info.currentPressure}")
+            println("Wall Temperature: ${info.wallTemperature}")
             println("===")
         }
         println("===EDGES===")
@@ -64,6 +65,7 @@ class SimulationTest {
             println("Thermal energy: ${info.currentEnergy}")
             println("Volume: ${node.volume + info.volumeChange}")
             println("Pressure: ${info.currentPressure}")
+            println("Wall Temperature: ${info.wallTemperature}")
             println("===")
         }
         println("===EDGES===")
@@ -95,6 +97,7 @@ class SimulationTest {
             println("Thermal energy: ${info.currentEnergy}")
             println("Volume: ${node.volume + info.volumeChange}")
             println("Pressure: ${info.currentPressure}")
+            println("Wall Temperature: ${info.wallTemperature}")
             println("===")
         }
         println("===EDGES===")
@@ -207,8 +210,8 @@ class SimulationTest {
                 volume = 0.25,
                 maxPressure = 16375049.0,
                 maxTemperature = 1478.0,
-                heatConductivity = 1.0,
-                heatCapacity = 449.0
+                heatConductivity = 1687.5,
+                heatCapacity = 44.9
             )
         }
     }

@@ -25,7 +25,7 @@ open class PipeDuctNode(
 
     companion object {
         fun DEFAULT(pos: DuctNodePos): PipeDuctNode {
-            return PipeDuctNode(pos, NodeBehaviorType.PIPE, volume = 1.0, maxPressure = 16375049.0, maxTemperature = 1478.0, heatConductivity = 1.0)
+            return PipeDuctNode(pos, NodeBehaviorType.PIPE, volume = 1.0, maxPressure = 16375049.0, maxTemperature = 1478.0, heatConductivity = 1687.5, heatCapacity = 449.0)
         }
     }
 }

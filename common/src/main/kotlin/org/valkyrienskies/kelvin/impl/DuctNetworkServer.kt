@@ -1,5 +1,6 @@
 package org.valkyrienskies.kelvin.impl
 
+import com.google.common.collect.ImmutableSet
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -330,7 +331,7 @@ class DuctNetworkServer(
                 KELVINLOGGER.info("Node at $nodePos exploded due to Overpressure. Pressure at time of failure: ${info.currentPressure}")
             }
 
-            if (info.currentTemperature > node.maxTemperature) {
+            if (info.wallTemperature > node.maxTemperature) {
                 melted.add(nodePos)
                 KELVINLOGGER.info("Node at $nodePos reached its Melting Point. Temperature at time of failure: ${info.currentTemperature}")
             }
@@ -660,7 +661,9 @@ class DuctNetworkServer(
             }
 
             //process volume work
-            for (nodeKey in nodes.keys) {
+            for ((nodeKey, node) in nodes) {
+                //Skip Unloaded Nodes
+                if (unloadedNodes.contains(nodeKey)) continue
                 val info = nodeInfo[nodeKey]
                 if (info == null) {
                     nodeInfo[nodeKey] = DuctNodeInfo(nodes[nodeKey]!!.behavior,273.15, 0.0, HashMap<GasType, Double>(), nodes[nodeKey]!!.volume)
@@ -689,6 +692,28 @@ class DuctNetworkServer(
                 info.currentEnergy -= 0.5 * (intermediaryPressure + pressure) * deltaVolumeA
 
                 info.currentTemperature = (info.currentEnergy / capacity).coerceAtLeast(1e-4)
+
+                //region heat transfer to the duct wall
+
+                //TODO: add actual ambient convection coeff here
+                val heatConductivityAmbient =
+                    if (node.heatConductivity > 1e-4)
+                        0.2 * node.heatConductivity / (0.2 + node.heatConductivity)
+                    else 0.0
+                val outerHeatDelta = (info.wallTemperature - 300.0) * tickDelta * heatConductivityAmbient
+                val heatConductivityGas = heatConductivityAverage(info.currentGasMasses, info.currentPressure, info.currentTemperature)
+                val heatConductivityInternal =
+                    if (heatConductivityGas > 1e-4 && node.heatConductivity > 1e-4)
+                        heatConductivityGas * node.heatConductivity / (heatConductivityGas + node.heatConductivity)
+                    else 0.0
+                val innerHeatDelta = ((info.currentTemperature - info.wallTemperature) * tickDelta * heatConductivityInternal)
+                info.wallTemperature -= outerHeatDelta / node.heatCapacity
+                if(info.currentGasMasses.values.sum() > 1e-4) {
+                    info.currentEnergy -= innerHeatDelta
+                    info.wallTemperature += innerHeatDelta / node.heatCapacity
+                    info.currentTemperature = (info.currentEnergy / capacity).coerceAtLeast(1e-4)
+                }
+                //endregion
             }
 
             val snap: MutableMap<DuctNodePos, NodeSnapshot> = HashMap()
