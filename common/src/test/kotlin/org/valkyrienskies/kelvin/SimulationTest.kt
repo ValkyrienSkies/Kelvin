@@ -206,7 +206,9 @@ class SimulationTest {
                 behavior = NodeBehaviorType.PIPE,
                 volume = 0.25,
                 maxPressure = 16375049.0,
-                maxTemperature = 1478.0
+                maxTemperature = 1478.0,
+                heatConductivity = 1.0,
+                heatCapacity = 449.0
             )
         }
     }

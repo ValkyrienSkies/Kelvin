@@ -11,6 +11,8 @@ open class TankDuctNode(
     override val volume: Double,
     override val maxPressure: Double,
     override val maxTemperature: Double,
+    override val heatConductivity: Double,
+    override val heatCapacity: Double,
     val size: Double = 1.0
 ) : DuctNode {
 

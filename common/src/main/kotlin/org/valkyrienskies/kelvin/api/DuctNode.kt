@@ -29,6 +29,8 @@ interface DuctNode {
     val volume: Double
     val maxPressure: Double
     val maxTemperature: Double
+    val heatConductivity: Double
+    val heatCapacity: Double
 
     fun getEdges(): Set<DuctEdge>
 

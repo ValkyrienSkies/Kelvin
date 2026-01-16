@@ -10,7 +10,9 @@ open class PipeDuctNode(
     override val nodeEdges: HashSet<DuctEdge> = HashSet(),
     override val volume: Double,
     override val maxPressure: Double,
-    override val maxTemperature: Double
+    override val maxTemperature: Double,
+    override val heatConductivity: Double,
+    override val heatCapacity: Double
 ) : DuctNode {
 
     override fun getEdges(): Set<DuctEdge> {
@@ -23,7 +25,7 @@ open class PipeDuctNode(
 
     companion object {
         fun DEFAULT(pos: DuctNodePos): PipeDuctNode {
-            return PipeDuctNode(pos, NodeBehaviorType.PIPE, volume = 1.0, maxPressure = 16375049.0, maxTemperature = 1478.0)
+            return PipeDuctNode(pos, NodeBehaviorType.PIPE, volume = 1.0, maxPressure = 16375049.0, maxTemperature = 1478.0, heatConductivity = 1.0)
         }
     }
 }
