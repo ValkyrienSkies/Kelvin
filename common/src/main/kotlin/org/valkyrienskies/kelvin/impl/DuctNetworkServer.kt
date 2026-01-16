@@ -910,16 +910,15 @@ class DuctNetworkServer(
                     val heatConductivityA = heatConductivityAverage(nodeA.currentGasMasses, newNewPressureA, currentTemperatureA)
                     val heatConductivityB = heatConductivityAverage(nodeB.currentGasMasses, newNewPressureB, currentTemperatureB)
 
-                    val totalAvgHeatConductivity = (heatConductivityA + heatConductivityB) / 2.0
+                    val totalAvgHeatConductivity = if (heatConductivityA > 1e-4 && heatConductivityB > 1e-4) heatConductivityA * heatConductivityB / ( heatConductivityA + heatConductivityB ) else 0.0
 
                     //Calculates passive heat transfer between nodes
-                    val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * 2.0) * ((currentTemperatureA - currentTemperatureB) / edge.length))
+                    val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * edge.radius) * ((currentTemperatureA - currentTemperatureB) / edge.length)) * tickDelta
                     val passiveHeatLimit = min(nodeA.currentEnergy.absoluteValue + 1.0, nodeB.currentEnergy.absoluteValue + 1.0)
-
 
                     if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite()) {
                         if (totalGasMassA >= 0.1 && totalGasMassB >= 0.1 && newCapacityA >= 0.001 && newCapacityB >= 0.001) {
-                            val dE = Mth.clamp(passiveHeatDelta, -passiveHeatLimit, passiveHeatLimit) * tickDelta
+                            val dE = Mth.clamp(passiveHeatDelta, -nodeB.currentEnergy.absoluteValue, nodeA.currentEnergy.absoluteValue)
                             val pendingPassive = PendingPassiveTransfer(
                                 srcPos = edge.nodeA,
                                 dstPos = edge.nodeB,
@@ -1306,7 +1305,7 @@ class DuctNetworkServer(
         var heatConductivity = 0.0
 
         for (gas in gasWeight.keys) {
-            heatConductivity += gasWeight[gas]!! * ((gas.thermalConductivity * (temperature/300.0)) * (1.0 + (0.0075 * (pressure/101325.0))))
+            heatConductivity += gasWeight[gas]!! * (gas.thermalConductivity) * (temperature/300.0) // * (1.0 + (0.0075 * (pressure/101325.0))))
         }
 
         return heatConductivity
