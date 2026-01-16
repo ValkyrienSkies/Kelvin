@@ -48,6 +48,11 @@ interface DuctNetwork<T: Level> {
     fun getTemperatureAt(node: DuctNodePos): Double
 
     /**
+     * Returns the duct wall temperature at a node from the previous tick.
+     */
+    fun getWallTemperatureAt(node: DuctNodePos): Double
+
+    /**
      * Returns the thermal energy at a node from the previous tick.
      */
     fun getHeatEnergy(pos: DuctNodePos): Double
@@ -71,6 +76,9 @@ interface DuctNetwork<T: Level> {
     }
     fun modTemperature(pos: DuctNodePos, deltaTemperature: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modTemperature")
+    }
+    fun setWallTemperature(pos: DuctNodePos, deltaTemperature: Double) {
+        KELVINLOGGER.warn("You can't modify this from here. Called: setWallTemperature")
     }
     fun modPressure(pos: DuctNodePos, deltaPressure: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modPressure")

@@ -5,32 +5,34 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.DuctNetwork
-import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodePos
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 
 object NodeNBTUtil {
     fun <T: Level> serializeNode(pos: DuctNodePos, network: DuctNetwork<T>, tag: CompoundTag) {
         val gasMasses = network.getGasMassAt(pos)
         val temperature = network.getTemperatureAt(pos)
+        val wallTemperature = network.getWallTemperatureAt(pos)
 
         for ((gas, mass) in gasMasses) {
             tag.putDouble(gas.resourceLocation.toString(), mass)
         }
 
         tag.putDouble("KelvinTemperature",temperature)
+        tag.putDouble("KelvinWallTemperature", wallTemperature)
     }
 
     fun <T: Level> deserializeNode(pos: DuctNodePos, network: DuctNetwork<T>, tag: CompoundTag) {
         val temperature = tag.getDouble("KelvinTemperature")
+        val wallTemperature = tag.getDouble("KelvinWallTemperature")
 
         for (gasResourceLocation in tag.allKeys) {
-            if (gasResourceLocation == "KelvinTemperature") continue
+            if (gasResourceLocation == "KelvinTemperature" || gasResourceLocation == "KelvinWallTemperature") continue
 
             val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation(gasResourceLocation)] ?: continue
             network.modGasMass(pos,gasType,tag.getDouble(gasResourceLocation))
         }
+        network.setWallTemperature(pos, wallTemperature)
         network.modTemperature(pos, temperature)
     }
 

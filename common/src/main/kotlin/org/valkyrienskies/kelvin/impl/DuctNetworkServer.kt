@@ -1,6 +1,5 @@
 package org.valkyrienskies.kelvin.impl
 
-import com.google.common.collect.ImmutableSet
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -111,6 +110,10 @@ class DuctNetworkServer(
         return nodeInfo[node]?.currentTemperature ?: 0.0001
     }
 
+    override fun getWallTemperatureAt(node: DuctNodePos): Double {
+        return nodeInfo[node]?.wallTemperature ?: 0.0001
+    }
+
     override fun getGasMassAt(node: DuctNodePos): HashMap<GasType, Double> {
         return nodeInfo[node]?.currentGasMasses ?: HashMap()
     }
@@ -191,6 +194,13 @@ class DuctNetworkServer(
         val gasMasses = getGasMassAt(pos)
         val capacity = mixtureCapacity(gasMasses)
         nodeInfo[pos]?.currentEnergy = nodeInfo[pos]?.currentTemperature?.times(capacity) ?: 0.0001
+    }
+
+    override fun setWallTemperature(pos: DuctNodePos, temperature: Double) {
+        if (temperature.isNaN() || temperature.isInfinite()) {
+            return
+        }
+        nodeInfo[pos]?.wallTemperature = temperature
     }
 
     override fun modPressure(pos: DuctNodePos, deltaPressure: Double) {
