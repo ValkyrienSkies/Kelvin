@@ -79,8 +79,8 @@ class SimulationTest {
             network.nodeInfo[pos]!!.currentEnergy
         }
         println("Total energy after 200 steps: $totalEnergyMiddle")
-        // this should be the same, since we havent applied a compressive force yet, lesser threshold tho cause energy is more fickle
-        assert(abs(totalEnergyBefore - totalEnergyMiddle) < 1e-6) { "Total energy of gas should be constant before and after simulation!" }
+        // this should decrease due to ambient transfer
+        assert(totalEnergyBefore > totalEnergyMiddle) { "Total energy of gas should be decreased due to ambient heat dissipation" }
 
         //apply a pressure to node 1
         network.modVolume(DuctNodePos(0.0, 0.0, 0.0), -0.05)
@@ -116,7 +116,7 @@ class SimulationTest {
         assert(abs(totalMassBefore - totalMassAfter) < 1e-9) { "Total mass of gas should be constant before and after simulation!" }
         println("Total energy at end of simulation: $totalEnergyAfter")
         // this should actually be larger
-        assert(totalEnergyAfter > totalEnergyBefore) { "Total energy of gas should increase after compressive force!" }
+        assert(totalEnergyAfter > totalEnergyMiddle) { "Total energy of gas should increase after compressive force!" }
     }
 
     @Test
