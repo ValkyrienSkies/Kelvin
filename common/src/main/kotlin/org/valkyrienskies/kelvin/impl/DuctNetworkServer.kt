@@ -704,20 +704,21 @@ class DuctNetworkServer(
                 info.currentTemperature = (info.currentEnergy / capacity).coerceAtLeast(1e-4)
 
                 //region heat transfer to the duct wall
-
-                //TODO: add actual ambient convection coeff here
-                val heatConductivityAmbient =
-                    if (node.heatConductivity > 1e-4)
-                        0.2 * node.heatConductivity / (0.2 + node.heatConductivity)
-                    else 0.0
-                val outerHeatDelta = (info.wallTemperature - 300.0) * tickDelta * heatConductivityAmbient
                 val heatConductivityGas = heatConductivityAverage(info.currentGasMasses, info.currentPressure, info.currentTemperature)
                 val heatConductivityInternal =
                     if (heatConductivityGas > 1e-4 && node.heatConductivity > 1e-4)
                         heatConductivityGas * node.heatConductivity / (heatConductivityGas + node.heatConductivity)
                     else 0.0
                 val innerHeatDelta = ((info.currentTemperature - info.wallTemperature) * tickDelta * heatConductivityInternal)
-                info.wallTemperature -= outerHeatDelta / node.heatCapacity
+
+                // Ambient heat transfer. Commented out for now!
+                //val heatConductivityAmbient =
+                //    if (node.heatConductivity > 1e-4)
+                //        0.2 * node.heatConductivity / (0.2 + node.heatConductivity)
+                //    else 0.0
+                //val outerHeatDelta = (info.wallTemperature - 300.0) * tickDelta * heatConductivityAmbient
+                //info.wallTemperature -= outerHeatDelta / node.heatCapacity
+
                 if(info.currentGasMasses.values.sum() > 1e-4) {
                     info.currentEnergy -= innerHeatDelta
                     info.wallTemperature += innerHeatDelta / node.heatCapacity
