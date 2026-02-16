@@ -5,11 +5,13 @@ import mezz.jei.api.ingredients.IIngredientRenderer
 import mezz.jei.api.ingredients.IIngredientType
 import mezz.jei.api.ingredients.subtypes.UidContext
 import net.minecraft.ChatFormatting
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.TooltipFlag
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.api.KelvinTextHandler
 import org.valkyrienskies.kelvin.api.recipe.KelvinGasIngredient
 
 
@@ -54,6 +56,8 @@ class GasIngredientRenderer: IIngredientRenderer<KelvinGasIngredient> {
 
     override fun render(guiGraphics: GuiGraphics, ingredient: KelvinGasIngredient) {
         guiGraphics.blit(ingredient.gasType.iconLocation, 0, 0, 0, 0f, 0f, 16, 16, 16, 16)
+        guiGraphics.drawString(Minecraft.getInstance().font, KelvinTextHandler.mass(ingredient.mass), 8, 10, 16777215, false)
+
     }
 
 }
