@@ -56,8 +56,18 @@ class GasIngredientRenderer: IIngredientRenderer<KelvinGasIngredient> {
 
     override fun render(guiGraphics: GuiGraphics, ingredient: KelvinGasIngredient) {
         guiGraphics.blit(ingredient.gasType.iconLocation, 0, 0, 0, 0f, 0f, 16, 16, 16, 16)
-        guiGraphics.drawString(Minecraft.getInstance().font, KelvinTextHandler.mass(ingredient.mass), 8, 10, 16777215, false)
 
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().scale(0.5f, 0.5f, 1.0f);
+
+        for (xOffset in -1..1)
+            for (yOffset in -1..1)
+                guiGraphics.drawString(Minecraft.getInstance().font, KelvinTextHandler.mass(ingredient.mass), 4 *2 + xOffset, 10 *2 + yOffset, 853249 , false)
+
+        guiGraphics.drawString(Minecraft.getInstance().font, KelvinTextHandler.mass(ingredient.mass), 4 *2, 10 *2, 16777215, false)
+
+
+        guiGraphics.pose().popPose();
     }
 
 }
