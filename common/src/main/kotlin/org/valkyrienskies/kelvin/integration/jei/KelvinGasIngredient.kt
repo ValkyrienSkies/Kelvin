@@ -62,9 +62,9 @@ class GasIngredientRenderer: IIngredientRenderer<KelvinGasIngredient> {
 
         for (xOffset in -1..1)
             for (yOffset in -1..1)
-                guiGraphics.drawString(Minecraft.getInstance().font, KelvinTextHandler.mass(ingredient.mass), 4 *2 + xOffset, 10 *2 + yOffset, 853249 , false)
+                guiGraphics.drawString(Minecraft.getInstance().font, KelvinTextHandler.mass(ingredient.mass), 6 *2 + xOffset, 10 *2 + yOffset, 853249 , false)
 
-        guiGraphics.drawString(Minecraft.getInstance().font, KelvinTextHandler.mass(ingredient.mass), 4 *2, 10 *2, 16777215, false)
+        guiGraphics.drawString(Minecraft.getInstance().font, KelvinTextHandler.mass(ingredient.mass), 6 *2, 10 *2, 16777215, false)
 
 
         guiGraphics.pose().popPose();
