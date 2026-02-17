@@ -90,7 +90,7 @@ object DefaultKelvinRequirements {
             val gasType = value.asJsonObject["gas"].asString
             val ratio = value.asJsonObject["ratio"].asDouble
 
-            return Component.literal("Inhibitied by: $gasType with ${ratio*100}%")
+            return Component.literal("Inhibitied by: $gasType(${ratio*100}%)")
         }
     }
 }
