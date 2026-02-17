@@ -416,6 +416,7 @@ class DuctNetworkServer(
 
     }
 
+    @Deprecated("")
     fun simulateClassic(subSteps: Int) {
         val edgesToProcess = HashMap(edges.filterNot { it.value.unloaded })
         for (step in 1..subSteps) {
@@ -582,22 +583,6 @@ class DuctNetworkServer(
 
                     val massA = nodeA.currentGasMasses[gas]!!
                     val massB = nodeB.currentGasMasses[gas]!!
-
-
-                    // Calculate flow limit based on pump behavior:
-                    // - For pumps: Allow full extraction from source node when pumping in or out
-                    // - For normal pipes: Limit to half the mass difference between nodes
-                    // - For invalid pump configurations: No flow allowed
-                    // Plus extra code for tanks, so that their limit was bigger to compensate for the mass they store
-
-//                    val limit: Double
-//                    if (aTarget && aFlowOut || bPump && !bTarget && aFlowOut) limit = massA
-//                    else if (bTarget && bFlowOut || aPump && !aTarget && bFlowOut) limit = massB
-//                    else if (!aPump && !bPump) limit = abs(massA/tankMultA-massB/tankMultB)/2.0
-//                    else limit = 0.0
-                    //KELVINLOGGER.info("MassA: $massA, MassB: $massB, Limit: $limit")
-
-
 
                     val deltaMassA = Mth.clamp(flowRateA, -massA, massB)
                     val deltaMassB = Mth.clamp(flowRateB, -massB, massA)
@@ -1008,7 +993,7 @@ class DuctNetworkServer(
                 }
 
                 // This is the ONLY flow that actually happened
-                val mdotEffective = (dmAppliedTotal / tickDelta) * p.sign * 0.2
+                val mdotEffective = (dmAppliedTotal / tickDelta) * p.sign
                 edgeMdot[p.edge] = (edgeMdot[p.edge] ?: 0.0) + mdotEffective
             }
             for (p in pendingPassiveTransfers) {
@@ -1026,11 +1011,11 @@ class DuctNetworkServer(
 
                 for ((gas, dm) in d.deltaGasMasses) {
                     val old = info.currentGasMasses[gas] ?: 0.0
-                    val next = old + (dm * 0.2)
+                    val next = old + (dm)
                     if (next <= 0.0) info.currentGasMasses.remove(gas)
                     else info.currentGasMasses[gas] = next
                 }
-                info.currentEnergy += (d.deltaEnergy * 0.2)
+                info.currentEnergy += (d.deltaEnergy)
             }
 
             //normalize

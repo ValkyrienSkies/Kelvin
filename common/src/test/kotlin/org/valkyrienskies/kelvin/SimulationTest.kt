@@ -210,8 +210,8 @@ class SimulationTest {
                 volume = 0.25,
                 maxPressure = 16375049.0,
                 maxTemperature = 1478.0,
-                heatConductivity = 1687.5,
-                heatCapacity = 44.9
+                heatConductivity = 5000.0,
+                heatCapacity = 50.0
             )
         }
     }
