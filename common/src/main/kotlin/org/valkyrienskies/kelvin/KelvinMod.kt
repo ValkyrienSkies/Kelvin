@@ -42,6 +42,10 @@ object KelvinMod {
     val Kelvin: DuctNetworkServer = DuctNetworkServer()
     val KelvinClient: DuctNetworkClient = DuctNetworkClient()
 
+    var disableReactionJEI = false
+
+
+    fun disableReactionJEI() {disableReactionJEI = true}
 
     @JvmStatic
     fun init() {

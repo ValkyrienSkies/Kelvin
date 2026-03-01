@@ -30,6 +30,7 @@ class KelvinJeiPlugin: IModPlugin {
     override fun registerCategories(registration: IRecipeCategoryRegistration) {
         super.registerCategories(registration)
 
+        if (!KelvinMod.disableReactionJEI)
         registration.addRecipeCategories(KelvinReactionRecipeCategory())
     }
 
