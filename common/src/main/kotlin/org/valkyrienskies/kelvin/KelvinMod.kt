@@ -35,7 +35,7 @@ object KelvinMod {
 
     const val chunkSaveID = "KELVIN_CHUNK_INFO"
 
-    val KELVINLOGGER = logger("Meringue Factory").logger
+    val KELVINLOGGER = logger("(Kelvin) Meringue Factory").logger
 
     lateinit var networkManager: SimpleNetworkManager
 
