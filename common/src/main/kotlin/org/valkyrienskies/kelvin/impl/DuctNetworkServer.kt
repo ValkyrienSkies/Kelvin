@@ -1281,8 +1281,15 @@ class DuctNetworkServer(
         val density = if (pressureDrop >= 0.0) densityA else densityB
 
         val area = Math.PI * radius * radius
-        val vPrev = previousFlowRate / (density * area) // m/s
-        val Re = max((density * vPrev * pipeDiameter) / viscosity, 1e-4)
+        val vPrev = (previousFlowRate / (density * area)).absoluteValue
+
+        // Calculate the ideal laminar velocity to kickstart the flow and escape infinite friction
+        val laminarVelocity = (finalPressureDrop.absoluteValue * radius * radius) / (8.0 * viscosity * length)
+
+        // Use the larger of the two velocities to calculate the Reynolds number
+        val effectiveVelocity = max(vPrev, laminarVelocity)
+
+        val Re = max((density * effectiveVelocity * pipeDiameter) / viscosity, 1e-4)
 
         var f: Double = if (Re < 2000) {
             64.0/Re
