@@ -21,6 +21,7 @@ import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry.DEBUG_REGISTRY
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
+import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
 import org.valkyrienskies.kelvin.util.*
 import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
@@ -41,7 +42,7 @@ class DuctNetworkServer(
     private val syncTimers = HashMap<ResourceLocation, Int>()
     private val chunkSyncRequests = HashMap<ResourceLocation, ConcurrentLinkedQueue<Pair<ServerPlayer, KelvinChunkPos>>>().withDefault { ConcurrentLinkedQueue() }
 
-    var solver: KelvinSolver = JacobiSimplifiedSolver()
+    var solver: KelvinSolver = JacobiSolver()
     var isTestingEnvironment: Boolean = false
 
     override fun markLoaded(pos: DuctNodePos) {

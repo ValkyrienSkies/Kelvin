@@ -13,6 +13,7 @@ import org.valkyrienskies.kelvin.api.edges.OneWayEdge
 import org.valkyrienskies.kelvin.api.edges.PumpEdge
 import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
+import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer.NodeDelta
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer.NodeSnapshot
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer.PendingPassiveTransfer
@@ -263,7 +264,8 @@ class JacobiSolver: KelvinSolver {
                         val dmTotal = abs(dtMass)
 
                         // Build list of allowed gases (respect edge filters/pumps)
-                        val registry = GasTypeRegistry.GAS_TYPES //if (!isTestingEnvironment) GasTypeRegistry.GAS_TYPES else DEBUG_REGISTRY
+                        val registry = if ((network as? DuctNetworkServer)?.isTestingEnvironment ?: false) GasTypeRegistry.DEBUG_REGISTRY
+                        else GasTypeRegistry.GAS_TYPES
                         val allowed = registry.values.filter { gas ->
                             // pump direction rule (copy your rule, but apply once here)
                             if (edge is PumpEdge && ((dtMass < 0 && edge.target == edge.nodeB) || (dtMass > 0 && edge.target == edge.nodeA))) return@filter false
