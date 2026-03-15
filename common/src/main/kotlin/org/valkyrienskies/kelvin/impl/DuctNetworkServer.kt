@@ -42,7 +42,7 @@ class DuctNetworkServer(
     private val syncTimers = HashMap<ResourceLocation, Int>()
     private val chunkSyncRequests = HashMap<ResourceLocation, ConcurrentLinkedQueue<Pair<ServerPlayer, KelvinChunkPos>>>().withDefault { ConcurrentLinkedQueue() }
 
-    var solver: KelvinSolver = JacobiSimplifiedSolver()
+    var solver: KelvinSolver = JacobiSolver()
     var isTestingEnvironment: Boolean = false
 
     override fun markLoaded(pos: DuctNodePos) {
