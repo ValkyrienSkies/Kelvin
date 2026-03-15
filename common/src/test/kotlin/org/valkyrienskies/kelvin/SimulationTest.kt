@@ -10,6 +10,9 @@ import org.valkyrienskies.kelvin.api.edges.PipeDuctEdge
 import org.valkyrienskies.kelvin.api.nodes.PipeDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry.DEBUG_REGISTRY
+import org.valkyrienskies.kelvin.impl.solvers.ClassicSolver
+import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
+import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
 import kotlin.math.abs
 
 class SimulationTest {
@@ -52,8 +55,9 @@ class SimulationTest {
         println("Running simulation...")
 
         // run 200 simulation steps
+        network.solver = JacobiSolver()
         for (i in 1..200) {
-            network.simulateJacobi(10)
+            network.solver.step(network,10)
         }
 
         // Printout final network status
@@ -87,7 +91,7 @@ class SimulationTest {
 
         // run another 200 simulation steps
         for (i in 1..200) {
-            network.simulateJacobi(10)
+            network.solver.step(network,10)
         }
         println("Final state after 400 steps:")
         println("===NODES===")
@@ -145,8 +149,59 @@ class SimulationTest {
         println("Running simulation...")
 
         // run 200 simulation steps
+        network.solver = ClassicSolver()
         for (i in 1..200) {
-            network.simulateClassic(10)
+            network.solver.step(network,10)
+        }
+
+        // Printout final network status
+        println("State after 200 steps:")
+        println("===NODES===")
+        for ((pos, node) in network.nodes) {
+            val info = network.nodeInfo[pos]!!
+            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
+            println("Thermal energy: ${info.currentEnergy}")
+            println("Volume: ${node.volume + info.volumeChange}")
+            println("Pressure: ${info.currentPressure}")
+            println("===")
+        }
+        println("===EDGES===")
+        for (edge in network.edges) {
+            println("Edge from ${edge.key.first} to ${edge.key.second}")
+            println("Flow Rate: ${edge.value.currentFlowRate}")
+            println("===")
+        }
+    }
+
+    @Test
+    fun testSimulationStepJacobiSimplified() {
+        //setup simple demo scene
+        setupDemoNetwork()
+
+        // Printout current network status
+
+        println("Initial State:")
+        println("===NODES===")
+        for ((pos, node) in network.nodes) {
+            val info = network.nodeInfo[pos]!!
+            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
+            println("Thermal energy: ${info.currentEnergy}")
+            println("Volume: ${node.volume + info.volumeChange}")
+            println("Pressure: ${info.currentPressure}")
+            println("===")
+        }
+        println("===EDGES===")
+        for (edge in network.edges) {
+            println("Edge from ${edge.key.first} to ${edge.key.second}")
+            println("Flow Rate: ${edge.value.currentFlowRate}")
+            println("===")
+        }
+        println("Running simulation...")
+
+        // run 200 simulation steps
+        network.solver = JacobiSimplifiedSolver()
+        for (i in 1..200) {
+            network.solver.step(network,10)
         }
 
         // Printout final network status
