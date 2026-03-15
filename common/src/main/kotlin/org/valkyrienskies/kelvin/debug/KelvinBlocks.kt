@@ -14,6 +14,5 @@ object KelvinBlocks {
 
     fun init() {
         BLOCKS.register()
-        Blocks.HAY_BLOCK
     }
 }
