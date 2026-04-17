@@ -15,7 +15,7 @@ object KelvinGasRecipeSerializer {
     fun parseGasList(element: JsonObject): HashMap<GasType, Double>? {
         val map = HashMap<GasType, Double>()
         for (entry in element.entrySet()) {
-            val gasType = GasTypeRegistry.getGasType(ResourceLocation(entry.key))
+            val gasType = GasTypeRegistry.getGasType(ResourceLocation.parse(entry.key))
             if (gasType == null) {
                 KelvinMod.KELVINLOGGER.error("Invalid gas type in recipe: '${entry.key}'")
                 return null
@@ -41,7 +41,7 @@ object KelvinGasRecipeSerializer {
 
         if (jObject.has("requirements"))
         for (entry in jObject["requirements"].asJsonObject.entrySet()) {
-            val reactionRequirement = ReactionRequirementRegistry.getReactionRequirement(ResourceLocation(entry.key)) ?: return null
+            val reactionRequirement = ReactionRequirementRegistry.getReactionRequirement(ResourceLocation.parse(entry.key)) ?: return null
             requirements[reactionRequirement] = entry.value
         }
 

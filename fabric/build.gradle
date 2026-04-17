@@ -48,9 +48,9 @@ dependencies {
     shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
-    modImplementation("net.fabricmc:fabric-language-kotlin:1.11.0+kotlin.2.0.0")
-    api "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10"
-    api "org.jetbrains.kotlin:kotlin-reflect:1.9.10"
+    modImplementation("net.fabricmc:fabric-language-kotlin:1.12.3+kotlin.2.0.21")
+    api "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${rootProject.kotlin_version}"
+    api "org.jetbrains.kotlin:kotlin-reflect:${rootProject.kotlin_version}"
 
     // Architectury API
     include(modApi "dev.architectury:architectury-fabric:${rootProject.architectury_version}")
@@ -59,7 +59,7 @@ dependencies {
     modCompileOnly  "mezz.jei:jei-${rootProject.minecraft_version}-fabric-api:${rootProject.jei_version}"
 
     // Mod menu
-    modImplementation("com.terraformersmc:modmenu:7.2.2")
+    modImplementation("com.terraformersmc:modmenu:11.0.2")
     modImplementation("me.shedaniel.cloth:cloth-config:${cloth_config_version}") {
         exclude(group: "net.fabricmc.fabric-api")
     }

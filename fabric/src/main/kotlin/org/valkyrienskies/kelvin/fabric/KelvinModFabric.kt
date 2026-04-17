@@ -51,7 +51,7 @@ object KelvinModFabric: ModInitializer {
         ResourceManagerHelper.get(SERVER_DATA)
             .registerReloadListener(object : IdentifiableResourceReloadListener {
                 override fun getFabricId(): ResourceLocation {
-                    return ResourceLocation(KelvinMod.MOD_ID, "kelvin_reactions")
+                    return ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "kelvin_reactions")
                 }
 
                 override fun reload(

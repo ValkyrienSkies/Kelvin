@@ -1,45 +1,38 @@
 package org.valkyrienskies.kelvin.forge
 
-import dev.architectury.platform.forge.EventBuses
-import dev.architectury.platform.forge.EventBuses.getModEventBus
+import dev.architectury.platform.Platform
+import dev.architectury.utils.Env
 import net.minecraft.server.level.ServerLevel
-import net.minecraftforge.api.distmarker.Dist
-import net.minecraftforge.client.event.RegisterParticleProvidersEvent
-import net.minecraftforge.event.AddReloadListenerEvent
-import net.minecraftforge.event.level.ChunkEvent
-import net.minecraftforge.eventbus.api.IEventBus
-import net.minecraftforge.fml.DistExecutor
-import net.minecraftforge.fml.common.Mod
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
+import net.neoforged.bus.api.IEventBus
+import net.neoforged.fml.common.Mod
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
+import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent
+import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.event.AddReloadListenerEvent
+import net.neoforged.neoforge.event.level.ChunkEvent
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.init
 import org.valkyrienskies.kelvin.KelvinMod.initClient
 import org.valkyrienskies.kelvin.KelvinParticles
 import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
-import thedarkcolour.kotlinforforge.forge.FORGE_BUS
-import thedarkcolour.kotlinforforge.forge.MOD_BUS
 
 @Mod(KelvinMod.MOD_ID)
-class KelvinModForge {
+class KelvinModForge(private val modBus: IEventBus) {
     init {
-        MOD_BUS.addListener { event: FMLClientSetupEvent? ->
+        modBus.addListener { event: FMLClientSetupEvent? ->
             clientSetup(
                 event
             )
         }
 
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT) { -> Runnable {
-                MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
-                    KelvinParticles.KelvinClientParticles.init()
-                }
-            }
+        if (Platform.getEnvironment() == Env.CLIENT) {
+            modBus.addListener(ClientEvents::registerParticleProviders)
         }
 
-        EventBuses.registerModEventBus(KelvinMod.MOD_ID, getModBus())
         init()
 
-        FORGE_BUS.addListener { event: ChunkEvent.Load ->
+        NeoForge.EVENT_BUS.addListener { event: ChunkEvent.Load ->
             if (!event.level.isClientSide) {
                 try {
                     KelvinMod.getKelvin().markChunkLoaded(
@@ -56,7 +49,7 @@ class KelvinModForge {
             }
         }
 
-        FORGE_BUS.addListener { event: ChunkEvent.Unload ->
+        NeoForge.EVENT_BUS.addListener { event: ChunkEvent.Unload ->
             if (!event.level.isClientSide) {
                 try {
                     KelvinMod.getKelvin().markChunkUnloaded(
@@ -73,7 +66,7 @@ class KelvinModForge {
             }
         }
 
-        FORGE_BUS.addListener(::registerResourceManagers)
+        NeoForge.EVENT_BUS.addListener(::registerResourceManagers)
     }
 
     private fun registerResourceManagers(event: AddReloadListenerEvent) {
@@ -85,7 +78,9 @@ class KelvinModForge {
         initClient()
     }
 
-    companion object {
-        fun getModBus(): IEventBus = MOD_BUS
+    private object ClientEvents {
+        fun registerParticleProviders(event: RegisterParticleProvidersEvent) {
+            KelvinParticles.KelvinClientParticles.init()
+        }
     }
 }

@@ -11,11 +11,11 @@ import org.valkyrienskies.kelvin.KelvinMod
 object KelvinDamageSources {
     private val GAS_EXPLOSION_KEY = ResourceKey.create(
         Registries.DAMAGE_TYPE,
-        ResourceLocation(KelvinMod.MOD_ID, "gas_explosion")
+        ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "gas_explosion")
     )
     private val GAS_BURN_KEY = ResourceKey.create(
         Registries.DAMAGE_TYPE,
-        ResourceLocation(KelvinMod.MOD_ID, "gas_burn")
+        ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "gas_burn")
     )
 
     fun gasExplosion(registryAccess: RegistryAccess, victim: Entity?): DamageSource {

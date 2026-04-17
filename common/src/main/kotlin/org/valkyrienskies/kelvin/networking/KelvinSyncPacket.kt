@@ -2,10 +2,9 @@ package org.valkyrienskies.kelvin.networking
 
 import dev.architectury.networking.NetworkManager
 import dev.architectury.networking.simple.BaseS2CMessage
-import dev.architectury.networking.simple.MessageDecoder
 import dev.architectury.networking.simple.MessageType
 import net.minecraft.client.Minecraft
-import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.network.RegistryFriendlyByteBuf
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.networking.KelvinNetworking.readClientKelvinInfo
@@ -20,7 +19,7 @@ class KelvinSyncPacket: BaseS2CMessage {
         this.chunkFlag = chunkFlag
     }
 
-    constructor(buf: FriendlyByteBuf) {
+    constructor(buf: RegistryFriendlyByteBuf) {
         this.info = buf.readByteArray().readClientKelvinInfo()
         this.chunkFlag = buf.readBoolean()
     }
@@ -29,7 +28,7 @@ class KelvinSyncPacket: BaseS2CMessage {
         return KelvinNetworking.SYNC_TO_CLIENT
     }
 
-    override fun write(buf: FriendlyByteBuf) {
+    override fun write(buf: RegistryFriendlyByteBuf) {
         buf.writeByteArray(info.writeToByteArray())
         buf.writeBoolean(chunkFlag)
     }

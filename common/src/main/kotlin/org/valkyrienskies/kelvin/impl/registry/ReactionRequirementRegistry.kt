@@ -22,7 +22,7 @@ object ReactionRequirementRegistry {
     }
 
     fun getReactionRequirement(modid: String, name: String): GasReactionRequirement? {
-        return getReactionRequirement(ResourceLocation(modid, name))
+        return getReactionRequirement(ResourceLocation.fromNamespaceAndPath(modid, name))
     }
 
     fun init () {

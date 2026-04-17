@@ -8,7 +8,11 @@ import org.joml.Vector3ic
 
 @JsonSerialize(using = KelvinKeyMapper.ChunkPosSerializer::class)
 @JsonDeserialize(using = KelvinKeyMapper.ChunkPosDeserializer::class)
-data class KelvinChunkPos(val x: Int, val z: Int, val dimensionId: ResourceLocation = ResourceLocation("minecraft", "overworld")) {
+data class KelvinChunkPos(
+    val x: Int,
+    val z: Int,
+    val dimensionId: ResourceLocation = ResourceLocation.fromNamespaceAndPath("minecraft", "overworld")
+) {
     override fun toString(): String {
         return "$x, $z, ${dimensionId.namespace}:${dimensionId.path}"
     }
@@ -22,7 +26,11 @@ data class KelvinChunkPos(val x: Int, val z: Int, val dimensionId: ResourceLocat
     }
 
     companion object {
-        fun fromBlockCoordinates(x: Int, z: Int, dimension: ResourceLocation = ResourceLocation("minecraft", "overworld")): KelvinChunkPos {
+        fun fromBlockCoordinates(
+            x: Int,
+            z: Int,
+            dimension: ResourceLocation = ResourceLocation.fromNamespaceAndPath("minecraft", "overworld")
+        ): KelvinChunkPos {
             return KelvinChunkPos(x shr 4, z shr 4, dimension)
         }
     }

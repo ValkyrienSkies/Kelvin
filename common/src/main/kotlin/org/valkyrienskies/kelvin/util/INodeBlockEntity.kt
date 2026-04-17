@@ -43,7 +43,7 @@ interface INodeBlockEntity {
 
         for (gasResourceLocation in GasTypeRegistry.GAS_TYPES.keys) {
             if (!nodeData.contains(gasResourceLocation.toString())) continue
-            val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation(gasResourceLocation.toString())] ?: continue
+            val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation.parse(gasResourceLocation.toString())] ?: continue
             info.currentGasMasses[gasType] = nodeData.getDouble(gasResourceLocation.toString())
         }
         info.currentTemperature = temperature

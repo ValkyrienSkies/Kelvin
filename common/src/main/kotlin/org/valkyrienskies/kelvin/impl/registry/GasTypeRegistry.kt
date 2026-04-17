@@ -38,7 +38,7 @@ object GasTypeRegistry {
     }
 
     fun getGasType(modid: String, name: String): GasType? {
-        return getGasType(ResourceLocation(modid, name))
+        return getGasType(ResourceLocation.fromNamespaceAndPath(modid, name))
     }
 
     private fun getIcon(name: String): ResourceLocation {
@@ -46,7 +46,15 @@ object GasTypeRegistry {
     }
 
     fun init () {
-        val air = GasType("Air",ResourceLocation(KelvinMod.MOD_ID, "air"), 1.293, 1.716e-5, 1.005, 0.026, iconLocation = getIcon("air"))
+        val air = GasType(
+            "Air",
+            ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "air"),
+            1.293,
+            1.716e-5,
+            1.005,
+            0.026,
+            iconLocation = getIcon("air")
+        )
 //        val exhaust = GasType("Exhaust", ResourceLocation(KelvinMod.MOD_ID, "exhaust"), 1.98, 1.10e-5, 2.2, 0.031, iconLocation = getIcon("exhaust"), fantasyName = "Smog")
 //        val steam = GasType("Steam", ResourceLocation(KelvinMod.MOD_ID, "steam"), 1.98, 1.716e-5, 2.2, 0.031, iconLocation = getIcon("steam"))
 //
@@ -68,8 +76,17 @@ object GasTypeRegistry {
 
     //for testing purposes
     val DEBUG_REGISTRY: Map<String, GasType> = mutableMapOf(
-        Pair("test_air", GasType("Test Air",ResourceLocation(KelvinMod.MOD_ID, "test_air"), 1.293, 1.716e-5, 1.005, 0.026)),
-        Pair("test_helium", GasType("Test Helium",ResourceLocation(KelvinMod.MOD_ID, "test_helium"), 0.166, 1.96e-5, 5.1832, 0.151, 79.4, 1.66)),
-        Pair("test_hydrogen", GasType("Test Hydrogen",ResourceLocation(KelvinMod.MOD_ID, "test_hydrogen"), 0.08988, 0.88e-5, 14.30, 0.18, 72.0, 1.4)),
+        Pair(
+            "test_air",
+            GasType("Test Air", ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "test_air"), 1.293, 1.716e-5, 1.005, 0.026)
+        ),
+        Pair(
+            "test_helium",
+            GasType("Test Helium", ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "test_helium"), 0.166, 1.96e-5, 5.1832, 0.151, 79.4, 1.66)
+        ),
+        Pair(
+            "test_hydrogen",
+            GasType("Test Hydrogen", ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "test_hydrogen"), 0.08988, 0.88e-5, 14.30, 0.18, 72.0, 1.4)
+        ),
         )
 }

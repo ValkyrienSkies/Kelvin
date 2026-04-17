@@ -27,7 +27,7 @@ object KelvinKeyMapper {
                     val x = parts[0].toDouble()
                     val y = parts[1].toDouble()
                     val z = parts[2].toDouble()
-                    val dimension = ResourceLocation(parts[3])
+                    val dimension = ResourceLocation.parse(parts[3])
                     return DuctNodePos(x, y, z, dimension)
                 }
             }
@@ -48,7 +48,7 @@ object KelvinKeyMapper {
                 if (parts.size == 3) {
                     val x = parts[0].toInt()
                     val z = parts[1].toInt()
-                    val dimension = ResourceLocation(parts[2])
+                    val dimension = ResourceLocation.parse(parts[2])
                     return KelvinChunkPos(x, z, dimension)
                 }
             }
@@ -68,14 +68,14 @@ object KelvinKeyMapper {
                 val parts = p.text.split(", ")
                 if (parts.size == 11) {
                     val name = parts[0]
-                    val resourceLocation = ResourceLocation(parts[1])
+                    val resourceLocation = ResourceLocation.parse(parts[1])
                     val density = parts[2].toDoubleOrNull()
                     val viscosity = parts[3].toDoubleOrNull()
                     val specificHeatCapacity = parts[4].toDoubleOrNull()
                     val thermalConductivity = parts[5].toDoubleOrNull()
                     val sutherlandConstant = parts[6].toDoubleOrNull()
                     val adiabaticIndex = parts[7].toDoubleOrNull()
-                    val iconLocation = ResourceLocation(parts[8])
+                    val iconLocation = ResourceLocation.parse(parts[8])
                     if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null) {
                         //TODO: SERIALIZE PARTICLE PICKER
                         return GasType(name, resourceLocation, density, viscosity, specificHeatCapacity, thermalConductivity, sutherlandConstant, adiabaticIndex, iconLocation)
@@ -94,7 +94,7 @@ object KelvinKeyMapper {
                     val x = parts[0].toDoubleOrNull()
                     val y = parts[1].toDoubleOrNull()
                     val z = parts[2].toDoubleOrNull()
-                    val dimension = ResourceLocation(parts[3])
+                    val dimension = ResourceLocation.parse(parts[3])
 
                     if (x != null && y != null && z != null) {
                         return DuctNodePos(x, y, z, dimension)
@@ -112,7 +112,7 @@ object KelvinKeyMapper {
                 if (parts.size == 3) {
                     val x = parts[0].toIntOrNull()
                     val z = parts[1].toIntOrNull()
-                    val dimension = ResourceLocation(parts[2])
+                    val dimension = ResourceLocation.parse(parts[2])
                     if (x != null && z != null) {
                         return KelvinChunkPos(x, z, dimension)
                     }
@@ -128,14 +128,14 @@ object KelvinKeyMapper {
                 val parts = key.split(", ")
                 if (parts.size == 11) {
                     val name = parts[0]
-                    val resourceLocation = ResourceLocation(parts[1])
+                    val resourceLocation = ResourceLocation.parse(parts[1])
                     val density = parts[2].toDoubleOrNull()
                     val viscosity = parts[3].toDoubleOrNull()
                     val specificHeatCapacity = parts[4].toDoubleOrNull()
                     val thermalConductivity = parts[5].toDoubleOrNull()
                     val sutherlandConstant = parts[6].toDoubleOrNull()
                     val adiabaticIndex = parts[7].toDoubleOrNull()
-                    val iconLocation = ResourceLocation(parts[8])
+                    val iconLocation = ResourceLocation.parse(parts[8])
 
                     if (density != null && viscosity != null && specificHeatCapacity != null && thermalConductivity != null && sutherlandConstant != null && adiabaticIndex != null) {
                         //TODO: SERIALIZE PARTICLE PICKER

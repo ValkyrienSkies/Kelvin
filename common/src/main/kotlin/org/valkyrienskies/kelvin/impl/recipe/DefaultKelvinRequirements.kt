@@ -77,7 +77,7 @@ object DefaultKelvinRequirements {
     object inhibitedBy: GasReactionRequirement(KelvinMod.asResouceLocation("inhibited_by")) {
         override fun apply_requirement(level: Level, ductNode: DuctNodePos, network: DuctNetwork<*>, value: JsonElement): Boolean {
             val gasTypeId = value.asJsonObject["gas"].asString
-            val gasType = GasTypeRegistry.getGasType(ResourceLocation.of(gasTypeId, ':'))
+            val gasType = GasTypeRegistry.getGasType(ResourceLocation.parse(gasTypeId))
             val ratio = value.asJsonObject["ratio"].asDouble
 
             val gasMasses = network.getGasMassAt(ductNode)

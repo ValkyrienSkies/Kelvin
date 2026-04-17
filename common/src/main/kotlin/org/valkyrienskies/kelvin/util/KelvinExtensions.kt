@@ -29,11 +29,15 @@ object KelvinExtensions {
         return BlockPos(this.x.toInt(), this.y.toInt(), this.z.toInt())
     }
 
-    fun BlockPos.toDuctNodePos(dimension: ResourceLocation = ResourceLocation("minecraft", "overworld")): DuctNodePos {
+    fun BlockPos.toDuctNodePos(
+        dimension: ResourceLocation = ResourceLocation.fromNamespaceAndPath("minecraft", "overworld")
+    ): DuctNodePos {
         return DuctNodePos(this.x.toDouble(), this.y.toDouble(), this.z.toDouble(), dimension)
     }
 
-    fun Vector3dc.toDuctNodePos(dimension: ResourceLocation = ResourceLocation("minecraft", "overworld")): DuctNodePos {
+    fun Vector3dc.toDuctNodePos(
+        dimension: ResourceLocation = ResourceLocation.fromNamespaceAndPath("minecraft", "overworld")
+    ): DuctNodePos {
         return DuctNodePos(this.x(), this.y(), this.z(), dimension)
     }
 

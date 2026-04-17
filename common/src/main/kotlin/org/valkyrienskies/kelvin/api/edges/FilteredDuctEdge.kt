@@ -38,7 +38,7 @@ open class FilteredDuctEdge(
 
         val set = HashSet<GasType>()
         for (str in filtered.split(" ")) {
-            val type = GasTypeRegistry.getGasType(ResourceLocation(str.trim())) ?: continue
+            val type = GasTypeRegistry.getGasType(ResourceLocation.parse(str.trim())) ?: continue
             set.add(type)
         }
         filter = set

@@ -62,7 +62,7 @@ tasks.register("writeVersion") {
     doLast {
         def versionFile = file("build/version.txt")
         versionFile.parentFile.mkdirs()
-        versionFile.setText(project.version.toString().substring("1.20.1-".length()))
+        versionFile.setText(project.version.toString().substring("${rootProject.minecraft_version}-".length()))
     }
 }
 

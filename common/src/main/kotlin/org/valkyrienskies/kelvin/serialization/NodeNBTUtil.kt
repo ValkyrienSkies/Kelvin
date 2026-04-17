@@ -29,7 +29,7 @@ object NodeNBTUtil {
         for (gasResourceLocation in tag.allKeys) {
             if (gasResourceLocation == "KelvinTemperature" || gasResourceLocation == "KelvinWallTemperature") continue
 
-            val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation(gasResourceLocation)] ?: continue
+            val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation.parse(gasResourceLocation)] ?: continue
             network.modGasMass(pos,gasType,tag.getDouble(gasResourceLocation))
         }
         network.setWallTemperature(pos, wallTemperature)
