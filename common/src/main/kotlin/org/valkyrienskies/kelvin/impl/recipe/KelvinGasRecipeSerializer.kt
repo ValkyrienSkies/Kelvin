@@ -13,9 +13,9 @@ import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 object KelvinGasRecipeSerializer {
 
     enum class RecipeUnit(val unitName: String, val applier:  (GasType, Double) -> Double) {
-        KILOGRAMS("kg", { type, mass -> type.massToMoles(mass) }),
-        GRAMS("g", { type, mass -> type.massToMoles(mass / 1000.0) }),
-        MOLES("m", { type, moles -> moles });
+        KILOGRAMS("kg", { type, mass -> mass }),
+        GRAMS("g", { type, mass -> mass / 1000.0 }),
+        MOLES("m", { type, moles -> type.molesToMass(moles) });
     }
 
     fun parseGasList(element: JsonObject): HashMap<GasType, Double>? {
