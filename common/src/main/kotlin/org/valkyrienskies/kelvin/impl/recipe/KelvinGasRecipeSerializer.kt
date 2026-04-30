@@ -12,6 +12,12 @@ import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 
 object KelvinGasRecipeSerializer {
 
+    enum class AmountUnit(val unitName: String) {
+        KILOGRAMS("kg"),
+        GRAMS("g"),
+        MOLES("m");
+    }
+
     fun parseGasList(element: JsonObject): HashMap<GasType, Double>? {
         val map = HashMap<GasType, Double>()
         for (entry in element.entrySet()) {
@@ -21,10 +27,10 @@ object KelvinGasRecipeSerializer {
                 return null
             }
             try {
-                val unit = entry.value.asJsonObject.get("unit")?.asString ?: ""
-                val isKg = unit == "kg"
+                val unitName = entry.value.asJsonObject.get("unit")?.asString ?: throw Exception("Gas recipe lacks units.")
+                val unit = AmountUnit.entries.find { it.unitName == unitName } ?: throw Exception("Invalid Gas Recipe unit '${unitName}}' ")
                 val amount = entry.value.asJsonObject.get("amount").asDouble
-                map[gasType] = if (isKg) amount else gasType.massToMoles(amount)
+                map[gasType] = if (unit == AmountUnit.MOLES) amount else gasType.massToMoles(amount * if (unit == AmountUnit.KILOGRAMS) 1.0 else 1.0/1000)
             } catch (e: Exception) {
                 KelvinMod.KELVINLOGGER.error("Invalid gas recipe list: '$element'. Exception: $e")
                 return null
