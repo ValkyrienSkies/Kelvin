@@ -51,7 +51,6 @@ import kotlin.math.min
  *   (and the `DuctNodePos.equals` cost they incur).
  * - **Volume-work fast-path**: integrating compression work is skipped for nodes whose
  *   `volumeChange` hasn't moved since last substep — the math collapses to a no-op anyway.
- * - **Cached sorted edge list**: invalidated on edge-count change.
  * - **Primitive-valued gas maps**: `Object2DoubleOpenHashMap.fastIterator()` and `addTo()` /
  *   `removeDouble()` instead of boxed `HashMap` ops.
  *
@@ -79,12 +78,6 @@ class JacobiSeidelSolver : KelvinSolver {
 
     /** Always run at least this many substeps before considering an early exit. */
     var minSubsteps: Int = 1
-
-    // -- Cached per-instance state --------------------------------------------------------
-
-    /** Sorted edge list, invalidated when [DuctNetwork.edges] size changes. */
-    private var cachedSortedEdges: List<DuctEdge> = emptyList()
-    private var cachedEdgesSize: Int = -1
 
     /** Scratch list of gases-to-process per edge, reused across edges to avoid allocation. */
     private val gasScratch: ObjectArrayList<GasType> = ObjectArrayList(8)
@@ -185,17 +178,15 @@ class JacobiSeidelSolver : KelvinSolver {
     override fun step(network: DuctNetwork<*>, subSteps: Int) {
         val tickDelta = 1.0 / 20.0 / subSteps.toDouble()
 
-        // Sorted edge list — stable Gauss-Seidel order. Cached across `step()` calls and
-        // invalidated when the edge count changes (size is the only cheap signal we have;
-        // edge replacement at the same key is rare in practice).
-        if (cachedEdgesSize != network.edges.size) {
-            cachedEdgesSize = network.edges.size
-            cachedSortedEdges = network.edges.entries
-                .filter { !it.value.unloaded }
-                .sortedWith(EDGE_KEY_COMPARATOR)
-                .map { it.value }
-        }
-        val sortedEdges = cachedSortedEdges
+        // Stable sorted edge list — Gauss-Seidel needs a deterministic order, and HashMap
+        // iteration order isn't guaranteed. Rebuilt every step() because there's no cheap,
+        // correct way to invalidate a cache: size-only matching misses same-size topology
+        // changes (remove + add at different positions, swap a pipe for a one-way at the same
+        // position, etc.). The sort runs once per tick per network — small fixed cost.
+        val sortedEdges = network.edges.entries
+            .filter { !it.value.unloaded }
+            .sortedWith(EDGE_KEY_COMPARATOR)
+            .map { it.value }
 
         // Build per-node working state, then resolve every edge to its endpoints once.
         val nodeWork = HashMap<DuctNodePos, NodeWork>(network.nodes.size)
