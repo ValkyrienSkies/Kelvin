@@ -1,5 +1,6 @@
 package org.valkyrienskies.kelvin.impl.solvers
 
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import net.minecraft.util.Mth
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.GasType
@@ -47,11 +48,11 @@ class ClassicSolver: KelvinSolver {
                 var madeNewB = false
 
                 if (nodeA == null) {
-                    network.nodeInfo[edge.nodeA] = DuctNodeInfo(network.nodes[edge.nodeA]!!.behavior,273.15, 0.0, HashMap<GasType, Double>(), nodeDataA.volume)
+                    network.nodeInfo[edge.nodeA] = DuctNodeInfo(network.nodes[edge.nodeA]!!.behavior,273.15, 0.0, Object2DoubleOpenHashMap<GasType>(), nodeDataA.volume)
                     madeNewA = true
                 }
                 if (nodeB == null) {
-                    network.nodeInfo[edge.nodeB] = DuctNodeInfo(network.nodes[edge.nodeB]!!.behavior,273.15, 0.0, HashMap<GasType, Double>(), nodeDataB.volume)
+                    network.nodeInfo[edge.nodeB] = DuctNodeInfo(network.nodes[edge.nodeB]!!.behavior,273.15, 0.0, Object2DoubleOpenHashMap<GasType>(), nodeDataB.volume)
                     madeNewB = true
                 }
 
@@ -168,7 +169,7 @@ class ClassicSolver: KelvinSolver {
                 nodeA.currentTemperature = max(nodeA.currentTemperature, 0.0001)
                 nodeB.currentTemperature = max(nodeB.currentTemperature, 0.0001)
 
-                val transferredGasses = HashMap<GasType, Double>()
+                val transferredGasses = Object2DoubleOpenHashMap<GasType>()
 
                 for (gas in GasTypeRegistry.GAS_TYPES.values) {
                     if (flowRate == 0.0) {

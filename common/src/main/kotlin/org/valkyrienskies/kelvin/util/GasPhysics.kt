@@ -24,101 +24,45 @@ object GasPhysics {
         return pressure
     }
 
-    fun densityFromPressureAverageOld(gasMasses: HashMap<GasType, Double>, temp: Double, pressure: Double): Double {
-        val totalMass = gasMasses.values.sum()
-        if (totalMass == 0.0) {
-            return 0.0
-        }
-
-        val massPerGas = HashMap<GasType, Double>()
-
-        val gasWeight = HashMap<GasType, Double>()
-
-        gasMasses.keys.forEach {
-            if (gasMasses[it] != 0.0 ) {
-                massPerGas[it] =  gasMasses[it]!!
-            }
-
-        }
-
-        for (gas in massPerGas.keys) {
-            gasWeight[gas] = massPerGas[gas]!! / totalMass
-        }
+    fun densityFromPressureAverageOld(gasMasses: Map<GasType, Double>, temp: Double, pressure: Double): Double {
+        var totalMass = 0.0
+        for (m in gasMasses.values) totalMass += m
+        if (totalMass <= 0.0) return 0.0
 
         var density = 0.0
-
-        for (gas in gasWeight.keys) {
+        for ((gas, mass) in gasMasses) {
+            if (mass == 0.0) continue
+            val weight = mass / totalMass
             val molarMass = gas.density * 22.4
             val specificGasConstant = idealGasConstant / molarMass
-            density += gasWeight[gas]!! * (pressure / (specificGasConstant * temp))
+            density += weight * (pressure / (specificGasConstant * temp))
         }
-
         return density
     }
 
-     fun specificHeatAverageOld(gasMasses: HashMap<GasType, Double>): Double {
-        val totalMass = gasMasses.values.sum()
-        if (totalMass == 0.0) {
-            return 0.0
-        }
-
-        val massPerGas = HashMap<GasType, Double>()
-
-        val gasWeight = HashMap<GasType, Double>()
-
-        gasMasses.keys.forEach {
-            if (gasMasses[it] != 0.0 ) {
-                massPerGas[it] =  gasMasses[it]!!
-            }
-
-        }
-
-        for (gas in massPerGas.keys) {
-            gasWeight[gas] = massPerGas[gas]!! / totalMass
-        }
+    fun specificHeatAverageOld(gasMasses: Map<GasType, Double>): Double {
+        var totalMass = 0.0
+        for (m in gasMasses.values) totalMass += m
+        if (totalMass <= 0.0) return 0.0
 
         var specificHeat = 0.0
-
-        for (gas in gasWeight.keys) {
-            specificHeat += gasWeight[gas]!! * gas.specificHeatCapacity
+        for ((gas, mass) in gasMasses) {
+            if (mass == 0.0) continue
+            specificHeat += (mass / totalMass) * gas.specificHeatCapacity
         }
-
         return specificHeat
     }
 
-     fun densityAverageOld(gasMasses: HashMap<GasType, Double>): Double {
-        val totalMass = gasMasses.values.sum()
-
-        if (totalMass == 0.0) {
-            return 0.0
-        }
-
-        val massPerGas = HashMap<GasType, Double>()
-
-        val gasWeight = HashMap<GasType, Double>()
-
-        gasMasses.keys.forEach {
-            if (gasMasses[it] != 0.0 ) {
-
-
-                massPerGas[it] =  gasMasses[it]!!
-
-            }
-
-        }
-
-        for (gas in massPerGas.keys) {
-
-            gasWeight[gas] = massPerGas[gas]!! / totalMass
-        }
+    fun densityAverageOld(gasMasses: Map<GasType, Double>): Double {
+        var totalMass = 0.0
+        for (m in gasMasses.values) totalMass += m
+        if (totalMass <= 0.0) return 0.0
 
         var density = 0.0
-
-        for (gas in gasWeight.keys) {
-            density += gasWeight[gas]!! * gas.density
+        for ((gas, mass) in gasMasses) {
+            if (mass == 0.0) continue
+            density += (mass / totalMass) * gas.density
         }
-
-
         return density
     }
 
@@ -204,33 +148,19 @@ object GasPhysics {
     }
 
 
-     fun dynamicViscosityAverage(gasMasses: HashMap<GasType, Double>, temp: Double): Double {
-        val totalMass = gasMasses.values.sum()
-        if (totalMass == 0.0) {
-            return 0.0
-        }
+    fun dynamicViscosityAverage(gasMasses: Map<GasType, Double>, temp: Double): Double {
+        var totalMass = 0.0
+        for (m in gasMasses.values) totalMass += m
+        if (totalMass <= 0.0) return 0.0
 
-        val massPerGas = HashMap<GasType, Double>()
-
-        val gasWeight = HashMap<GasType, Double>()
-
-        gasMasses.keys.forEach {
-            if (gasMasses[it] != 0.0 ) {
-                massPerGas[it] =  gasMasses[it]!!
-            }
-
-        }
-
-        for (gas in massPerGas.keys) {
-            gasWeight[gas] = massPerGas[gas]!! / totalMass
-        }
-
+        val tempRatio = temp / 273.15
         var viscosity = 0.0
-
-        for (gas in gasWeight.keys) {
-            viscosity += gasWeight[gas]!! * (gas.viscosity * (temp / 273.15) * ((273.15 + gas.sutherlandConstant) / (temp + gas.sutherlandConstant)))
+        for ((gas, mass) in gasMasses) {
+            if (mass == 0.0) continue
+            val weight = mass / totalMass
+            viscosity += weight * gas.viscosity * tempRatio *
+                ((273.15 + gas.sutherlandConstant) / (temp + gas.sutherlandConstant))
         }
-
         return viscosity
     }
 
@@ -293,63 +223,30 @@ object GasPhysics {
         return flowRate
     }
 
-     fun heatConductivityAverage(gasMasses: HashMap<GasType, Double>, pressure: Double, temperature: Double): Double {
-        val totalMass = gasMasses.values.sum()
-        if (totalMass == 0.0) {
-            return 0.0
-        }
+    fun heatConductivityAverage(gasMasses: Map<GasType, Double>, pressure: Double, temperature: Double): Double {
+        var totalMass = 0.0
+        for (m in gasMasses.values) totalMass += m
+        if (totalMass <= 0.0) return 0.0
 
-        val massPerGas = HashMap<GasType, Double>()
-
-        val gasWeight = HashMap<GasType, Double>()
-
-        gasMasses.keys.forEach {
-            if (gasMasses[it] != 0.0 ) {
-                massPerGas[it] =  gasMasses[it]!!
-            }
-
-        }
-
-        for (gas in massPerGas.keys) {
-            gasWeight[gas] = massPerGas[gas]!! / totalMass
-        }
-
+        val tempRatio = temperature / 300.0
         var heatConductivity = 0.0
-
-        for (gas in gasWeight.keys) {
-            heatConductivity += gasWeight[gas]!! * (gas.thermalConductivity) * (temperature/300.0) // * (1.0 + (0.0075 * (pressure/101325.0))))
+        for ((gas, mass) in gasMasses) {
+            if (mass == 0.0) continue
+            heatConductivity += (mass / totalMass) * gas.thermalConductivity * tempRatio
         }
-
         return heatConductivity
     }
 
-    fun adiabaticConstantAverage(gasMasses: HashMap<GasType, Double>): Double {
-        val totalMass = gasMasses.values.sum()
-        if (totalMass == 0.0) {
-            return 1.0
-        }
-
-        val massPerGas = HashMap<GasType, Double>()
-
-        val gasWeight = HashMap<GasType, Double>()
-
-        gasMasses.keys.forEach {
-            if (gasMasses[it] != 0.0 ) {
-                massPerGas[it] =  gasMasses[it]!!
-            }
-
-        }
-
-        for (gas in massPerGas.keys) {
-            gasWeight[gas] = massPerGas[gas]!! / totalMass
-        }
+    fun adiabaticConstantAverage(gasMasses: Map<GasType, Double>): Double {
+        var totalMass = 0.0
+        for (m in gasMasses.values) totalMass += m
+        if (totalMass <= 0.0) return 1.0
 
         var adiabaticConstant = 0.0
-
-        for (gas in gasWeight.keys) {
-            adiabaticConstant += gasWeight[gas]!! * gas.adiabaticIndex
+        for ((gas, mass) in gasMasses) {
+            if (mass == 0.0) continue
+            adiabaticConstant += (mass / totalMass) * gas.adiabaticIndex
         }
-
         return adiabaticConstant
     }
 }

@@ -1,5 +1,6 @@
 package org.valkyrienskies.kelvin.impl.solvers
 
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import net.minecraft.util.Mth
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNetwork
@@ -39,14 +40,16 @@ import kotlin.math.min
  *   substep see the updated pressure. This eliminates the synchronous-Jacobi overshoot that
  *   makes throughput drop with fan-in.
  * - **Under-relaxation**: each edge applies only ω·Δm of the requested mass per substep
- *   (ω ≈ 0.7), which damps the oscillation around zero that caused pipe chains to deliver
- *   only ~half of what one-way chains delivered.
- * - **Equilibrium short-circuit**: substeps stop early when the largest per-edge fractional
- *   pressure change drops below a tolerance — at steady state the substep loop exits after
- *   a single iteration instead of running all `subSteps` of them.
+ *   (ω ≈ 0.1), which damps the oscillation that caused pipe chains to deliver only ~half
+ *   of what one-way chains delivered.
+ * - **Equilibrium short-circuit**: substeps stop early when no node's mass or energy changed
+ *   significantly during the substep. At steady state the loop exits after a single iteration
+ *   instead of running all `subSteps` of them.
+ * - **Per-node derived-state cache**: `totalMass`, `capacity`, `temperature`, `pressure`,
+ *   `viscosity` are computed once per node per substep and reused across all incident edges,
+ *   recomputed lazily only after a write. With chains where each node is the endpoint of two
+ *   edges this halves the redundant per-edge math.
  * - **Single edge pass per substep** (no `repeat(2)` block).
- * - **No global `alpha = 0.25` source-mass throttle**: source-side clamp is "don't pull more
- *   than the source has", which is the only physically meaningful constraint.
  *
  * The per-edge physics (`calculateFlow`, choke limit, one-way / pump / filter / aperture / smart
  * handling) is preserved verbatim so behavior matches [JacobiSolver] for any case the bugs
@@ -63,54 +66,101 @@ class JacobiSeidelSolver : KelvinSolver {
 
     /**
      * Maximum fraction of a source node's allowed mass that any single edge may drain in one
-     * substep. This is a stability guard, not a physics knob: with a very large
-     * pressure differential and a small initial filling at the destination,
-     * `calculateFlow` returns a flow rate that, multiplied by `tickDelta`, would empty the
-     * source in a single substep — causing pressure overshoot and ringing on the next pass.
-     * Capping per-edge at ~25 % keeps the mass evolution bounded without affecting
-     * steady-state behavior (where physics-driven `dmRequested` is far below this cap).
+     * substep. Stability guard against catastrophic emptying when a full source faces an
+     * empty destination — the physics-recommended `dmRequested` would otherwise be very
+     * large compared to the source's available mass.
      */
     var perEdgeMassFraction: Double = 0.25
 
     /**
-     * Maximum |ΔP/P| observed in a substep below which the substep loop is allowed to exit
-     * early. Combined with [minSubsteps] this gives the "do nothing while at equilibrium"
-     * fast path — the dominant performance win on quasi-static networks.
+     * Per-node max(|Δm|/m, |ΔE|/E) below which a substep is considered at equilibrium and
+     * the substep loop is allowed to exit early.
      */
     var equilibriumTolerance: Double = 1e-4
 
     /** Always run at least this many substeps before considering an early exit. */
     var minSubsteps: Int = 1
 
+    /**
+     * Cached per-node derived state, reused across all edges in a substep. Recomputed lazily
+     * by [NodeWork.ensureFresh] when [NodeWork.dirty] is true.
+     */
+    private class NodeWork(
+        val pos: DuctNodePos,
+        val node: DuctNode,
+        val info: DuctNodeInfo,
+        val volume: Double,
+        val tankMult: Double,
+    ) {
+        var totalMass: Double = 0.0
+        var capacity: Double = 0.0
+        var temperature: Double = 0.0
+        var pressure: Double = 0.0
+        var viscosity: Double = 0.0
+
+        // Snapshot at the start of each substep, used by the equilibrium check.
+        var substepInitialMass: Double = 0.0
+        var substepInitialEnergy: Double = 0.0
+
+        var dirty: Boolean = true
+
+        fun ensureFresh() {
+            if (!dirty) return
+            var sum = 0.0
+            for (v in info.currentGasMasses.values) sum += v
+            totalMass = sum
+            capacity = nodeHeatCapacity(info.currentGasMasses, node.heatCapacity)
+            temperature = if (capacity > 1e-12) (info.currentEnergy / capacity).coerceAtLeast(1e-4) else 273.15
+            pressure = calcPressureFromGamma(info.currentGasMasses, volume, temperature) / tankMult
+            viscosity = dynamicViscosityAverage(info.currentGasMasses, temperature)
+            dirty = false
+        }
+    }
+
     override fun step(network: DuctNetwork<*>, subSteps: Int) {
         val tickDelta = 1.0 / 20.0 / subSteps.toDouble()
 
-        // Snapshot the active edge list once per step() call, in a stable sorted order. Stable
-        // ordering matters: Gauss-Seidel is order-dependent, so identical inputs must produce
-        // identical outputs across runs (HashMap iteration order is not guaranteed).
+        // Stable sorted edge list. Gauss-Seidel is order-dependent, so identical inputs must
+        // produce identical outputs across runs (HashMap iteration order is not guaranteed).
         val sortedEdges = network.edges.entries
             .filter { !it.value.unloaded }
             .sortedWith(EDGE_KEY_COMPARATOR)
             .map { it.value }
 
-        // Accumulate signed mass moved per edge over the whole step so that we can report
-        // a tick-averaged flow rate. Reporting the last substep's instantaneous transfer
-        // would lie about one-way edges, since their `dmActual` is clamped to 0 whenever
-        // the substep would have produced reverse flow — even if every other substep this
-        // tick moved mass forward.
+        // Build per-node working state once per step() call.
+        val nodeWork = HashMap<DuctNodePos, NodeWork>(network.nodes.size)
+        for ((pos, node) in network.nodes) {
+            if (network.unloadedNodes.contains(pos)) continue
+            val info = network.nodeInfo[pos] ?: continue
+            val volume = node.volume + info.volumeChange
+            val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
+            nodeWork[pos] = NodeWork(pos, node, info, volume, tankMult)
+        }
+
+        // Tick-averaged mass moved per edge (signed in A→B direction). Reporting the last
+        // substep's instantaneous transfer would lie about one-way edges, since their
+        // `dmActual` is clamped to 0 whenever the substep would have produced reverse flow.
         val edgeMassMoved = HashMap<DuctEdge, Double>(sortedEdges.size)
 
         var substepsRun = 0
         for (substep in 1..subSteps) {
-            applyVolumeWork(network)
+            applyVolumeWork(network, nodeWork)
 
-            var maxRelDeltaP = 0.0
+            // Snapshot per-node state for the equilibrium check; force a refresh first so
+            // the snapshot reflects post-volume-work mass / energy.
+            for (work in nodeWork.values) {
+                work.dirty = true
+                work.ensureFresh()
+                work.substepInitialMass = work.totalMass
+                work.substepInitialEnergy = work.info.currentEnergy
+            }
+
             for (edge in sortedEdges) {
-                val rel = processEdge(network, edge, tickDelta, edgeMassMoved)
-                if (rel > maxRelDeltaP) maxRelDeltaP = rel
+                processEdge(network, edge, tickDelta, edgeMassMoved, nodeWork)
             }
             substepsRun++
-            if (substep >= minSubsteps && maxRelDeltaP < equilibriumTolerance) break
+
+            if (substep >= minSubsteps && atEquilibrium(nodeWork)) break
         }
 
         // Tick-averaged flow rate (kg/s, signed in the edge's A→B direction).
@@ -125,11 +175,11 @@ class JacobiSeidelSolver : KelvinSolver {
     }
 
     /**
-     * Per-substep volume-work pass. Mirrors the existing solver: integrates compression /
-     * expansion energy at each node before any mass transfer happens, so the pressure used
-     * by edges in this substep already accounts for user-driven volume changes.
+     * Per-substep volume-work pass. Integrates compression / expansion energy at each node
+     * before any mass transfer, so the pressure used by edges in this substep already
+     * accounts for user-driven volume changes.
      */
-    private fun applyVolumeWork(network: DuctNetwork<*>) {
+    private fun applyVolumeWork(network: DuctNetwork<*>, nodeWork: HashMap<DuctNodePos, NodeWork>) {
         for ((pos, node) in network.nodes) {
             if (network.unloadedNodes.contains(pos)) continue
             var info = network.nodeInfo[pos]
@@ -138,7 +188,7 @@ class JacobiSeidelSolver : KelvinSolver {
                     node.behavior,
                     273.15,
                     0.0,
-                    HashMap(),
+                    Object2DoubleOpenHashMap(),
                     node.volume,
                     currentEnergy = node.heatCapacity * 273.15,
                 )
@@ -150,7 +200,7 @@ class JacobiSeidelSolver : KelvinSolver {
             val volume = node.volume + info.volumeChange
             info.totalVolume = volume
             val initTemp = if (capacity > 1e-12) (info.currentEnergy / capacity).coerceAtLeast(1e-4) else 273.15
-            val tankMult = tankMultiplier(node, info)
+            val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
 
             val pressure = calcPressureFromGamma(info.currentGasMasses, volume, initTemp) / tankMult
             val deltaVolume = info.volumeChange - info.previousVolumeChange
@@ -162,47 +212,45 @@ class JacobiSeidelSolver : KelvinSolver {
             info.currentPressure = intermediaryPressure
             info.currentEnergy -= 0.5 * (intermediaryPressure + pressure) * deltaVolume
             info.currentTemperature = (info.currentEnergy / capacity).coerceAtLeast(1e-4)
+
+            // Volume-work changed energy / temperature → derived cache is stale.
+            nodeWork[pos]?.dirty = true
         }
     }
 
     /**
      * Compute and apply mass + energy + heat-conduction transfer for one edge, mutating the
-     * working state of both endpoints in place. Returns the larger of the two relative
-     * pressure changes induced on the endpoints, used by the caller for equilibrium detection.
+     * working state of both endpoints in place.
      */
     private fun processEdge(
         network: DuctNetwork<*>,
         edge: DuctEdge,
         tickDelta: Double,
         edgeMassMoved: HashMap<DuctEdge, Double>,
-    ): Double {
-        if (network.unloadedNodes.contains(edge.nodeA) || network.unloadedNodes.contains(edge.nodeB)) return 0.0
-        val nodeA = network.nodes[edge.nodeA] ?: return 0.0
-        val nodeB = network.nodes[edge.nodeB] ?: return 0.0
-        val infoA = network.nodeInfo[edge.nodeA] ?: return 0.0
-        val infoB = network.nodeInfo[edge.nodeB] ?: return 0.0
+        nodeWork: HashMap<DuctNodePos, NodeWork>,
+    ) {
+        if (network.unloadedNodes.contains(edge.nodeA) || network.unloadedNodes.contains(edge.nodeB)) return
+        val workA = nodeWork[edge.nodeA] ?: return
+        val workB = nodeWork[edge.nodeB] ?: return
+        workA.ensureFresh()
+        workB.ensureFresh()
 
-        val mTotA = sumValues(infoA.currentGasMasses)
-        val mTotB = sumValues(infoB.currentGasMasses)
-        if (mTotA <= 1e-9 && mTotB <= 1e-9) return 0.0
+        val infoA = workA.info
+        val infoB = workB.info
+        val nodeA = workA.node
+        val nodeB = workB.node
 
-        val capA = nodeHeatCapacity(infoA.currentGasMasses, nodeA.heatCapacity)
-        val capB = nodeHeatCapacity(infoB.currentGasMasses, nodeB.heatCapacity)
-        val tA = (infoA.currentEnergy / capA).coerceAtLeast(1e-4)
-        val tB = (infoB.currentEnergy / capB).coerceAtLeast(1e-4)
+        val mTotA = workA.totalMass
+        val mTotB = workB.totalMass
+        if (mTotA <= 1e-9 && mTotB <= 1e-9) return
 
-        val volA = nodeA.volume + infoA.volumeChange
-        val volB = nodeB.volume + infoB.volumeChange
-        val tankMultA = tankMultiplier(nodeA, infoA)
-        val tankMultB = tankMultiplier(nodeB, infoB)
-
-        val pA = calcPressureFromGamma(infoA.currentGasMasses, volA, tA) / tankMultA
-        val pB = calcPressureFromGamma(infoB.currentGasMasses, volB, tB) / tankMultB
-        val pBefore = max(pA, pB) + 1.0  // for relative-change normalization (avoid /0)
-
-        val viscA = dynamicViscosityAverage(infoA.currentGasMasses, tA)
-        val viscB = dynamicViscosityAverage(infoB.currentGasMasses, tB)
-        val viscosity = (viscA + viscB) * 0.5
+        val tA = workA.temperature
+        val tB = workB.temperature
+        val pA = workA.pressure
+        val pB = workB.pressure
+        val volA = workA.volume
+        val volB = workB.volume
+        val viscosity = (workA.viscosity + workB.viscosity) * 0.5
 
         val pumpPressure = if (edge is PumpEdge) {
             if (edge.target == edge.nodeB) edge.pumpPressure else -edge.pumpPressure
@@ -213,21 +261,19 @@ class JacobiSeidelSolver : KelvinSolver {
         val rhoA = if (volA > 0.0) mTotA / volA else 0.0
         val rhoB = if (volB > 0.0) mTotB / volB else 0.0
 
-        // Don't seed `calculateFlow`'s Reynolds calc with `edge.currentFlowRate`: that biases pipe
-        // edges into a different friction regime than one-way edges (whose previous rate gets
-        // reset to 0 on every clipped substep). Passing 0 keeps friction consistent across edge
-        // types — the laminar / turbulent transition is then picked purely from the current
-        // pressure drop, which is exactly what we want for steady-state agreement.
+        // Don't seed `calculateFlow`'s Reynolds calc with `edge.currentFlowRate`: that biases
+        // pipe edges into a different friction regime than one-way edges (whose previous rate
+        // gets reset to 0 on every clipped substep). Passing 0 keeps friction consistent.
         var flowRate = calculateFlow(
             pA, pB, effectiveRadius, edge.length, rhoA, rhoB, viscosity, pumpPressure, 0.0,
         )
 
-        // Choke (sonic limit on upstream node)
+        // Choke (sonic limit on upstream node). Pass Cd explicitly to skip the $default bridge.
         val upstreamIsA = pA > pB
         val upMasses = if (upstreamIsA) infoA.currentGasMasses else infoB.currentGasMasses
         val upP = if (upstreamIsA) pA else pB
         val upT = if (upstreamIsA) tA else tB
-        val mdotMax = mdotChoked(upMasses, upP, upT, effectiveRadius)
+        val mdotMax = mdotChoked(upMasses, upP, upT, effectiveRadius, 0.8)
         flowRate = flowRate.coerceIn(-mdotMax, mdotMax)
 
         if (edge is OneWayEdge) {
@@ -249,72 +295,96 @@ class JacobiSeidelSolver : KelvinSolver {
         val srcSign = if (flowRate >= 0.0) 1.0 else -1.0
         val srcInfo = if (srcSign > 0.0) infoA else infoB
         val dstInfo = if (srcSign > 0.0) infoB else infoA
+        val srcWork = if (srcSign > 0.0) workA else workB
+        val dstWork = if (srcSign > 0.0) workB else workA
         val srcTemp = if (srcSign > 0.0) tA else tB
 
         var dmActual = 0.0
         if (dmRequested > 0.0) {
             val allowed = allowedGases(network, edge, srcSign)
+            val srcMasses = srcInfo.currentGasMasses
+            val dstMasses = dstInfo.currentGasMasses
+
+            // Primitive-valued reads/writes here avoid boxing every Double on every gas.
             var srcAllowed = 0.0
-            for (gas in allowed) srcAllowed += srcInfo.currentGasMasses[gas] ?: 0.0
+            for (gas in allowed) srcAllowed += srcMasses.getDouble(gas)
 
             if (srcAllowed > 1e-12) {
                 val cap = perEdgeMassFraction * srcAllowed
                 dmActual = min(dmRequested, cap)
                 val ratio = dmActual / srcAllowed
                 for (gas in allowed) {
-                    val mAvail = srcInfo.currentGasMasses[gas] ?: continue
+                    val mAvail = srcMasses.getDouble(gas)
                     if (mAvail <= 0.0) continue
                     val dm = mAvail * ratio
                     val srcNew = mAvail - dm
-                    if (srcNew <= 1e-12) srcInfo.currentGasMasses.remove(gas)
-                    else srcInfo.currentGasMasses[gas] = srcNew
-                    dstInfo.currentGasMasses[gas] = (dstInfo.currentGasMasses[gas] ?: 0.0) + dm
+                    if (srcNew <= 1e-12) srcMasses.removeDouble(gas)
+                    else srcMasses.put(gas, srcNew)
+                    dstMasses.addTo(gas, dm)
 
                     val cv = (gas.specificHeatCapacity * 1000.0) / gas.adiabaticIndex
                     val dE = dm * cv * srcTemp
                     srcInfo.currentEnergy -= dE
                     dstInfo.currentEnergy += dE
                 }
+                srcWork.dirty = true
+                dstWork.dirty = true
             }
         }
 
-        // Accumulate signed mass moved this substep; the caller divides by total elapsed time
-        // at the end of step() to set `edge.currentFlowRate` as a tick-average.
         if (dmActual > 0.0) {
             edgeMassMoved[edge] = (edgeMassMoved[edge] ?: 0.0) + dmActual * srcSign
         }
 
-        // Passive heat conduction between the two nodes through the edge cross-section.
-        applyPassiveConduction(infoA, infoB, edge, tA, tB, pA, pB, mTotA, mTotB, tickDelta)
-
-        // Estimate the relative pressure change to feed equilibrium detection. We cheaply
-        // use the post-transfer pressures recomputed from updated gas/energy.
-        val newCapA = nodeHeatCapacity(infoA.currentGasMasses, nodeA.heatCapacity)
-        val newCapB = nodeHeatCapacity(infoB.currentGasMasses, nodeB.heatCapacity)
-        val newTA = if (newCapA > 1e-12) (infoA.currentEnergy / newCapA).coerceAtLeast(1e-4) else 273.15
-        val newTB = if (newCapB > 1e-12) (infoB.currentEnergy / newCapB).coerceAtLeast(1e-4) else 273.15
-        val newPA = calcPressureFromGamma(infoA.currentGasMasses, volA, newTA) / tankMultA
-        val newPB = calcPressureFromGamma(infoB.currentGasMasses, volB, newTB) / tankMultB
-        return max(abs(newPA - pA), abs(newPB - pB)) / pBefore
+        applyPassiveConduction(workA, workB, edge, tickDelta)
     }
 
     private fun applyPassiveConduction(
-        infoA: DuctNodeInfo, infoB: DuctNodeInfo, edge: DuctEdge,
-        tA: Double, tB: Double, pA: Double, pB: Double,
-        mTotA: Double, mTotB: Double, tickDelta: Double,
+        workA: NodeWork, workB: NodeWork, edge: DuctEdge, tickDelta: Double,
     ) {
-        if (mTotA < 0.1 || mTotB < 0.1) return
-        val condA = heatConductivityAverage(infoA.currentGasMasses, pA, tA)
-        val condB = heatConductivityAverage(infoB.currentGasMasses, pB, tB)
+        if (workA.totalMass < 0.1 || workB.totalMass < 0.1) return
+        // Note: this uses cached pressures and temperatures from before the most recent
+        // mass transfer. Heat conductivity is a slow function of state, so the slight
+        // staleness is acceptable; refreshing here would require two more pressure /
+        // viscosity recomputes per edge for sub-percent accuracy gain.
+        val condA = heatConductivityAverage(workA.info.currentGasMasses, workA.pressure, workA.temperature)
+        val condB = heatConductivityAverage(workB.info.currentGasMasses, workB.pressure, workB.temperature)
         if (condA <= 1e-4 || condB <= 1e-4) return
         val avgCond = condA * condB / (condA + condB)
         val area = Math.PI * edge.radius * edge.radius
-        val dQ = avgCond * area * (tA - tB) / edge.length * tickDelta
+        val dQ = avgCond * area * (workA.temperature - workB.temperature) / edge.length * tickDelta
         if (!dQ.isFinite()) return
-        val limit = min(infoA.currentEnergy.absoluteValue, infoB.currentEnergy.absoluteValue)
+        val limit = min(workA.info.currentEnergy.absoluteValue, workB.info.currentEnergy.absoluteValue)
         val dE = Mth.clamp(dQ, -limit, limit)
-        infoA.currentEnergy -= dE
-        infoB.currentEnergy += dE
+        if (dE == 0.0) return
+        workA.info.currentEnergy -= dE
+        workB.info.currentEnergy += dE
+        workA.dirty = true
+        workB.dirty = true
+    }
+
+    /**
+     * Returns true when no node's mass or energy changed by more than [equilibriumTolerance]
+     * (relative) during the just-completed substep — the cheap proxy for "nothing's flowing."
+     */
+    private fun atEquilibrium(nodeWork: HashMap<DuctNodePos, NodeWork>): Boolean {
+        val tol = equilibriumTolerance
+        for (work in nodeWork.values) {
+            val mInit = work.substepInitialMass
+            val eInit = work.substepInitialEnergy
+            if (mInit > 1e-9) {
+                var sumNew = 0.0
+                for (v in work.info.currentGasMasses.values) sumNew += v
+                val dmRel = abs(sumNew - mInit) / mInit
+                if (dmRel > tol) return false
+            }
+            val eAbs = abs(eInit)
+            if (eAbs > 1e-3) {
+                val deRel = abs(work.info.currentEnergy - eInit) / eAbs
+                if (deRel > tol) return false
+            }
+        }
+        return true
     }
 
     /**
@@ -324,7 +394,8 @@ class JacobiSeidelSolver : KelvinSolver {
     private fun normalizeNodes(network: DuctNetwork<*>) {
         for ((pos, info) in network.nodeInfo) {
             val node = network.nodes[pos] ?: continue
-            val mTot = sumValues(info.currentGasMasses)
+            var mTot = 0.0
+            for (v in info.currentGasMasses.values) mTot += v
             val cap = nodeHeatCapacity(info.currentGasMasses, node.heatCapacity)
             if (mTot <= 1e-9) {
                 info.currentGasMasses.clear()
@@ -336,39 +407,40 @@ class JacobiSeidelSolver : KelvinSolver {
                 info.previousPressure = info.currentPressure
                 info.currentTemperature = (info.currentEnergy / cap).coerceAtLeast(1e-4)
                 val volume = node.volume + info.volumeChange
-                val tankMult = tankMultiplier(node, info)
+                val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
                 info.currentPressure = calcPressureFromGamma(info.currentGasMasses, volume, info.currentTemperature) / tankMult
             }
         }
     }
 
     /**
-     * Filtered list of gases this edge will allow to flow given the current direction.
+     * Gases this edge will allow to flow given the current direction.
      * `srcSign` > 0 means A→B, < 0 means B→A.
+     *
+     * Common case (PipeDuctEdge / OneWayDuctEdge / ApertureDuctEdge / SmartEdge — anything
+     * that isn't a [PumpEdge] or [FilteredEdge]) returns the registry directly with zero
+     * allocation. Only [PumpEdge] (which blocks reverse flow against its target) and
+     * [FilteredEdge] (white/blacklist of gases) need to allocate or short-circuit.
      */
     private fun allowedGases(network: DuctNetwork<*>, edge: DuctEdge, srcSign: Double): Collection<GasType> {
         val registry = if ((network as? DuctNetworkServer)?.isTestingEnvironment == true)
             GasTypeRegistry.DEBUG_REGISTRY.values
         else GasTypeRegistry.GAS_TYPES.values
-        return registry.filter { gas ->
-            // Pump direction rule: a pump only moves mass toward its target.
-            if (edge is PumpEdge) {
-                if (srcSign < 0 && edge.target == edge.nodeB) return@filter false
-                if (srcSign > 0 && edge.target == edge.nodeA) return@filter false
-            }
-            if (edge is FilteredEdge) {
-                if (edge.blacklist) !edge.filter.contains(gas) else edge.filter.contains(gas)
-            } else true
+
+        // Fast path — most edges have no filter and no pump direction rule.
+        if (edge !is PumpEdge && edge !is FilteredEdge) return registry
+
+        if (edge is PumpEdge) {
+            if (srcSign < 0 && edge.target == edge.nodeB) return EMPTY_GAS_LIST
+            if (srcSign > 0 && edge.target == edge.nodeA) return EMPTY_GAS_LIST
         }
-    }
 
-    private fun tankMultiplier(node: DuctNode, info: DuctNodeInfo): Double =
-        if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
-
-    private fun sumValues(map: Map<GasType, Double>): Double {
-        var sum = 0.0
-        for (v in map.values) sum += v
-        return sum
+        if (edge is FilteredEdge) {
+            return registry.filter { gas ->
+                if (edge.blacklist) !edge.filter.contains(gas) else edge.filter.contains(gas)
+            }
+        }
+        return registry
     }
 
     companion object {
@@ -382,5 +454,8 @@ class JacobiSeidelSolver : KelvinSolver {
                 { it.key.first.x }, { it.key.first.y }, { it.key.first.z },
                 { it.key.second.x }, { it.key.second.y }, { it.key.second.z },
             )
+
+        /** Sentinel for "no gases allowed" (pump blocked against its target direction). */
+        private val EMPTY_GAS_LIST: Collection<GasType> = emptyList()
     }
 }

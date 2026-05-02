@@ -68,7 +68,7 @@ interface DuctNetwork<T: Level> {
     /**
      * Returns the gas volumes at a node from the previous tick.
      */
-    fun getGasMassAt(node: DuctNodePos): HashMap<GasType, Double>
+    fun getGasMassAt(node: DuctNodePos): Map<GasType, Double>
 
     fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge?
     fun getNodeAt(pos: DuctNodePos): DuctNode?

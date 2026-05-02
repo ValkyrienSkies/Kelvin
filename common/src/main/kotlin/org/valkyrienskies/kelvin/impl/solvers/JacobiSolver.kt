@@ -1,5 +1,6 @@
 package org.valkyrienskies.kelvin.impl.solvers
 
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import net.minecraft.util.Mth
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNetwork
@@ -61,7 +62,7 @@ class JacobiSolver: KelvinSolver {
                         network.nodes[nodeKey]!!.behavior,
                         273.15,
                         0.0,
-                        HashMap<GasType, Double>(),
+                        Object2DoubleOpenHashMap<GasType>(),
                         network.nodes[nodeKey]!!.volume,
                         currentEnergy = network.nodes[nodeKey]!!.heatCapacity * 273.15
                     )
