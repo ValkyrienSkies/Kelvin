@@ -8,6 +8,7 @@ import org.junit.jupiter.api.TestFactory
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.impl.solvers.ClassicSolver
+import org.valkyrienskies.kelvin.impl.solvers.JacobiSeidelSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
 import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
@@ -163,6 +164,7 @@ class SimulationTest : KelvinTestBase() {
         private val ALL_SOLVERS: List<Pair<String, () -> KelvinSolver>> = listOf(
             "Jacobi" to ::JacobiSolver,
             "JacobiSimplified" to ::JacobiSimplifiedSolver,
+            "JacobiSeidel" to ::JacobiSeidelSolver,
             "Classic" to ::ClassicSolver,
         )
     }

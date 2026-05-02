@@ -12,6 +12,7 @@ import org.valkyrienskies.kelvin.api.edges.OneWayDuctEdge
 import org.valkyrienskies.kelvin.api.edges.PipeDuctEdge
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.solvers.ClassicSolver
+import org.valkyrienskies.kelvin.impl.solvers.JacobiSeidelSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
 
@@ -144,6 +145,7 @@ class FlowConservationTest : KelvinTestBase() {
         private val ALL_SOLVERS: List<Pair<String, () -> KelvinSolver>> = listOf(
             "Jacobi" to ::JacobiSolver,
             "JacobiSimplified" to ::JacobiSimplifiedSolver,
+            "JacobiSeidel" to ::JacobiSeidelSolver,
             "Classic" to ::ClassicSolver,
         )
     }

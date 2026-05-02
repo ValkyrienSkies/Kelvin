@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Timeout
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.impl.solvers.ClassicSolver
+import org.valkyrienskies.kelvin.impl.solvers.JacobiSeidelSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
 import java.util.concurrent.TimeUnit
@@ -112,6 +113,12 @@ class SimulationPerformanceTest : KelvinTestBase() {
 
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    fun `JacobiSeidel solver finishes a 32-node × 200-step workload within 30s`() {
+        runRegressionGuard(JacobiSeidelSolver())
+    }
+
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
     fun `Classic solver finishes a 32-node × 200-step workload within 30s`() {
         runRegressionGuard(ClassicSolver())
     }
@@ -131,6 +138,7 @@ class SimulationPerformanceTest : KelvinTestBase() {
         private val SOLVERS: List<Pair<String, () -> KelvinSolver>> = listOf(
             "Jacobi" to ::JacobiSolver,
             "JacobiSimplified" to ::JacobiSimplifiedSolver,
+            "JacobiSeidel" to ::JacobiSeidelSolver,
             "Classic" to ::ClassicSolver,
         )
     }
