@@ -1,6 +1,7 @@
 package org.valkyrienskies.kelvin.impl.solvers
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
+import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import net.minecraft.util.Mth
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNetwork
@@ -15,12 +16,9 @@ import org.valkyrienskies.kelvin.api.edges.OneWayEdge
 import org.valkyrienskies.kelvin.api.edges.PumpEdge
 import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
-import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
-import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
-import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
@@ -37,19 +35,25 @@ import kotlin.math.min
  *
  * - **Gauss-Seidel updates**: edges are visited in a stable sorted order and mass / energy
  *   are applied to node state *immediately* after each edge, so subsequent edges in the same
- *   substep see the updated pressure. This eliminates the synchronous-Jacobi overshoot that
- *   makes throughput drop with fan-in.
+ *   substep see the updated pressure. Eliminates the synchronous-Jacobi overshoot that makes
+ *   throughput drop with fan-in.
  * - **Under-relaxation**: each edge applies only ω·Δm of the requested mass per substep
- *   (ω ≈ 0.1), which damps the oscillation that caused pipe chains to deliver only ~half
- *   of what one-way chains delivered.
+ *   (ω ≈ 0.1), damping the oscillation that caused pipe chains to deliver only ~half of
+ *   what one-way chains delivered.
  * - **Equilibrium short-circuit**: substeps stop early when no node's mass or energy changed
- *   significantly during the substep. At steady state the loop exits after a single iteration
- *   instead of running all `subSteps` of them.
+ *   significantly during the substep. At steady state the loop exits after one iteration.
  * - **Per-node derived-state cache**: `totalMass`, `capacity`, `temperature`, `pressure`,
- *   `viscosity` are computed once per node per substep and reused across all incident edges,
- *   recomputed lazily only after a write. With chains where each node is the endpoint of two
- *   edges this halves the redundant per-edge math.
- * - **Single edge pass per substep** (no `repeat(2)` block).
+ *   `viscosity`, `rmix`, `gamma` are computed once per node per substep in a single fused
+ *   pass over the gas mixture, reused across all incident edges, recomputed lazily only
+ *   after a write.
+ * - **Pre-paired edges**: at the start of each `step()` we resolve every edge to its
+ *   `NodeWork` endpoints, eliminating per-substep `HashMap<DuctNodePos, NodeWork>` lookups
+ *   (and the `DuctNodePos.equals` cost they incur).
+ * - **Volume-work fast-path**: integrating compression work is skipped for nodes whose
+ *   `volumeChange` hasn't moved since last substep — the math collapses to a no-op anyway.
+ * - **Cached sorted edge list**: invalidated on edge-count change.
+ * - **Primitive-valued gas maps**: `Object2DoubleOpenHashMap.fastIterator()` and `addTo()` /
+ *   `removeDouble()` instead of boxed `HashMap` ops.
  *
  * The per-edge physics (`calculateFlow`, choke limit, one-way / pump / filter / aperture / smart
  * handling) is preserved verbatim so behavior matches [JacobiSolver] for any case the bugs
@@ -64,12 +68,7 @@ class JacobiSeidelSolver : KelvinSolver {
      */
     var relaxation: Double = 0.1
 
-    /**
-     * Maximum fraction of a source node's allowed mass that any single edge may drain in one
-     * substep. Stability guard against catastrophic emptying when a full source faces an
-     * empty destination — the physics-recommended `dmRequested` would otherwise be very
-     * large compared to the source's available mass.
-     */
+    /** Maximum fraction of a source's allowed mass that any single edge may drain in one substep. */
     var perEdgeMassFraction: Double = 0.25
 
     /**
@@ -80,6 +79,15 @@ class JacobiSeidelSolver : KelvinSolver {
 
     /** Always run at least this many substeps before considering an early exit. */
     var minSubsteps: Int = 1
+
+    // -- Cached per-instance state --------------------------------------------------------
+
+    /** Sorted edge list, invalidated when [DuctNetwork.edges] size changes. */
+    private var cachedSortedEdges: List<DuctEdge> = emptyList()
+    private var cachedEdgesSize: Int = -1
+
+    /** Scratch list of gases-to-process per edge, reused across edges to avoid allocation. */
+    private val gasScratch: ObjectArrayList<GasType> = ObjectArrayList(8)
 
     /**
      * Cached per-node derived state, reused across all edges in a substep. Recomputed lazily
@@ -92,13 +100,18 @@ class JacobiSeidelSolver : KelvinSolver {
         val volume: Double,
         val tankMult: Double,
     ) {
+        // Composition-derived (depend only on currentGasMasses)
         var totalMass: Double = 0.0
-        var capacity: Double = 0.0
+        var capacity: Double = 0.0           // mixtureCapacity + node.heatCapacity
+        var rmix: Double = 0.0               // ideal-gas R for the mixture
+        var gamma: Double = 1.4              // Cp/Cv for the mixture
+
+        // Temperature/pressure-derived (depend on energy + capacity + mass + rmix + volume)
         var temperature: Double = 0.0
         var pressure: Double = 0.0
         var viscosity: Double = 0.0
 
-        // Snapshot at the start of each substep, used by the equilibrium check.
+        // Snapshot at start of each substep, for the equilibrium check.
         var substepInitialMass: Double = 0.0
         var substepInitialEnergy: Double = 0.0
 
@@ -106,28 +119,85 @@ class JacobiSeidelSolver : KelvinSolver {
 
         fun ensureFresh() {
             if (!dirty) return
-            var sum = 0.0
-            for (v in info.currentGasMasses.values) sum += v
-            totalMass = sum
-            capacity = nodeHeatCapacity(info.currentGasMasses, node.heatCapacity)
+            // Single fused pass: compute totalMass, sum-of-mass*cv, sum-of-mass*cp, sum-of-mass*R_i.
+            // Avoids one pass each through mixtureR / gammaMix / mixtureCapacity.
+            var sumMass = 0.0
+            var sumCv = 0.0
+            var sumCp = 0.0
+            var sumRcontrib = 0.0
+            val it = info.currentGasMasses.object2DoubleEntrySet().fastIterator()
+            while (it.hasNext()) {
+                val entry = it.next()
+                val mass = entry.doubleValue
+                if (mass <= 0.0) continue
+                val gas = entry.key
+                val cv_i = (gas.specificHeatCapacity / gas.adiabaticIndex) * 1000.0
+                val cp_i = gas.specificHeatCapacity * 1000.0
+                val Ri = (gas.adiabaticIndex - 1.0) * cv_i
+                sumMass += mass
+                sumCv += mass * cv_i
+                sumCp += mass * cp_i
+                sumRcontrib += mass * Ri
+            }
+            totalMass = sumMass
+            capacity = sumCv + node.heatCapacity   // = nodeHeatCapacity inline
+            rmix = if (sumMass > 1e-12) sumRcontrib / sumMass else 0.0
+            gamma = if (sumCv > 1e-12) sumCp / sumCv else 1.4
             temperature = if (capacity > 1e-12) (info.currentEnergy / capacity).coerceAtLeast(1e-4) else 273.15
-            pressure = calcPressureFromGamma(info.currentGasMasses, volume, temperature) / tankMult
-            viscosity = dynamicViscosityAverage(info.currentGasMasses, temperature)
+            pressure = if (sumMass > 1e-12 && volume > 0.0)
+                (sumMass / volume) * rmix * temperature / tankMult
+            else 0.0
+
+            // Viscosity needs the just-derived temperature, so a second pass over the same
+            // (typically tiny) map. Could share with the first pass at the cost of carrying
+            // per-gas (mass, viscosity-coefficient) tuples.
+            var sumVisc = 0.0
+            if (sumMass > 1e-12) {
+                val tempRatio = temperature / 273.15
+                val it2 = info.currentGasMasses.object2DoubleEntrySet().fastIterator()
+                while (it2.hasNext()) {
+                    val entry = it2.next()
+                    val mass = entry.doubleValue
+                    if (mass <= 0.0) continue
+                    val gas = entry.key
+                    sumVisc += mass * gas.viscosity * tempRatio *
+                        ((273.15 + gas.sutherlandConstant) / (temperature + gas.sutherlandConstant))
+                }
+                viscosity = sumVisc / sumMass
+            } else {
+                viscosity = 0.0
+            }
             dirty = false
         }
     }
 
+    /**
+     * Edge with its endpoints already resolved to [NodeWork] instances. Built once per
+     * [step] call so the per-substep edge loop doesn't have to look up by [DuctNodePos]
+     * (whose `equals` is expensive).
+     */
+    private class EdgeWithEnds(
+        val edge: DuctEdge,
+        val workA: NodeWork,
+        val workB: NodeWork,
+    )
+
     override fun step(network: DuctNetwork<*>, subSteps: Int) {
         val tickDelta = 1.0 / 20.0 / subSteps.toDouble()
 
-        // Stable sorted edge list. Gauss-Seidel is order-dependent, so identical inputs must
-        // produce identical outputs across runs (HashMap iteration order is not guaranteed).
-        val sortedEdges = network.edges.entries
-            .filter { !it.value.unloaded }
-            .sortedWith(EDGE_KEY_COMPARATOR)
-            .map { it.value }
+        // Sorted edge list — stable Gauss-Seidel order. Cached across `step()` calls and
+        // invalidated when the edge count changes (size is the only cheap signal we have;
+        // edge replacement at the same key is rare in practice).
+        if (cachedEdgesSize != network.edges.size) {
+            cachedEdgesSize = network.edges.size
+            cachedSortedEdges = network.edges.entries
+                .filter { !it.value.unloaded }
+                .sortedWith(EDGE_KEY_COMPARATOR)
+                .map { it.value }
+        }
+        val sortedEdges = cachedSortedEdges
 
-        // Build per-node working state once per step() call.
+        // Build per-node working state, then resolve every edge to its endpoints once.
         val nodeWork = HashMap<DuctNodePos, NodeWork>(network.nodes.size)
         for ((pos, node) in network.nodes) {
             if (network.unloadedNodes.contains(pos)) continue
@@ -136,18 +206,22 @@ class JacobiSeidelSolver : KelvinSolver {
             val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
             nodeWork[pos] = NodeWork(pos, node, info, volume, tankMult)
         }
+        val edgesWithEnds = ArrayList<EdgeWithEnds>(sortedEdges.size)
+        for (edge in sortedEdges) {
+            if (network.unloadedNodes.contains(edge.nodeA) || network.unloadedNodes.contains(edge.nodeB)) continue
+            val wA = nodeWork[edge.nodeA] ?: continue
+            val wB = nodeWork[edge.nodeB] ?: continue
+            edgesWithEnds.add(EdgeWithEnds(edge, wA, wB))
+        }
 
-        // Tick-averaged mass moved per edge (signed in A→B direction). Reporting the last
-        // substep's instantaneous transfer would lie about one-way edges, since their
-        // `dmActual` is clamped to 0 whenever the substep would have produced reverse flow.
-        val edgeMassMoved = HashMap<DuctEdge, Double>(sortedEdges.size)
+        // Tick-averaged mass moved per edge (signed in A→B direction).
+        val edgeMassMoved = Object2DoubleOpenHashMap<DuctEdge>(edgesWithEnds.size)
 
         var substepsRun = 0
         for (substep in 1..subSteps) {
             applyVolumeWork(network, nodeWork)
 
-            // Snapshot per-node state for the equilibrium check; force a refresh first so
-            // the snapshot reflects post-volume-work mass / energy.
+            // Refresh & snapshot every node in one pass — cheaper than per-pos lookups.
             for (work in nodeWork.values) {
                 work.dirty = true
                 work.ensureFresh()
@@ -155,8 +229,8 @@ class JacobiSeidelSolver : KelvinSolver {
                 work.substepInitialEnergy = work.info.currentEnergy
             }
 
-            for (edge in sortedEdges) {
-                processEdge(network, edge, tickDelta, edgeMassMoved, nodeWork)
+            for (e in edgesWithEnds) {
+                processEdge(network, e, tickDelta, edgeMassMoved)
             }
             substepsRun++
 
@@ -166,8 +240,8 @@ class JacobiSeidelSolver : KelvinSolver {
         // Tick-averaged flow rate (kg/s, signed in the edge's A→B direction).
         val elapsed = tickDelta * substepsRun
         if (elapsed > 0.0) {
-            for (edge in sortedEdges) {
-                edge.currentFlowRate = (edgeMassMoved[edge] ?: 0.0) / elapsed
+            for (e in edgesWithEnds) {
+                e.edge.currentFlowRate = edgeMassMoved.getDouble(e.edge) / elapsed
             }
         }
 
@@ -175,9 +249,9 @@ class JacobiSeidelSolver : KelvinSolver {
     }
 
     /**
-     * Per-substep volume-work pass. Integrates compression / expansion energy at each node
-     * before any mass transfer, so the pressure used by edges in this substep already
-     * accounts for user-driven volume changes.
+     * Per-substep volume-work pass. When a node's `volumeChange` hasn't moved since the last
+     * substep (the common case — volume only changes when a player moves a piston etc.),
+     * the energy integral collapses to zero and the whole body is a no-op.
      */
     private fun applyVolumeWork(network: DuctNetwork<*>, nodeWork: HashMap<DuctNodePos, NodeWork>) {
         for ((pos, node) in network.nodes) {
@@ -196,6 +270,14 @@ class JacobiSeidelSolver : KelvinSolver {
                 continue
             }
 
+            val deltaVolume = info.volumeChange - info.previousVolumeChange
+            if (deltaVolume == 0.0) {
+                // Volume hasn't moved this substep: integrating ½(P+P)·0 = 0 changes nothing.
+                // Skip the two calcPressureFromGamma calls and the assignments.
+                info.totalVolume = node.volume + info.volumeChange
+                continue
+            }
+
             val capacity = nodeHeatCapacity(info.currentGasMasses, node.heatCapacity)
             val volume = node.volume + info.volumeChange
             info.totalVolume = volume
@@ -203,7 +285,6 @@ class JacobiSeidelSolver : KelvinSolver {
             val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
 
             val pressure = calcPressureFromGamma(info.currentGasMasses, volume, initTemp) / tankMult
-            val deltaVolume = info.volumeChange - info.previousVolumeChange
             val intermediaryEnergy = info.currentEnergy - pressure * deltaVolume
             val intermediaryTemp = (intermediaryEnergy / capacity).coerceAtLeast(1e-4)
             val intermediaryPressure = calcPressureFromGamma(info.currentGasMasses, volume, intermediaryTemp) / tankMult
@@ -212,9 +293,6 @@ class JacobiSeidelSolver : KelvinSolver {
             info.currentPressure = intermediaryPressure
             info.currentEnergy -= 0.5 * (intermediaryPressure + pressure) * deltaVolume
             info.currentTemperature = (info.currentEnergy / capacity).coerceAtLeast(1e-4)
-
-            // Volume-work changed energy / temperature → derived cache is stale.
-            nodeWork[pos]?.dirty = true
         }
     }
 
@@ -224,21 +302,18 @@ class JacobiSeidelSolver : KelvinSolver {
      */
     private fun processEdge(
         network: DuctNetwork<*>,
-        edge: DuctEdge,
+        e: EdgeWithEnds,
         tickDelta: Double,
-        edgeMassMoved: HashMap<DuctEdge, Double>,
-        nodeWork: HashMap<DuctNodePos, NodeWork>,
+        edgeMassMoved: Object2DoubleOpenHashMap<DuctEdge>,
     ) {
-        if (network.unloadedNodes.contains(edge.nodeA) || network.unloadedNodes.contains(edge.nodeB)) return
-        val workA = nodeWork[edge.nodeA] ?: return
-        val workB = nodeWork[edge.nodeB] ?: return
+        val edge = e.edge
+        val workA = e.workA
+        val workB = e.workB
         workA.ensureFresh()
         workB.ensureFresh()
 
         val infoA = workA.info
         val infoB = workB.info
-        val nodeA = workA.node
-        val nodeB = workB.node
 
         val mTotA = workA.totalMass
         val mTotB = workB.totalMass
@@ -268,12 +343,10 @@ class JacobiSeidelSolver : KelvinSolver {
             pA, pB, effectiveRadius, edge.length, rhoA, rhoB, viscosity, pumpPressure, 0.0,
         )
 
-        // Choke (sonic limit on upstream node). Pass Cd explicitly to skip the $default bridge.
+        // Choke limit using the upstream node's cached rmix and gamma — no inner gas iteration.
         val upstreamIsA = pA > pB
-        val upMasses = if (upstreamIsA) infoA.currentGasMasses else infoB.currentGasMasses
-        val upP = if (upstreamIsA) pA else pB
-        val upT = if (upstreamIsA) tA else tB
-        val mdotMax = mdotChoked(upMasses, upP, upT, effectiveRadius, 0.8)
+        val upWork = if (upstreamIsA) workA else workB
+        val mdotMax = mdotChoked(upWork.pressure, upWork.temperature, effectiveRadius, 0.8, upWork.rmix, upWork.gamma)
         flowRate = flowRate.coerceIn(-mdotMax, mdotMax)
 
         if (edge is OneWayEdge) {
@@ -290,6 +363,14 @@ class JacobiSeidelSolver : KelvinSolver {
         }
         if (!flowRate.isFinite()) flowRate = 0.0
 
+        // Pump direction guard — if the pump's blocking flow this direction, nothing moves.
+        if (edge is PumpEdge) {
+            if ((flowRate < 0.0 && edge.target == edge.nodeB) ||
+                (flowRate > 0.0 && edge.target == edge.nodeA)) {
+                flowRate = 0.0
+            }
+        }
+
         // Under-relaxed mass step: apply only `relaxation` fraction of the physics-computed dm.
         val dmRequested = abs(flowRate * tickDelta * relaxation)
         val srcSign = if (flowRate >= 0.0) 1.0 else -1.0
@@ -301,19 +382,40 @@ class JacobiSeidelSolver : KelvinSolver {
 
         var dmActual = 0.0
         if (dmRequested > 0.0) {
-            val allowed = allowedGases(network, edge, srcSign)
+            // Iterate the source's actual gases (rather than the entire registry). Most nodes
+            // have 1–3 gases; the registry can be much larger. Filter membership is checked
+            // per gas at the same time.
             val srcMasses = srcInfo.currentGasMasses
             val dstMasses = dstInfo.currentGasMasses
+            val filteredEdge = edge as? FilteredEdge
 
-            // Primitive-valued reads/writes here avoid boxing every Double on every gas.
+            gasScratch.clear()
             var srcAllowed = 0.0
-            for (gas in allowed) srcAllowed += srcMasses.getDouble(gas)
+            val passIt = srcMasses.object2DoubleEntrySet().fastIterator()
+            while (passIt.hasNext()) {
+                val entry = passIt.next()
+                val mass = entry.doubleValue
+                if (mass <= 0.0) continue
+                val gas = entry.key
+                if (filteredEdge != null) {
+                    val passes = if (filteredEdge.blacklist) !filteredEdge.filter.contains(gas)
+                                 else filteredEdge.filter.contains(gas)
+                    if (!passes) continue
+                }
+                gasScratch.add(gas)
+                srcAllowed += mass
+            }
 
             if (srcAllowed > 1e-12) {
                 val cap = perEdgeMassFraction * srcAllowed
                 dmActual = min(dmRequested, cap)
                 val ratio = dmActual / srcAllowed
-                for (gas in allowed) {
+                // Iterating gasScratch (not srcMasses) is safe to mutate srcMasses inside.
+                var i = 0
+                val n = gasScratch.size
+                while (i < n) {
+                    val gas = gasScratch[i]
+                    i++
                     val mAvail = srcMasses.getDouble(gas)
                     if (mAvail <= 0.0) continue
                     val dm = mAvail * ratio
@@ -333,7 +435,7 @@ class JacobiSeidelSolver : KelvinSolver {
         }
 
         if (dmActual > 0.0) {
-            edgeMassMoved[edge] = (edgeMassMoved[edge] ?: 0.0) + dmActual * srcSign
+            edgeMassMoved.addTo(edge, dmActual * srcSign)
         }
 
         applyPassiveConduction(workA, workB, edge, tickDelta)
@@ -343,10 +445,6 @@ class JacobiSeidelSolver : KelvinSolver {
         workA: NodeWork, workB: NodeWork, edge: DuctEdge, tickDelta: Double,
     ) {
         if (workA.totalMass < 0.1 || workB.totalMass < 0.1) return
-        // Note: this uses cached pressures and temperatures from before the most recent
-        // mass transfer. Heat conductivity is a slow function of state, so the slight
-        // staleness is acceptable; refreshing here would require two more pressure /
-        // viscosity recomputes per edge for sub-percent accuracy gain.
         val condA = heatConductivityAverage(workA.info.currentGasMasses, workA.pressure, workA.temperature)
         val condB = heatConductivityAverage(workB.info.currentGasMasses, workB.pressure, workB.temperature)
         if (condA <= 1e-4 || condB <= 1e-4) return
@@ -365,7 +463,7 @@ class JacobiSeidelSolver : KelvinSolver {
 
     /**
      * Returns true when no node's mass or energy changed by more than [equilibriumTolerance]
-     * (relative) during the just-completed substep — the cheap proxy for "nothing's flowing."
+     * (relative) during the just-completed substep.
      */
     private fun atEquilibrium(nodeWork: HashMap<DuctNodePos, NodeWork>): Boolean {
         val tol = equilibriumTolerance
@@ -413,49 +511,12 @@ class JacobiSeidelSolver : KelvinSolver {
         }
     }
 
-    /**
-     * Gases this edge will allow to flow given the current direction.
-     * `srcSign` > 0 means A→B, < 0 means B→A.
-     *
-     * Common case (PipeDuctEdge / OneWayDuctEdge / ApertureDuctEdge / SmartEdge — anything
-     * that isn't a [PumpEdge] or [FilteredEdge]) returns the registry directly with zero
-     * allocation. Only [PumpEdge] (which blocks reverse flow against its target) and
-     * [FilteredEdge] (white/blacklist of gases) need to allocate or short-circuit.
-     */
-    private fun allowedGases(network: DuctNetwork<*>, edge: DuctEdge, srcSign: Double): Collection<GasType> {
-        val registry = if ((network as? DuctNetworkServer)?.isTestingEnvironment == true)
-            GasTypeRegistry.DEBUG_REGISTRY.values
-        else GasTypeRegistry.GAS_TYPES.values
-
-        // Fast path — most edges have no filter and no pump direction rule.
-        if (edge !is PumpEdge && edge !is FilteredEdge) return registry
-
-        if (edge is PumpEdge) {
-            if (srcSign < 0 && edge.target == edge.nodeB) return EMPTY_GAS_LIST
-            if (srcSign > 0 && edge.target == edge.nodeA) return EMPTY_GAS_LIST
-        }
-
-        if (edge is FilteredEdge) {
-            return registry.filter { gas ->
-                if (edge.blacklist) !edge.filter.contains(gas) else edge.filter.contains(gas)
-            }
-        }
-        return registry
-    }
-
     companion object {
-        /**
-         * Stable comparator over edge keys so Gauss-Seidel produces deterministic results
-         * regardless of HashMap iteration order.
-         */
         private val EDGE_KEY_COMPARATOR: Comparator<Map.Entry<Pair<DuctNodePos, DuctNodePos>, DuctEdge>> =
             compareBy(
                 { it.key.first.dimensionId.toString() },
                 { it.key.first.x }, { it.key.first.y }, { it.key.first.z },
                 { it.key.second.x }, { it.key.second.y }, { it.key.second.z },
             )
-
-        /** Sentinel for "no gases allowed" (pump blocked against its target direction). */
-        private val EMPTY_GAS_LIST: Collection<GasType> = emptyList()
     }
 }

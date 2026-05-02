@@ -88,6 +88,16 @@ object GasPhysics {
         return (mTot / volume) * Rmix * T
     }
 
+    /**
+     * Variant of [calcPressureFromGamma] that uses precomputed total mass and `Rmix` so callers
+     * with a per-node cache (solvers) can skip the inner gas iteration.
+     */
+    fun calcPressureFromGamma(mTot: Double, volume: Double, temp: Double, rmix: Double): Double {
+        if (mTot <= 1e-12 || volume <= 0.0) return 0.0
+        val T = temp.coerceAtLeast(1e-4)
+        return (mTot / volume) * rmix * T
+    }
+
     fun gammaMix(masses: Map<GasType, Double>): Double {
         val mTot = masses.values.sum()
         if (mTot <= 1e-12) return 1.4
@@ -114,6 +124,20 @@ object GasPhysics {
         val A = Math.PI * radius * radius
         val crit = Math.pow(2.0 / (g + 1.0), (g + 1.0) / (2.0 * (g - 1.0)))
         return Cd * A * upP * Math.sqrt(g / (R * T0)) * crit // kg/s
+    }
+
+    /**
+     * Variant of [mdotChoked] that takes a precomputed `Rmix` and `gamma` so callers with a
+     * per-node cache can skip iterating the upstream gas masses twice (once for `mixtureR`,
+     * once for `gammaMix`).
+     */
+    fun mdotChoked(upP: Double, upT: Double, radius: Double, Cd: Double, rmix: Double, gamma: Double): Double {
+        if (upP <= 0.0) return 0.0
+        if (rmix <= 1e-12 || gamma <= 1.0) return 0.0
+        val T0 = upT.coerceAtLeast(1e-4)
+        val A = Math.PI * radius * radius
+        val crit = Math.pow(2.0 / (gamma + 1.0), (gamma + 1.0) / (2.0 * (gamma - 1.0)))
+        return Cd * A * upP * Math.sqrt(gamma / (rmix * T0)) * crit
     }
 
     fun mixtureCapacity(masses: Map<GasType, Double>): Double {
