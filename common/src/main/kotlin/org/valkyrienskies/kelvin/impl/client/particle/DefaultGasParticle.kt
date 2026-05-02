@@ -37,7 +37,6 @@ class DefaultGasParticle(
         baseSize = quadSize
         // Dimensionless: 0 for air, positive for lighter-than-air, negative for heavier.
         buoyancyDelta = (AIR_DENSITY - gasDensity).toDouble() / AIR_DENSITY
-        alpha = 0f
     }
 
     override fun tick() {
@@ -51,11 +50,8 @@ class DefaultGasParticle(
 
             val lifeFrac = age.toFloat() / lifetime.toFloat()
             quadSize = baseSize * (1f + lifeFrac * SIZE_GROWTH)
-            alpha = when {
-                lifeFrac < FADE_IN_END -> lifeFrac / FADE_IN_END
-                lifeFrac < FADE_OUT_START -> 1f
-                else -> ((1f - lifeFrac) / (1f - FADE_OUT_START)).coerceAtLeast(0f)
-            }
+            alpha = if (lifeFrac < FADE_OUT_START) 1f
+            else ((1f - lifeFrac) / (1f - FADE_OUT_START)).coerceAtLeast(0f)
 
             setSpriteFromAge(spriteSet)
         } catch (e: Exception) {
@@ -75,7 +71,6 @@ class DefaultGasParticle(
         private const val BUOYANCY_BASE = 0.005
         private const val BUOYANCY_GATING_K = 200.0
         private const val SIZE_GROWTH = 1.5f
-        private const val FADE_IN_END = 0.10f
         private const val FADE_OUT_START = 0.60f
         private const val VELOCITY_JITTER = 0.15
         private const val MIN_JITTER = 0.005
