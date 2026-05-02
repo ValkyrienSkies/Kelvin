@@ -34,7 +34,8 @@ class DefaultGasParticle(
         yd = ySpeed + (random.nextDouble() - 0.5) * 2.0 * jitter
         zd = zSpeed + (random.nextDouble() - 0.5) * 2.0 * jitter
 
-        baseSize = quadSize
+        baseSize = quadSize * START_SIZE_FACTOR
+        quadSize = baseSize
         // Dimensionless: 0 for air, positive for lighter-than-air, negative for heavier.
         buoyancyDelta = (AIR_DENSITY - gasDensity).toDouble() / AIR_DENSITY
     }
@@ -46,7 +47,7 @@ class DefaultGasParticle(
             // so a thruster jet doesn't visibly U-turn upward when it stalls.
             val speedSq = xd * xd + yd * yd + zd * zd
             val buoyancyFactor = 1.0 / (1.0 + BUOYANCY_GATING_K * speedSq)
-            yd += buoyancyDelta * BUOYANCY_BASE * buoyancyFactor
+            yd += (buoyancyDelta * BUOYANCY_BASE + THERMAL_LIFT) * buoyancyFactor
 
             val lifeFrac = age.toFloat() / lifetime.toFloat()
             quadSize = baseSize * (1f + lifeFrac * SIZE_GROWTH)
@@ -68,9 +69,13 @@ class DefaultGasParticle(
     companion object {
         // STP density of air in kg/m^3; matches Kelvin's "air" GasType.
         const val AIR_DENSITY = 1.293f
-        private const val BUOYANCY_BASE = 0.005
+        private const val BUOYANCY_BASE = 0.02
+        // Constant upward bias applied to all gases — represents thermal lift / turbulence
+        // so even neutral- or heavy-density exhausts visually rise a little.
+        private const val THERMAL_LIFT = 0.0015
         private const val BUOYANCY_GATING_K = 200.0
-        private const val SIZE_GROWTH = 1.5f
+        private const val START_SIZE_FACTOR = 0.4f
+        private const val SIZE_GROWTH = 4f
         private const val FADE_OUT_START = 0.60f
         private const val VELOCITY_JITTER = 0.15
         private const val MIN_JITTER = 0.005
