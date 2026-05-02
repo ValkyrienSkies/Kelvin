@@ -68,6 +68,12 @@ class ClassicSolver: KelvinSolver {
                 val heatCapacityA = specificHeatAverageOld(nodeA.currentGasMasses)
                 val heatCapacityB = specificHeatAverageOld(nodeB.currentGasMasses)
 
+                // Combined node thermal capacity (gas + duct wall), in kJ/K to match the
+                // (mass * specificHeat) units used throughout this solver.
+                // nodeData.heatCapacity is J/K, so divide by 1000.
+                val combinedCapA = totalGasMassA * heatCapacityA + nodeDataA.heatCapacity / 1000.0
+                val combinedCapB = totalGasMassB * heatCapacityB + nodeDataB.heatCapacity / 1000.0
+
                 if (totalGasMassA == 0.0 && totalGasMassB == 0.0) {
                     continue
                 }
@@ -149,13 +155,13 @@ class ClassicSolver: KelvinSolver {
 
                 //Calculates passive heat transfer between nodes
                 val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * 2.0) * ((nodeA.currentTemperature - nodeB.currentTemperature) / edge.length))
-                val passiveHeatLimit = ((totalGasMassA * heatCapacityA * nodeA.currentTemperature) + (totalGasMassB * heatCapacityB * nodeB.currentTemperature))/2.0
+                val passiveHeatLimit = ((combinedCapA * nodeA.currentTemperature) + (combinedCapB * nodeB.currentTemperature))/2.0
 
                 if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite()) {
                     if (totalGasMassA >= 0.1 && totalGasMassB >= 0.1 && heatCapacityA >= 0.001 && heatCapacityB >= 0.001) {
                         val deltaPassiveEnergy = Mth.clamp(passiveHeatDelta, -passiveHeatLimit, passiveHeatLimit) / subSteps.toDouble()
-                        nodeA.currentTemperature -= deltaPassiveEnergy / (totalGasMassA * heatCapacityA)
-                        nodeB.currentTemperature += deltaPassiveEnergy / (totalGasMassB * heatCapacityB)
+                        nodeA.currentTemperature -= deltaPassiveEnergy / combinedCapA
+                        nodeB.currentTemperature += deltaPassiveEnergy / combinedCapB
                     }
                 }
 
@@ -225,9 +231,9 @@ class ClassicSolver: KelvinSolver {
 
 
                 val thermalLimit = if (flowRate > 0) {
-                    totalGasMassA * heatCapacityA * nodeA.currentTemperature
+                    combinedCapA * nodeA.currentTemperature
                 } else if (flowRate < 0) {
-                    totalGasMassB * heatCapacityB * nodeB.currentTemperature
+                    combinedCapB * nodeB.currentTemperature
                 } else {
                     0.0
                 }
@@ -235,11 +241,13 @@ class ClassicSolver: KelvinSolver {
 
                 if (deltaThermalEnergy.isInfinite() || deltaThermalEnergy.isNaN()) continue
 
+                val newCombinedCapA = newTotalGasMassesA * newHeatCapacityA + nodeDataA.heatCapacity / 1000.0
+                val newCombinedCapB = newTotalGasMassesB * newHeatCapacityB + nodeDataB.heatCapacity / 1000.0
 
                 //if (nodeA.currentTemperature > 300.0 || nodeB.currentTemperature > 300.0) KELVINLOGGER.logger.warn("High Temp! DeltaThermalEnergy: $deltaThermalEnergy, flowHeat: $flowHeatCapacity, ThermalLimit: $thermalLimit, totalGasMassA: $newTotalGasMassesA, totalGasMassB: $newTotalGasMassesB")
                 if (newTotalGasMassesA >= 0.0001 && newTotalGasMassesB >= 0.0001 && newHeatCapacityA >= 0.0001 && newHeatCapacityB >= 0.0001) {
-                    nodeA.currentTemperature += (deltaThermalEnergy / subSteps.toDouble()) / (newTotalGasMassesA * newHeatCapacityA)
-                    nodeB.currentTemperature -= (deltaThermalEnergy / subSteps.toDouble()) / (newTotalGasMassesB * newHeatCapacityB)
+                    nodeA.currentTemperature += (deltaThermalEnergy / subSteps.toDouble()) / newCombinedCapA
+                    nodeB.currentTemperature -= (deltaThermalEnergy / subSteps.toDouble()) / newCombinedCapB
                 }
 
                 // Clamps temperature to prevent impossible values

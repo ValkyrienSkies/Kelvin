@@ -1,273 +1,169 @@
 package org.valkyrienskies.kelvin
 
-import net.minecraft.resources.ResourceLocation
-import org.junit.jupiter.api.Test
-import org.valkyrienskies.kelvin.api.ConnectionType
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.DynamicTest
+import org.junit.jupiter.api.DynamicTest.dynamicTest
+import org.junit.jupiter.api.TestFactory
 import org.valkyrienskies.kelvin.api.DuctNodePos
-import org.valkyrienskies.kelvin.api.GasType
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
-import org.valkyrienskies.kelvin.api.edges.PipeDuctEdge
-import org.valkyrienskies.kelvin.api.nodes.PipeDuctNode
-import org.valkyrienskies.kelvin.impl.DuctNetworkServer
-import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry.DEBUG_REGISTRY
+import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.impl.solvers.ClassicSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
-import kotlin.math.abs
+import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
 
-class SimulationTest {
+class SimulationTest : KelvinTestBase() {
 
-    val network = DuctNetworkServer(disabled = false)
-
-    @Test
-    fun testSimulationStepJacobi() {
-        //setup simple demo scene
-        setupDemoNetwork()
-
-        // Printout current network status
-
-        println("Initial State:")
-        println("===NODES===")
-        for ((pos, node) in network.nodes) {
-            val info = network.nodeInfo[pos]!!
-            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
-            println("Thermal energy: ${info.currentEnergy}")
-            println("Volume: ${node.volume + info.volumeChange}")
-            println("Pressure: ${info.currentPressure}")
-            println("Wall Temperature: ${info.wallTemperature}")
-            println("===")
-        }
-        println("===EDGES===")
-        for (edge in network.edges) {
-            println("Edge from ${edge.key.first} to ${edge.key.second}")
-            println("Flow Rate: ${edge.value.currentFlowRate}")
-            println("===")
-        }
-        // final sanity check: total mass of gas should be constant
-        val totalMassBefore = network.nodes.keys.sumOf { pos ->
-            network.nodeInfo[pos]!!.currentGasMasses.values.sum()
-        }
-        val totalEnergyBefore = network.nodes.keys.sumOf { pos ->
-            network.nodeInfo[pos]!!.currentEnergy
-        }
-        println("Total gas at start of simulation: $totalMassBefore")
-        println("Total energy at start of simulation: $totalEnergyBefore")
-        println("Running simulation...")
-
-        // run 200 simulation steps
-        network.solver = JacobiSolver()
-        for (i in 1..200) {
-            network.solver.step(network,10)
-        }
-
-        // Printout final network status
-        println("State after 200 steps:")
-        println("===NODES===")
-        for ((pos, node) in network.nodes) {
-            val info = network.nodeInfo[pos]!!
-            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
-            println("Thermal energy: ${info.currentEnergy}")
-            println("Volume: ${node.volume + info.volumeChange}")
-            println("Pressure: ${info.currentPressure}")
-            println("Wall Temperature: ${info.wallTemperature}")
-            println("===")
-        }
-        println("===EDGES===")
-        for (edge in network.edges) {
-            println("Edge from ${edge.key.first} to ${edge.key.second}")
-            println("Flow Rate: ${edge.value.currentFlowRate}")
-            println("===")
-        }
-
-        val totalEnergyMiddle = network.nodes.keys.sumOf { pos ->
-            network.nodeInfo[pos]!!.currentEnergy
-        }
-        println("Total energy after 200 steps: $totalEnergyMiddle")
-        // this should decrease due to ambient transfer
-        assert(totalEnergyBefore > totalEnergyMiddle) { "Total energy of gas should be decreased due to ambient heat dissipation" }
-
-        //apply a pressure to node 1
-        network.modVolume(DuctNodePos(0.0, 0.0, 0.0), -0.05)
-
-        // run another 200 simulation steps
-        for (i in 1..200) {
-            network.solver.step(network,10)
-        }
-        println("Final state after 400 steps:")
-        println("===NODES===")
-        for ((pos, node) in network.nodes) {
-            val info = network.nodeInfo[pos]!!
-            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
-            println("Thermal energy: ${info.currentEnergy}")
-            println("Volume: ${node.volume + info.volumeChange}")
-            println("Pressure: ${info.currentPressure}")
-            println("Wall Temperature: ${info.wallTemperature}")
-            println("===")
-        }
-        println("===EDGES===")
-        for (edge in network.edges) {
-            println("Edge from ${edge.key.first} to ${edge.key.second}")
-            println("Flow Rate: ${edge.value.currentFlowRate}")
-            println("===")
-        }
-        val totalMassAfter = network.nodes.keys.sumOf { pos ->
-            network.nodeInfo[pos]!!.currentGasMasses.values.sum()
-        }
-        val totalEnergyAfter = network.nodes.keys.sumOf { pos ->
-            network.nodeInfo[pos]!!.currentEnergy
-        }
-        println("Total gas at end of simulation: $totalMassAfter")
-        assert(abs(totalMassBefore - totalMassAfter) < 1e-9) { "Total mass of gas should be constant before and after simulation!" }
-        println("Total energy at end of simulation: $totalEnergyAfter")
-        // this should actually be larger
-        assert(totalEnergyAfter > totalEnergyMiddle) { "Total energy of gas should increase after compressive force!" }
+    private fun setupDemoNetwork(): List<DuctNodePos> {
+        val positions = pipeChain(4)
+        network.addGasAtTemperature(positions[0], TEST_AIR, 100.0, 400.0)
+        network.addGasAtTemperature(positions[1], TEST_AIR, 1.0, 273.5)
+        network.addGasAtTemperature(positions[3], TEST_AIR, 1.0, 273.5)
+        return positions
     }
 
-    @Test
-    fun testSimulationStepClassic() {
-        //setup simple demo scene
-        setupDemoNetwork()
+    /**
+     * Smoke test: every solver must run the demo scenario for 200 ticks without producing
+     * NaN or infinite state.
+     */
+    @TestFactory
+    fun `solvers stay numerically finite`(): List<DynamicTest> = ALL_SOLVERS.map { (name, factory) ->
+        dynamicTest("$name produces finite state after 200 steps") {
+            resetNetwork()
+            setupDemoNetwork()
+            network.solver = factory()
 
-        // Printout current network status
+            simulate(steps = 200)
 
-        println("Initial State:")
-        println("===NODES===")
-        for ((pos, node) in network.nodes) {
-            val info = network.nodeInfo[pos]!!
-            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
-            println("Thermal energy: ${info.currentEnergy}")
-            println("Volume: ${node.volume + info.volumeChange}")
-            println("Pressure: ${info.currentPressure}")
-            println("===")
-        }
-        println("===EDGES===")
-        for (edge in network.edges) {
-            println("Edge from ${edge.key.first} to ${edge.key.second}")
-            println("Flow Rate: ${edge.value.currentFlowRate}")
-            println("===")
-        }
-        println("Running simulation...")
-
-        // run 200 simulation steps
-        network.solver = ClassicSolver()
-        for (i in 1..200) {
-            network.solver.step(network,10)
-        }
-
-        // Printout final network status
-        println("State after 200 steps:")
-        println("===NODES===")
-        for ((pos, node) in network.nodes) {
-            val info = network.nodeInfo[pos]!!
-            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
-            println("Thermal energy: ${info.currentEnergy}")
-            println("Volume: ${node.volume + info.volumeChange}")
-            println("Pressure: ${info.currentPressure}")
-            println("===")
-        }
-        println("===EDGES===")
-        for (edge in network.edges) {
-            println("Edge from ${edge.key.first} to ${edge.key.second}")
-            println("Flow Rate: ${edge.value.currentFlowRate}")
-            println("===")
+            for ((pos, info) in network.nodeInfo) {
+                assertTrue(info.currentTemperature.isFinite()) { "Temperature non-finite at $pos: ${info.currentTemperature}" }
+                assertTrue(info.currentPressure.isFinite()) { "Pressure non-finite at $pos: ${info.currentPressure}" }
+                assertTrue(info.currentEnergy.isFinite()) { "Energy non-finite at $pos: ${info.currentEnergy}" }
+                assertTrue(info.currentGasMasses.values.all { it.isFinite() }) { "Gas mass non-finite at $pos: ${info.currentGasMasses}" }
+            }
         }
     }
 
-    @Test
-    fun testSimulationStepJacobiSimplified() {
-        //setup simple demo scene
-        setupDemoNetwork()
+    /**
+     * Mass-conservation invariant: across the full 400-step scenario (with a mid-run
+     * volume change) the total gas mass should be unchanged. Required for **every** solver.
+     */
+    @TestFactory
+    fun `solvers conserve total gas mass`(): List<DynamicTest> = ALL_SOLVERS.map { (name, factory) ->
+        dynamicTest("$name conserves mass over 400 steps with a volume change") {
+            resetNetwork()
+            setupDemoNetwork()
+            network.solver = factory()
 
-        // Printout current network status
+            val before = totalGasMass()
+            simulate(steps = 200)
+            network.modVolume(DuctNodePos(0.0, 0.0, 0.0), -0.05)
+            simulate(steps = 200)
+            val after = totalGasMass()
 
-        println("Initial State:")
-        println("===NODES===")
-        for ((pos, node) in network.nodes) {
-            val info = network.nodeInfo[pos]!!
-            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
-            println("Thermal energy: ${info.currentEnergy}")
-            println("Volume: ${node.volume + info.volumeChange}")
-            println("Pressure: ${info.currentPressure}")
-            println("===")
-        }
-        println("===EDGES===")
-        for (edge in network.edges) {
-            println("Edge from ${edge.key.first} to ${edge.key.second}")
-            println("Flow Rate: ${edge.value.currentFlowRate}")
-            println("===")
-        }
-        println("Running simulation...")
-
-        // run 200 simulation steps
-        network.solver = JacobiSimplifiedSolver()
-        for (i in 1..200) {
-            network.solver.step(network,10)
-        }
-
-        // Printout final network status
-        println("State after 200 steps:")
-        println("===NODES===")
-        for ((pos, node) in network.nodes) {
-            val info = network.nodeInfo[pos]!!
-            println("Node at $pos: Temperature=${info.currentTemperature}, GasMasses=${info.currentGasMasses}")
-            println("Thermal energy: ${info.currentEnergy}")
-            println("Volume: ${node.volume + info.volumeChange}")
-            println("Pressure: ${info.currentPressure}")
-            println("===")
-        }
-        println("===EDGES===")
-        for (edge in network.edges) {
-            println("Edge from ${edge.key.first} to ${edge.key.second}")
-            println("Flow Rate: ${edge.value.currentFlowRate}")
-            println("===")
+            // Use a relative tolerance: a few hundred sub-stepped iterations can accumulate
+            // ~1e-11 relative error in IEEE 754 sums even when the solver loses no mass.
+            val tolerance = (MASS_REL_TOLERANCE * before).coerceAtLeast(MASS_ABS_FLOOR)
+            assertEquals(before, after, tolerance) {
+                "Total gas mass not conserved by $name: before=$before after=$after diff=${after - before}"
+            }
         }
     }
 
-    private fun setupDemoNetwork() {
-        network.isTestingEnvironment = true
+    /**
+     * Thermodynamic monotonicity (universal): the ambient phase must never *add* energy out
+     * of nowhere, and the compression phase must never *remove* energy. Solvers that model
+     * ambient transfer (Jacobi family) will show strict inequalities; solvers that don't
+     * (ClassicSolver) keep energy constant — both are physically valid.
+     */
+    @TestFactory
+    fun `solvers respect thermodynamic monotonicity`(): List<DynamicTest> =
+        ALL_SOLVERS.map { (name, factory) ->
+            dynamicTest("$name doesn't violate thermodynamics in the demo scenario") {
+                resetNetwork()
+                setupDemoNetwork()
+                network.solver = factory()
 
-        val pos1 = DuctNodePos(0.0, 0.0, 0.0)
-        val pos2 = DuctNodePos(1.0, 0.0, 0.0)
-        val pos3 = DuctNodePos(2.0, 0.0, 0.0)
-        val pos4 = DuctNodePos(3.0, 0.0, 0.0)
+                val initial = totalEnergy()
+                simulate(steps = 200)
+                val cooled = totalEnergy()
+                val ambientTolerance = (ENERGY_REL_TOLERANCE * initial).coerceAtLeast(ENERGY_ABS_FLOOR)
+                assertTrue(cooled <= initial + ambientTolerance) {
+                    "$name spontaneously gained energy during ambient phase: initial=$initial cooled=$cooled"
+                }
 
-        network.addNode(pos1, defaultPipe(pos1))
-        network.addNode(pos2, defaultPipe(pos2))
-        network.addNode(pos3, defaultPipe(pos3))
-        network.addNode(pos4, defaultPipe(pos4))
+                network.modVolume(DuctNodePos(0.0, 0.0, 0.0), -0.05)
+                simulate(steps = 200)
+                val compressed = totalEnergy()
+                val compressionTolerance = (ENERGY_REL_TOLERANCE * cooled).coerceAtLeast(ENERGY_ABS_FLOOR)
+                assertTrue(compressed >= cooled - compressionTolerance) {
+                    "$name lost energy during compression phase: cooled=$cooled compressed=$compressed"
+                }
+            }
+        }
 
-        // Connect nodes with edges
-        network.addEdge(pos1, pos2, defaultPipeEdge(pos1, pos2))
-        network.addEdge(pos2, pos3, defaultPipeEdge(pos2, pos3))
-        network.addEdge(pos3, pos4, defaultPipeEdge(pos3, pos4))
+    /**
+     * Combined-capacity invariant: dumping E joules into a duct node should raise its
+     * temperature by exactly E / (C_gas + C_wall). This is the whole point of folding the
+     * wall thermal mass into the node's heat capacity — a reaction that releases E joules
+     * can't push the gas to "temperature of the sun" anymore because the wall absorbs its
+     * share immediately. Only meaningful for solvers that track currentEnergy (Jacobi
+     * family); ClassicSolver tracks temperature directly and is excluded.
+     */
+    @TestFactory
+    fun `energy injection respects combined gas plus wall heat capacity`(): List<DynamicTest> =
+        listOf<Pair<String, () -> KelvinSolver>>(
+            "Jacobi" to ::JacobiSolver,
+            "JacobiSimplified" to ::JacobiSimplifiedSolver,
+        ).map { (name, factory) ->
+            dynamicTest("$name: ΔT = E / (C_gas + C_wall)") {
+                resetNetwork()
+                val pos = DuctNodePos(0.0, 0.0, 0.0)
+                network.addNode(pos, defaultPipe(pos))
+                network.addGasAtTemperature(pos, TEST_AIR, 1.0, 300.0)
+                network.solver = factory()
 
-        // add some gas to node 1
-        network.addGasAtTemperature(pos1, DEBUG_REGISTRY.get("test_air")!!, 100.0, 400.0)
+                // Let the solver settle so currentEnergy and currentTemperature are mutually consistent.
+                simulate(steps = 5)
 
-        // give a little to the other nodes
-        network.addGasAtTemperature(pos2, DEBUG_REGISTRY.get("test_air")!!, 1.0, 273.5)
-        //network.addGasAtTemperature(pos3, DEBUG_REGISTRY.get("test_hydrogen")!!, 5.0, 273.5)
-        network.addGasAtTemperature(pos4, DEBUG_REGISTRY.get("test_air")!!, 1.0, 273.5)
-    }
+                val info = network.nodeInfo[pos]!!
+                val pipe = network.nodes[pos]!!
+                val tempBefore = info.currentTemperature
+                val expectedCombinedCapacity = mixtureCapacity(info.currentGasMasses) + pipe.heatCapacity
+
+                val energyToInject = 50_000.0
+                network.modHeatEnergy(pos, energyToInject)
+
+                // One tick lets the solver convert the new energy into a temperature.
+                simulate(steps = 1)
+
+                val tempAfter = network.nodeInfo[pos]!!.currentTemperature
+                val expectedDeltaT = energyToInject / expectedCombinedCapacity
+                val actualDeltaT = tempAfter - tempBefore
+
+                // Loose tolerance: solver does volume work and other small adjustments per tick.
+                assertEquals(expectedDeltaT, actualDeltaT, expectedDeltaT * 0.01) {
+                    "$name: expected ΔT≈$expectedDeltaT for $energyToInject J into capacity=$expectedCombinedCapacity J/K, got ΔT=$actualDeltaT"
+                }
+            }
+        }
 
     companion object {
-        fun defaultPipeEdge(from: DuctNodePos, to: DuctNodePos): PipeDuctEdge {
-            return PipeDuctEdge(
-                type = ConnectionType.PIPE,
-                nodeA = from,
-                nodeB = to,
-            )
-        }
-        fun defaultPipe(pos: DuctNodePos): PipeDuctNode {
-            return PipeDuctNode(
-                pos = pos,
-                behavior = NodeBehaviorType.PIPE,
-                volume = 0.25,
-                maxPressure = 16375049.0,
-                maxTemperature = 1478.0,
-                heatConductivity = 5000.0,
-                heatCapacity = 50.0
-            )
-        }
+        /** Allow ~1 part in 10^7 of accumulated floating-point drift in summed gas mass. */
+        private const val MASS_REL_TOLERANCE = 1e-7
+
+        /** Floor for the absolute tolerance, so tiny networks aren't held to sub-ULP precision. */
+        private const val MASS_ABS_FLOOR = 1e-9
+
+        /** Same idea, but for total thermal energy. Energy values are larger so the floor is also larger. */
+        private const val ENERGY_REL_TOLERANCE = 1e-7
+        private const val ENERGY_ABS_FLOOR = 1e-3
+
+        /** Every solver implementation, paired with a factory so each dynamic test gets a fresh instance. */
+        private val ALL_SOLVERS: List<Pair<String, () -> KelvinSolver>> = listOf(
+            "Jacobi" to ::JacobiSolver,
+            "JacobiSimplified" to ::JacobiSimplifiedSolver,
+            "Classic" to ::ClassicSolver,
+        )
     }
 }

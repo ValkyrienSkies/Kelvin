@@ -6,6 +6,7 @@ import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
+import org.valkyrienskies.kelvin.util.GasPhysics
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 
 /**
@@ -48,9 +49,18 @@ interface DuctNetwork<T: Level> {
     fun getTemperatureAt(node: DuctNodePos): Double
 
     /**
-     * Returns the duct wall temperature at a node from the previous tick.
+     * Combined thermal mass of a node (gas mixture + duct wall), in J/K.
+     *
+     * Use this whenever you need to convert between a node's energy and its temperature
+     * (e.g. "how many joules to raise this node by ΔT?"). For pure-gas contexts that don't
+     * involve a duct wall — gas parcels in transit, balloons, sealed pockets — use
+     * [GasPhysics.mixtureCapacity] directly.
      */
-    fun getWallTemperatureAt(node: DuctNodePos): Double
+    fun getNodeHeatCapacity(pos: DuctNodePos): Double {
+        val info = nodeInfo[pos] ?: return 0.0
+        val node = nodes[pos] ?: return GasPhysics.mixtureCapacity(info.currentGasMasses)
+        return GasPhysics.nodeHeatCapacity(info.currentGasMasses, node.heatCapacity)
+    }
 
     /**
      * Returns the thermal energy at a node from the previous tick.
@@ -76,9 +86,6 @@ interface DuctNetwork<T: Level> {
     }
     fun modTemperature(pos: DuctNodePos, deltaTemperature: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modTemperature")
-    }
-    fun setWallTemperature(pos: DuctNodePos, deltaTemperature: Double) {
-        KELVINLOGGER.warn("You can't modify this from here. Called: setWallTemperature")
     }
     fun modPressure(pos: DuctNodePos, deltaPressure: Double) {
         KELVINLOGGER.warn("You can't modify this from here. Called: modPressure")

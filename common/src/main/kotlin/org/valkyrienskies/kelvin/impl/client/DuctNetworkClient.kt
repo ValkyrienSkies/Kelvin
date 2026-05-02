@@ -84,10 +84,6 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
         return nodeInfo[node]?.currentTemperature ?: -1.0
     }
 
-    override fun getWallTemperatureAt(node: DuctNodePos): Double {
-        return nodeInfo[node]?.wallTemperature ?: -1.0
-    }
-
     override fun getGasMassAt(node: DuctNodePos): HashMap<GasType, Double> {
         return nodeInfo[node]?.currentGasMasses ?: HashMap()
     }

@@ -67,12 +67,11 @@ abstract class KelvinTestBase {
         for ((pos, node) in network.nodes) {
             val info = network.nodeInfo[pos] ?: continue
             println(
-                "  $pos: T=%.2f P=%.2f V=%.4f E=%.2f wallT=%.2f gas=%s".format(
+                "  $pos: T=%.2f P=%.2f V=%.4f E=%.2f gas=%s".format(
                     info.currentTemperature,
                     info.currentPressure,
                     node.volume + info.volumeChange,
                     info.currentEnergy,
-                    info.wallTemperature,
                     info.currentGasMasses,
                 ),
             )
@@ -99,7 +98,6 @@ abstract class KelvinTestBase {
             volume = 0.25,
             maxPressure = 16375049.0,
             maxTemperature = 1478.0,
-            heatConductivity = 5000.0,
             heatCapacity = 50.0,
         )
     }

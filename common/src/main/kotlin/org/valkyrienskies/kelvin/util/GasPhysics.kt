@@ -180,6 +180,21 @@ object GasPhysics {
         return capacity
     }
 
+    /**
+     * Combined thermal mass of a duct node (gas mixture + duct wall), in J/K.
+     *
+     * The wall is treated as instantly equilibrated with the gas, so this is the capacity
+     * that should be divided into a node's `currentEnergy` to recover its temperature, and
+     * multiplied by ΔT when injecting/extracting energy at the node level.
+     *
+     * Use bare [mixtureCapacity] only for pure-gas contexts: gas parcels carried by mass
+     * transfer between nodes (the wall stays in place), or non-duct gas containers like
+     * pockets and balloons that have no wall thermal mass concept.
+     */
+    fun nodeHeatCapacity(masses: Map<GasType, Double>, wallCapacity: Double): Double {
+        return mixtureCapacity(masses) + wallCapacity
+    }
+
     fun mixtureCapacityOld(masses: Map<GasType, Double>): Double {
         var capacity = 0.0
         for ((gas, m) in masses) {

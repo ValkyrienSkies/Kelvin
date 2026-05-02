@@ -37,7 +37,8 @@ interface INodeBlockEntity {
         val info = kelvin.nodeInfo.computeIfAbsent(pos) { t -> DuctNodeInfo(NodeBehaviorType.valueOf(nodeData.getString("NodeType")), 273.15, 0.0, hashMapOf(), nodeData.getDouble("KelvinVolume") ?: 0.0) }
 
         val temperature = nodeData.getDouble("KelvinTemperature")
-        val wallTemperature = nodeData.getDouble("KelvinWallTemperature")
+        // KelvinWallTemperature from old saves is intentionally ignored; the wall is now
+        // part of the combined node thermal mass.
         val volume = nodeData.getDouble("KelvinVolume")
         val energy = nodeData.getDouble("KelvinEnergy")
 
@@ -47,7 +48,6 @@ interface INodeBlockEntity {
             info.currentGasMasses[gasType] = nodeData.getDouble(gasResourceLocation.toString())
         }
         info.currentTemperature = temperature
-        info.wallTemperature = wallTemperature
         info.previousPressure = info.currentPressure
         info.currentPressure = if (nodeData.contains("KelvinPressure")) {
             nodeData.getDouble("KelvinPressure")
