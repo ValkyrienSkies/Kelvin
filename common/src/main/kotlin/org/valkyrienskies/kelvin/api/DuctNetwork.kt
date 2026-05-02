@@ -51,10 +51,8 @@ interface DuctNetwork<T: Level> {
     /**
      * Combined thermal mass of a node (gas mixture + duct wall), in J/K.
      *
-     * Use this whenever you need to convert between a node's energy and its temperature
-     * (e.g. "how many joules to raise this node by ΔT?"). For pure-gas contexts that don't
-     * involve a duct wall — gas parcels in transit, balloons, sealed pockets — use
-     * [GasPhysics.mixtureCapacity] directly.
+     * For pure-gas contexts that don't involve a duct wall — gas parcels in transit, balloons, sealed pockets
+     * use [GasPhysics.mixtureCapacity] directly.
      */
     fun getNodeHeatCapacity(pos: DuctNodePos): Double {
         val info = nodeInfo[pos] ?: return 0.0
