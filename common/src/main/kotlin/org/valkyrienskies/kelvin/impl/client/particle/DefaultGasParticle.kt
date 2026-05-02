@@ -38,6 +38,7 @@ class DefaultGasParticle(
         quadSize = baseSize
         // Dimensionless: 0 for air, positive for lighter-than-air, negative for heavier.
         buoyancyDelta = (AIR_DENSITY - gasDensity).toDouble() / AIR_DENSITY
+        lifetime = (lifetime * LIFETIME_MULT).toInt()
     }
 
     override fun tick() {
@@ -76,6 +77,7 @@ class DefaultGasParticle(
         private const val BUOYANCY_GATING_K = 200.0
         private const val START_SIZE_FACTOR = 0.4f
         private const val SIZE_GROWTH = 4f
+        private const val LIFETIME_MULT = 1.25
         private const val FADE_OUT_START = 0.60f
         private const val VELOCITY_JITTER = 0.15
         private const val MIN_JITTER = 0.005
