@@ -93,16 +93,32 @@ class JacobiSeidelSolver : KelvinSolver {
             .sortedWith(EDGE_KEY_COMPARATOR)
             .map { it.value }
 
+        // Accumulate signed mass moved per edge over the whole step so that we can report
+        // a tick-averaged flow rate. Reporting the last substep's instantaneous transfer
+        // would lie about one-way edges, since their `dmActual` is clamped to 0 whenever
+        // the substep would have produced reverse flow — even if every other substep this
+        // tick moved mass forward.
+        val edgeMassMoved = HashMap<DuctEdge, Double>(sortedEdges.size)
+
+        var substepsRun = 0
         for (substep in 1..subSteps) {
             applyVolumeWork(network)
 
             var maxRelDeltaP = 0.0
             for (edge in sortedEdges) {
-                val rel = processEdge(network, edge, tickDelta)
+                val rel = processEdge(network, edge, tickDelta, edgeMassMoved)
                 if (rel > maxRelDeltaP) maxRelDeltaP = rel
             }
-
+            substepsRun++
             if (substep >= minSubsteps && maxRelDeltaP < equilibriumTolerance) break
+        }
+
+        // Tick-averaged flow rate (kg/s, signed in the edge's A→B direction).
+        val elapsed = tickDelta * substepsRun
+        if (elapsed > 0.0) {
+            for (edge in sortedEdges) {
+                edge.currentFlowRate = (edgeMassMoved[edge] ?: 0.0) / elapsed
+            }
         }
 
         normalizeNodes(network)
@@ -154,7 +170,12 @@ class JacobiSeidelSolver : KelvinSolver {
      * working state of both endpoints in place. Returns the larger of the two relative
      * pressure changes induced on the endpoints, used by the caller for equilibrium detection.
      */
-    private fun processEdge(network: DuctNetwork<*>, edge: DuctEdge, tickDelta: Double): Double {
+    private fun processEdge(
+        network: DuctNetwork<*>,
+        edge: DuctEdge,
+        tickDelta: Double,
+        edgeMassMoved: HashMap<DuctEdge, Double>,
+    ): Double {
         if (network.unloadedNodes.contains(edge.nodeA) || network.unloadedNodes.contains(edge.nodeB)) return 0.0
         val nodeA = network.nodes[edge.nodeA] ?: return 0.0
         val nodeB = network.nodes[edge.nodeB] ?: return 0.0
@@ -163,10 +184,7 @@ class JacobiSeidelSolver : KelvinSolver {
 
         val mTotA = sumValues(infoA.currentGasMasses)
         val mTotB = sumValues(infoB.currentGasMasses)
-        if (mTotA <= 1e-9 && mTotB <= 1e-9) {
-            edge.currentFlowRate = 0.0
-            return 0.0
-        }
+        if (mTotA <= 1e-9 && mTotB <= 1e-9) return 0.0
 
         val capA = nodeHeatCapacity(infoA.currentGasMasses, nodeA.heatCapacity)
         val capB = nodeHeatCapacity(infoB.currentGasMasses, nodeB.heatCapacity)
@@ -260,7 +278,11 @@ class JacobiSeidelSolver : KelvinSolver {
             }
         }
 
-        edge.currentFlowRate = (dmActual * srcSign) / tickDelta
+        // Accumulate signed mass moved this substep; the caller divides by total elapsed time
+        // at the end of step() to set `edge.currentFlowRate` as a tick-average.
+        if (dmActual > 0.0) {
+            edgeMassMoved[edge] = (edgeMassMoved[edge] ?: 0.0) + dmActual * srcSign
+        }
 
         // Passive heat conduction between the two nodes through the edge cross-section.
         applyPassiveConduction(infoA, infoB, edge, tA, tB, pA, pB, mTotA, mTotB, tickDelta)
