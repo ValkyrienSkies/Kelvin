@@ -11,7 +11,6 @@ open class PipeDuctNode(
     override val volume: Double,
     override val maxPressure: Double,
     override val maxTemperature: Double,
-    override val heatConductivity: Double,
     override val heatCapacity: Double
 ) : DuctNode {
 
@@ -25,7 +24,7 @@ open class PipeDuctNode(
 
     companion object {
         fun DEFAULT(pos: DuctNodePos): PipeDuctNode {
-            return PipeDuctNode(pos, NodeBehaviorType.PIPE, volume = 1.0, maxPressure = 16375049.0, maxTemperature = 1478.0, heatConductivity = 1687.5, heatCapacity = 449.0)
+            return PipeDuctNode(pos, NodeBehaviorType.PIPE, volume = 1.0, maxPressure = 16375049.0, maxTemperature = 1478.0, heatCapacity = 449.0)
         }
     }
 }
