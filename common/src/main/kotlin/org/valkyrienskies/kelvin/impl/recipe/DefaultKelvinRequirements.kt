@@ -14,7 +14,7 @@ import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 object DefaultKelvinRequirements {
     val defaultRequirements = listOf(minTemperature, maxTemperature, minPressure, maxPressure, inhibitedBy)
 
-    object minTemperature: GasReactionRequirement(KelvinMod.asResouceLocation("min_temperature")) {
+    object minTemperature: GasReactionRequirement(KelvinMod.asResourceLocation("min_temperature")) {
         override fun apply_requirement(level: Level, ductNode: DuctNodePos, network: DuctNetwork<*>, value: JsonElement): Boolean {
             val doubleValue = value.asDouble
 

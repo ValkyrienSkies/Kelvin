@@ -18,7 +18,7 @@ import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 @JeiPlugin
 class KelvinJeiPlugin: IModPlugin {
     override fun getPluginUid(): ResourceLocation {
-        return KelvinMod.asResouceLocation("jei_plugin")
+        return KelvinMod.asResourceLocation("jei_plugin")
     }
 
     override fun registerIngredients(registration: IModIngredientRegistration) {

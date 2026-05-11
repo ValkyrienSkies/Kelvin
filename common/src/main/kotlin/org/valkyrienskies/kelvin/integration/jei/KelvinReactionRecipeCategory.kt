@@ -19,7 +19,7 @@ import org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin.Companion.GAS_I
 class KelvinReactionRecipeCategory : IRecipeCategory<GasBaseRecipe> {
 
     override fun getBackground(): IDrawable {
-        return ImageDrawable(150, 150, KelvinMod.asResouceLocation("textures/gui/gas_reaction_recipe_background.png"))
+        return ImageDrawable(150, 150, KelvinMod.asResourceLocation("textures/gui/gas_reaction_recipe_background.png"))
     }
 
     override fun getRecipeType(): RecipeType<GasBaseRecipe> {
