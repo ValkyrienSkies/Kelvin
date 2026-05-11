@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.Level
 import org.valkyrienskies.kelvin.KelvinMod
+import org.valkyrienskies.kelvin.KelvinMod.MOD_ID
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.recipe.GasReactionRequirement
@@ -24,12 +25,12 @@ object DefaultKelvinRequirements {
         override fun get_text(value: JsonElement): Component {
             val doubleValue = value.asDouble
 
-            return Component.literal("Minimum Temperature: $doubleValue K")
+            return Component.translatable("$MOD_ID.requirements.min_temperature", doubleValue)
         }
 
     }
 
-    object maxTemperature: GasReactionRequirement(KelvinMod.asResouceLocation("max_temperature")) {
+    object maxTemperature: GasReactionRequirement(KelvinMod.asResourceLocation("max_temperature")) {
         override fun apply_requirement(level: Level, ductNode: DuctNodePos, network: DuctNetwork<*>, value: JsonElement): Boolean {
             val doubleValue = value.asDouble
 
@@ -40,11 +41,11 @@ object DefaultKelvinRequirements {
         override fun get_text(value: JsonElement): Component {
             val doubleValue = value.asDouble
 
-            return Component.literal("Maximum Temperature: $doubleValue K")
+            return Component.translatable("$MOD_ID.requirements.max_temperature", doubleValue)
         }
     }
 
-    object minPressure: GasReactionRequirement(KelvinMod.asResouceLocation("min_pressure")) {
+    object minPressure: GasReactionRequirement(KelvinMod.asResourceLocation("min_pressure")) {
         override fun apply_requirement(level: Level, ductNode: DuctNodePos, network: DuctNetwork<*>, value: JsonElement): Boolean {
             val doubleValue = value.asDouble
 
@@ -55,11 +56,11 @@ object DefaultKelvinRequirements {
         override fun get_text(value: JsonElement): Component {
             val doubleValue = value.asDouble
 
-            return Component.literal("Minimum Pressure: $doubleValue Pa")
+            return Component.translatable("$MOD_ID.requirements.min_pressure", doubleValue)
         }
     }
 
-    object maxPressure: GasReactionRequirement(KelvinMod.asResouceLocation("max_pressure")) {
+    object maxPressure: GasReactionRequirement(KelvinMod.asResourceLocation("max_pressure")) {
         override fun apply_requirement(level: Level, ductNode: DuctNodePos, network: DuctNetwork<*>, value: JsonElement): Boolean {
             val doubleValue = value.asDouble
 
@@ -70,11 +71,11 @@ object DefaultKelvinRequirements {
         override fun get_text(value: JsonElement): Component {
             val doubleValue = value.asDouble
 
-            return Component.literal("Maximum Pressure: $doubleValue Pa")
+            return Component.translatable("$MOD_ID.requirements.max_pressure", doubleValue)
         }
     }
 
-    object inhibitedBy: GasReactionRequirement(KelvinMod.asResouceLocation("inhibited_by")) {
+    object inhibitedBy: GasReactionRequirement(KelvinMod.asResourceLocation("inhibited_by")) {
         override fun apply_requirement(level: Level, ductNode: DuctNodePos, network: DuctNetwork<*>, value: JsonElement): Boolean {
             val gasTypeId = value.asJsonObject["gas"].asString
             val gasType = GasTypeRegistry.getGasType(ResourceLocation.of(gasTypeId, ':'))
@@ -87,10 +88,18 @@ object DefaultKelvinRequirements {
         }
 
         override fun get_text(value: JsonElement): Component {
-            val gasType = value.asJsonObject["gas"].asString
+            val gasType = value.asJsonObject["gas"].getGasName()
             val ratio = value.asJsonObject["ratio"].asDouble
 
-            return Component.literal("Inhibited by: $gasType(${ratio*100}%)")
+            return Component.translatable("$MOD_ID.requirements.inhibited_by", gasType, ratio*100)
+            //return Component.literal("Inhibited by: $gasType(${ratio*100}%)")
         }
     }
+}
+
+/**
+ * Assumes the JsonElement is a String resource location for a registered gas
+ */
+private fun JsonElement.getGasName(): String {
+    return GasTypeRegistry.getGasType(ResourceLocation(this.asString))?.name ?: this.asString
 }
