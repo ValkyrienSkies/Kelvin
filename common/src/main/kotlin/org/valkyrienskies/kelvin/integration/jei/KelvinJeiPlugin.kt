@@ -18,12 +18,12 @@ import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 @JeiPlugin
 class KelvinJeiPlugin: IModPlugin {
     override fun getPluginUid(): ResourceLocation {
-        return KelvinMod.asResouceLocation("jei_plugin")
+        return KelvinMod.asResourceLocation("jei_plugin")
     }
 
     override fun registerIngredients(registration: IModIngredientRegistration) {
         val recipes = HashSet<KelvinGasIngredient>()
-        GasTypeRegistry.GAS_TYPES.values.forEach {type -> recipes.add(KelvinGasIngredient(type, 1.0))}
+        GasTypeRegistry.GAS_TYPES.values.forEach {type -> recipes.add(KelvinGasIngredient(type, 0.0))}
         registration.register(GAS_INGREDIENT_TYPE, recipes, GasIngredientHelper(), GasIngredientRenderer())
     }
 
