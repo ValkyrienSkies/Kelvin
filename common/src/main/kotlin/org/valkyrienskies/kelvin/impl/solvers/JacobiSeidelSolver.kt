@@ -79,6 +79,18 @@ class JacobiSeidelSolver : KelvinSolver {
     /** Always run at least this many substeps before considering an early exit. */
     var minSubsteps: Int = 1
 
+    /**
+     * Relative pressure difference below which an edge is treated as pressure-equilibrated.
+     *
+     * Dense systems can turn tiny floating-point pressure jitter into a large calculated
+     * kg/s value. This deadband keeps `currentFlowRate` from reporting numerical settling
+     * as sustained throughput.
+     */
+    var relativePressureTolerance: Double = 1e-5
+
+    /** Absolute pressure floor for the equilibrium deadband, in Pa. */
+    var absolutePressureTolerance: Double = 1e-6
+
     /** Scratch list of gases-to-process per edge, reused across edges to avoid allocation. */
     private val gasScratch: ObjectArrayList<GasType> = ObjectArrayList(8)
 
@@ -208,7 +220,6 @@ class JacobiSeidelSolver : KelvinSolver {
         // Tick-averaged mass moved per edge (signed in A→B direction).
         val edgeMassMoved = Object2DoubleOpenHashMap<DuctEdge>(edgesWithEnds.size)
 
-        var substepsRun = 0
         for (substep in 1..subSteps) {
             applyVolumeWork(network, nodeWork)
 
@@ -223,13 +234,12 @@ class JacobiSeidelSolver : KelvinSolver {
             for (e in edgesWithEnds) {
                 processEdge(network, e, tickDelta, edgeMassMoved)
             }
-            substepsRun++
 
             if (substep >= minSubsteps && atEquilibrium(nodeWork)) break
         }
 
         // Tick-averaged flow rate (kg/s, signed in the edge's A→B direction).
-        val elapsed = tickDelta * substepsRun
+        val elapsed = tickDelta * subSteps.toDouble()
         if (elapsed > 0.0) {
             for (e in edgesWithEnds) {
                 e.edge.currentFlowRate = edgeMassMoved.getDouble(e.edge) / elapsed
@@ -326,6 +336,14 @@ class JacobiSeidelSolver : KelvinSolver {
 
         val rhoA = if (volA > 0.0) mTotA / volA else 0.0
         val rhoB = if (volB > 0.0) mTotB / volB else 0.0
+        val drivingPressure = pA - pB + pumpPressure
+        val pressureScale = max(1.0, max(max(abs(pA), abs(pB)), abs(pumpPressure)))
+        val pressureTolerance = max(absolutePressureTolerance, pressureScale * relativePressureTolerance)
+
+        if (abs(drivingPressure) <= pressureTolerance) {
+            applyPassiveConduction(workA, workB, edge, tickDelta)
+            return
+        }
 
         // Don't seed `calculateFlow`'s Reynolds calc with `edge.currentFlowRate`: that biases
         // pipe edges into a different friction regime than one-way edges (whose previous rate

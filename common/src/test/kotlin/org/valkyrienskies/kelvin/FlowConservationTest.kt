@@ -3,6 +3,7 @@ package org.valkyrienskies.kelvin
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.DynamicTest.dynamicTest
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
 import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
@@ -29,6 +30,27 @@ import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
  *   incoming edges are added. Adding capacity should never reduce delivery.
  */
 class FlowConservationTest : KelvinTestBase() {
+
+    @Test
+    fun `ignore dense near-equilibrium pressure jitter`() {
+        val a = DuctNodePos(0.0, 0.0, 0.0)
+        val b = DuctNodePos(1.0, 0.0, 0.0)
+        network.solver = JacobiSeidelSolver() // only implemented fix for jacobi (TODO: do it for the other solvers too)
+        network.addNode(a, defaultPipe(a))
+        network.addNode(b, defaultPipe(b))
+        network.addEdge(a, b, defaultPipeEdge(a, b))
+        network.addGasAtTemperature(a, TEST_AIR, 5.0, 300.0)
+        network.addGasAtTemperature(b, TEST_AIR, 5.0, 300.0)
+
+        network.modHeatEnergy(a, network.getHeatEnergy(a) * 5e-6)
+
+        simulate(steps = 1)
+
+        val flow = network.getEdgeBetween(a, b)!!.currentFlowRate
+        assertTrue(flow == 0.0) {
+            "Solver should not report flow for sub-tolerance dense equilibrium jitter, got $flow kg/s"
+        }
+    }
 
     @TestFactory
     fun `pipe chain matches one-way chain mass flow rate`(): List<DynamicTest> =
