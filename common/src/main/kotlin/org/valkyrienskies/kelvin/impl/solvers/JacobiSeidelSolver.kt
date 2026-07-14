@@ -71,6 +71,12 @@ class JacobiSeidelSolver : KelvinSolver {
     var perEdgeMassFraction: Double = 0.25
 
     /**
+     * Maximum fraction of the edge-local pressure imbalance that can be erased in one substep.
+     * Keeping this below 1 prevents closed loops from swapping an imbalance around the cycle.
+     */
+    var pressureEqualizationFraction: Double = 0.5
+
+    /**
      * Per-node max(|Δm|/m, |ΔE|/E) below which a substep is considered at equilibrium and
      * the substep loop is allowed to exit early.
      */
@@ -78,6 +84,18 @@ class JacobiSeidelSolver : KelvinSolver {
 
     /** Always run at least this many substeps before considering an early exit. */
     var minSubsteps: Int = 1
+
+    /**
+     * Relative pressure difference below which an edge is treated as pressure-equilibrated.
+     *
+     * Dense systems can turn tiny floating-point pressure jitter into a large calculated
+     * kg/s value. This deadband keeps `currentFlowRate` from reporting numerical settling
+     * as sustained throughput.
+     */
+    var relativePressureTolerance: Double = 1e-5
+
+    /** Absolute pressure floor for the equilibrium deadband, in Pa. */
+    var absolutePressureTolerance: Double = 1e-6
 
     /** Scratch list of gases-to-process per edge, reused across edges to avoid allocation. */
     private val gasScratch: ObjectArrayList<GasType> = ObjectArrayList(8)
@@ -205,10 +223,7 @@ class JacobiSeidelSolver : KelvinSolver {
             edgesWithEnds.add(EdgeWithEnds(edge, wA, wB))
         }
 
-        // Tick-averaged mass moved per edge (signed in A→B direction).
-        val edgeMassMoved = Object2DoubleOpenHashMap<DuctEdge>(edgesWithEnds.size)
-
-        var substepsRun = 0
+        // Integrate mass/energy changes. Reported flow is recomputed from final state below.
         for (substep in 1..subSteps) {
             applyVolumeWork(network, nodeWork)
 
@@ -220,23 +235,22 @@ class JacobiSeidelSolver : KelvinSolver {
                 work.substepInitialEnergy = work.info.currentEnergy
             }
 
-            for (e in edgesWithEnds) {
-                processEdge(network, e, tickDelta, edgeMassMoved)
+            if (substep % 2 == 1) {
+                for (e in edgesWithEnds) {
+                    processEdge(network, e, tickDelta)
+                }
+            } else {
+                for (i in edgesWithEnds.size - 1 downTo 0) {
+                    processEdge(network, edgesWithEnds[i], tickDelta)
+                }
             }
-            substepsRun++
 
-            if (substep >= minSubsteps && atEquilibrium(nodeWork)) break
+            if (substep >= minSubsteps && atEquilibrium(nodeWork, edgesWithEnds)) break
         }
 
-        // Tick-averaged flow rate (kg/s, signed in the edge's A→B direction).
-        val elapsed = tickDelta * substepsRun
-        if (elapsed > 0.0) {
-            for (e in edgesWithEnds) {
-                e.edge.currentFlowRate = edgeMassMoved.getDouble(e.edge) / elapsed
-            }
-        }
-
+        // Recompute diagnostic flow from final normalized pressures to avoid fake loop circulation.
         normalizeNodes(network)
+        updateCurrentFlowRates(edgesWithEnds)
     }
 
     /**
@@ -295,7 +309,6 @@ class JacobiSeidelSolver : KelvinSolver {
         network: DuctNetwork<*>,
         e: EdgeWithEnds,
         tickDelta: Double,
-        edgeMassMoved: Object2DoubleOpenHashMap<DuctEdge>,
     ) {
         val edge = e.edge
         val workA = e.workA
@@ -326,6 +339,14 @@ class JacobiSeidelSolver : KelvinSolver {
 
         val rhoA = if (volA > 0.0) mTotA / volA else 0.0
         val rhoB = if (volB > 0.0) mTotB / volB else 0.0
+        val drivingPressure = pA - pB + pumpPressure
+        val pressureScale = max(1.0, max(max(abs(pA), abs(pB)), abs(pumpPressure)))
+        val pressureTolerance = max(absolutePressureTolerance, pressureScale * relativePressureTolerance)
+
+        if (abs(drivingPressure) <= pressureTolerance) {
+            applyPassiveConduction(workA, workB, edge, tickDelta)
+            return
+        }
 
         // Don't seed `calculateFlow`'s Reynolds calc with `edge.currentFlowRate`: that biases
         // pipe edges into a different friction regime than one-way edges (whose previous rate
@@ -371,7 +392,6 @@ class JacobiSeidelSolver : KelvinSolver {
         val dstWork = if (srcSign > 0.0) workB else workA
         val srcTemp = if (srcSign > 0.0) tA else tB
 
-        var dmActual = 0.0
         if (dmRequested > 0.0) {
             // Iterate the source's actual gases (rather than the entire registry). Most nodes
             // have 1–3 gases; the registry can be much larger. Filter membership is checked
@@ -398,8 +418,11 @@ class JacobiSeidelSolver : KelvinSolver {
             }
 
             if (srcAllowed > 1e-12) {
-                val cap = perEdgeMassFraction * srcAllowed
-                dmActual = min(dmRequested, cap)
+                val cap = min(
+                    perEdgeMassFraction * srcAllowed,
+                    pressureEqualizationMassLimit(drivingPressure, workA, workB),
+                )
+                val dmActual = min(dmRequested, cap)
                 val ratio = dmActual / srcAllowed
                 // Iterating gasScratch (not srcMasses) is safe to mutate srcMasses inside.
                 var i = 0
@@ -425,11 +448,92 @@ class JacobiSeidelSolver : KelvinSolver {
             }
         }
 
-        if (dmActual > 0.0) {
-            edgeMassMoved.addTo(edge, dmActual * srcSign)
+        applyPassiveConduction(workA, workB, edge, tickDelta)
+    }
+
+    private fun updateCurrentFlowRates(edgesWithEnds: List<EdgeWithEnds>) {
+        for (e in edgesWithEnds) {
+            e.workA.dirty = true
+            e.workB.dirty = true
+        }
+        for (e in edgesWithEnds) {
+            e.edge.currentFlowRate = calculateDiagnosticFlowRate(e.edge, e.workA, e.workB)
+        }
+    }
+
+    private fun calculateDiagnosticFlowRate(edge: DuctEdge, workA: NodeWork, workB: NodeWork): Double {
+        workA.ensureFresh()
+        workB.ensureFresh()
+
+        val mTotA = workA.totalMass
+        val mTotB = workB.totalMass
+        if (mTotA <= 1e-9 && mTotB <= 1e-9) return 0.0
+
+        val tA = workA.temperature
+        val tB = workB.temperature
+        val pA = workA.pressure
+        val pB = workB.pressure
+        val volA = workA.volume
+        val volB = workB.volume
+        val viscosity = (workA.viscosity + workB.viscosity) * 0.5
+
+        val pumpPressure = if (edge is PumpEdge) {
+            if (edge.target == edge.nodeB) edge.pumpPressure else -edge.pumpPressure
+        } else 0.0
+        val aperture = if (edge is ApertureEdge) max(edge.aperture, -edge.radius) else 0.0
+        val effectiveRadius = edge.radius + aperture
+
+        val rhoA = if (volA > 0.0) mTotA / volA else 0.0
+        val rhoB = if (volB > 0.0) mTotB / volB else 0.0
+        val drivingPressure = pA - pB + pumpPressure
+        val pressureScale = max(1.0, max(max(abs(pA), abs(pB)), abs(pumpPressure)))
+        val pressureTolerance = max(absolutePressureTolerance, pressureScale * relativePressureTolerance)
+
+        if (abs(drivingPressure) <= pressureTolerance) return 0.0
+
+        var flowRate = calculateFlow(
+            pA, pB, effectiveRadius, edge.length, rhoA, rhoB, viscosity, pumpPressure, 0.0,
+        )
+
+        val upstreamIsA = pA > pB
+        val upWork = if (upstreamIsA) workA else workB
+        val mdotMax = mdotChoked(upWork.pressure, upWork.temperature, effectiveRadius, 0.8, upWork.rmix, upWork.gamma)
+        flowRate = flowRate.coerceIn(-mdotMax, mdotMax)
+
+        if (edge is OneWayEdge) {
+            if (!edge.reversed && flowRate < 0.0) flowRate = 0.0
+            else if (edge.reversed && flowRate > 0.0) flowRate = 0.0
+        }
+        if (edge is SmartEdge && edge.filter != SmartEdge.FilterType.NONE) {
+            val toCheck = if (flowRate > 0)
+                if (edge.filter == SmartEdge.FilterType.PRESSURE) pA else tA
+            else
+                if (edge.filter == SmartEdge.FilterType.PRESSURE) pB else tB
+            val passed = if (edge.moreThan) toCheck >= edge.comparisonValue else toCheck <= edge.comparisonValue
+            if (!passed) flowRate = 0.0
+        }
+        if (!flowRate.isFinite()) flowRate = 0.0
+
+        if (edge is PumpEdge) {
+            if ((flowRate < 0.0 && edge.target == edge.nodeB) ||
+                (flowRate > 0.0 && edge.target == edge.nodeA)) {
+                flowRate = 0.0
+            }
         }
 
-        applyPassiveConduction(workA, workB, edge, tickDelta)
+        return flowRate
+    }
+
+    private fun pressureEqualizationMassLimit(
+        drivingPressure: Double,
+        workA: NodeWork,
+        workB: NodeWork,
+    ): Double {
+        val slopeA = if (workA.totalMass > 1e-9) abs(workA.pressure / workA.totalMass) else 0.0
+        val slopeB = if (workB.totalMass > 1e-9) abs(workB.pressure / workB.totalMass) else 0.0
+        val pressurePerMass = slopeA + slopeB
+        if (pressurePerMass <= 1e-12) return Double.POSITIVE_INFINITY
+        return (abs(drivingPressure) / pressurePerMass) * pressureEqualizationFraction
     }
 
     private fun applyPassiveConduction(
@@ -456,7 +560,10 @@ class JacobiSeidelSolver : KelvinSolver {
      * Returns true when no node's mass or energy changed by more than [equilibriumTolerance]
      * (relative) during the just-completed substep.
      */
-    private fun atEquilibrium(nodeWork: HashMap<DuctNodePos, NodeWork>): Boolean {
+    private fun atEquilibrium(
+        nodeWork: HashMap<DuctNodePos, NodeWork>,
+        edgesWithEnds: List<EdgeWithEnds>,
+    ): Boolean {
         val tol = equilibriumTolerance
         for (work in nodeWork.values) {
             val mInit = work.substepInitialMass
@@ -472,6 +579,9 @@ class JacobiSeidelSolver : KelvinSolver {
                 val deRel = abs(work.info.currentEnergy - eInit) / eAbs
                 if (deRel > tol) return false
             }
+        }
+        for (e in edgesWithEnds) {
+            if (abs(calculateDiagnosticFlowRate(e.edge, e.workA, e.workB)) > 1e-9) return false
         }
         return true
     }

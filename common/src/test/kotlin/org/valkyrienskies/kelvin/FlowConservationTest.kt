@@ -3,6 +3,7 @@ package org.valkyrienskies.kelvin
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.DynamicTest.dynamicTest
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
 import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
@@ -29,6 +30,36 @@ import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
  *   incoming edges are added. Adding capacity should never reduce delivery.
  */
 class FlowConservationTest : KelvinTestBase() {
+
+    @Test
+    fun `ignore dense equilibrated loop circulation`() {
+        val engine = DuctNodePos(0.0, 0.0, 0.0)
+        val ductA = DuctNodePos(1.0, 0.0, 0.0)
+        val ductB = DuctNodePos(0.0, 1.0, 0.0)
+        network.solver = JacobiSeidelSolver()
+        network.addNode(engine, defaultPipe(engine))
+        network.addNode(ductA, defaultPipe(ductA))
+        network.addNode(ductB, defaultPipe(ductB))
+        network.addEdge(engine, ductA, defaultPipeEdge(engine, ductA))
+        network.addEdge(engine, ductB, defaultPipeEdge(engine, ductB))
+        network.addEdge(ductA, ductB, defaultPipeEdge(ductA, ductB))
+
+        network.addGasAtTemperature(engine, TEST_AIR, 6.0, 300.0)
+        network.addGasAtTemperature(ductA, TEST_AIR, 5.0, 300.0)
+        network.addGasAtTemperature(ductB, TEST_AIR, 5.0, 300.0)
+
+        simulate(steps = 400)
+
+        val flows = listOf(
+            network.getEdgeBetween(engine, ductA)!!.currentFlowRate,
+            network.getEdgeBetween(engine, ductB)!!.currentFlowRate,
+            network.getEdgeBetween(ductA, ductB)!!.currentFlowRate,
+        )
+        val maxFlow = flows.maxOf { kotlin.math.abs(it) }
+        assertTrue(maxFlow < 1e-6) {
+            "Solver should not report circulating flow in a dense equilibrated loop, got $flows kg/s"
+        }
+    }
 
     @TestFactory
     fun `pipe chain matches one-way chain mass flow rate`(): List<DynamicTest> =
