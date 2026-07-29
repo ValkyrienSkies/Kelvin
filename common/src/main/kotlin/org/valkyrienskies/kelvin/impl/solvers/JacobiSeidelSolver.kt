@@ -224,7 +224,9 @@ class JacobiSeidelSolver : KelvinSolver {
         }
 
         // Integrate mass/energy changes. Reported flow is recomputed from final state below.
+        var completedSubsteps = 0
         for (substep in 1..subSteps) {
+            completedSubsteps = substep
             applyVolumeWork(network, nodeWork)
 
             // Refresh & snapshot every node in one pass — cheaper than per-pos lookups.
@@ -246,6 +248,11 @@ class JacobiSeidelSolver : KelvinSolver {
             }
 
             if (substep >= minSubsteps && atEquilibrium(nodeWork, edgesWithEnds)) break
+        }
+
+        val remainingTickDelta = tickDelta * (subSteps - completedSubsteps).toDouble()
+        if (remainingTickDelta > 0.0) {
+            applyPassiveConduction(edgesWithEnds, remainingTickDelta)
         }
 
         // Recompute diagnostic flow from final normalized pressures to avoid fake loop circulation.
@@ -554,6 +561,14 @@ class JacobiSeidelSolver : KelvinSolver {
         workB.info.currentEnergy += dE
         workA.dirty = true
         workB.dirty = true
+    }
+
+    private fun applyPassiveConduction(edgesWithEnds: List<EdgeWithEnds>, tickDelta: Double) {
+        for (e in edgesWithEnds) {
+            e.workA.ensureFresh()
+            e.workB.ensureFresh()
+            applyPassiveConduction(e.workA, e.workB, e.edge, tickDelta)
+        }
     }
 
     /**
