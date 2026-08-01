@@ -547,20 +547,31 @@ class JacobiSeidelSolver : KelvinSolver {
         workA: NodeWork, workB: NodeWork, edge: DuctEdge, tickDelta: Double,
     ) {
         if (workA.totalMass < 0.1 || workB.totalMass < 0.1) return
+        val heatMultiplier = edge.passiveHeatMultiplier()
+        if (heatMultiplier <= 0.0) return
         val condA = heatConductivityAverage(workA.info.currentGasMasses, workA.pressure, workA.temperature)
         val condB = heatConductivityAverage(workB.info.currentGasMasses, workB.pressure, workB.temperature)
         if (condA <= 1e-4 || condB <= 1e-4) return
         val avgCond = condA * condB / (condA + condB)
         val area = Math.PI * edge.radius * edge.radius
-        val dQ = avgCond * area * (workA.temperature - workB.temperature) / edge.length * tickDelta
+        val dQ = avgCond * area * (workA.temperature - workB.temperature) / edge.length * heatMultiplier * tickDelta
         if (!dQ.isFinite()) return
-        val limit = min(workA.info.currentEnergy.absoluteValue, workB.info.currentEnergy.absoluteValue)
+        val energyLimit = if (dQ > 0.0) workA.info.currentEnergy.absoluteValue else workB.info.currentEnergy.absoluteValue
+        val limit = min(energyLimit, passiveEqualizationLimit(workA, workB))
+        if (limit <= 0.0) return
         val dE = Mth.clamp(dQ, -limit, limit)
         if (dE == 0.0) return
         workA.info.currentEnergy -= dE
         workB.info.currentEnergy += dE
         workA.dirty = true
         workB.dirty = true
+    }
+
+    private fun passiveEqualizationLimit(workA: NodeWork, workB: NodeWork): Double {
+        val capA = workA.capacity
+        val capB = workB.capacity
+        if (capA <= 1e-12 || capB <= 1e-12) return 0.0
+        return abs(workA.temperature - workB.temperature) / ((1.0 / capA) + (1.0 / capB))
     }
 
     private fun applyPassiveConduction(edgesWithEnds: List<EdgeWithEnds>, tickDelta: Double) {

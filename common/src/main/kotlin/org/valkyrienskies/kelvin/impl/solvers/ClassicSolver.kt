@@ -24,6 +24,7 @@ import org.valkyrienskies.kelvin.util.GasPhysics.specificHeatAverageOld
 import kotlin.collections.set
 import kotlin.math.absoluteValue
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sign
 
 class ClassicSolver: KelvinSolver {
@@ -155,10 +156,18 @@ class ClassicSolver: KelvinSolver {
 
 
                 //Calculates passive heat transfer between nodes
-                val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * 2.0) * ((nodeA.currentTemperature - nodeB.currentTemperature) / edge.length))
-                val passiveHeatLimit = ((combinedCapA * nodeA.currentTemperature) + (combinedCapB * nodeB.currentTemperature))/2.0
+                val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * 2.0) * ((nodeA.currentTemperature - nodeB.currentTemperature) / edge.length)) *
+                    edge.passiveHeatMultiplier()
+                val passiveEqualizationLimit = if (combinedCapA > 1e-12 && combinedCapB > 1e-12)
+                    Math.abs(nodeA.currentTemperature - nodeB.currentTemperature) / ((1.0 / combinedCapA) + (1.0 / combinedCapB))
+                else 0.0
+                val passiveEnergyLimit = if (passiveHeatDelta > 0.0)
+                    (combinedCapA * nodeA.currentTemperature).absoluteValue
+                else
+                    (combinedCapB * nodeB.currentTemperature).absoluteValue
+                val passiveHeatLimit = min(passiveEnergyLimit, passiveEqualizationLimit)
 
-                if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite()) {
+                if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite() && passiveHeatLimit > 0.0) {
                     if (totalGasMassA >= 0.1 && totalGasMassB >= 0.1 && heatCapacityA >= 0.001 && heatCapacityB >= 0.001) {
                         val deltaPassiveEnergy = Mth.clamp(passiveHeatDelta, -passiveHeatLimit, passiveHeatLimit) / subSteps.toDouble()
                         nodeA.currentTemperature -= deltaPassiveEnergy / combinedCapA

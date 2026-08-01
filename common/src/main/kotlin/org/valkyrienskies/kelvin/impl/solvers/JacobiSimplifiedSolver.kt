@@ -118,10 +118,17 @@ class JacobiSimplifiedSolver: KelvinSolver {
                 val heatCondA = heatConductivityAverage(infoA.currentGasMasses, pA, tA)
                 val heatCondB = heatConductivityAverage(infoB.currentGasMasses, pB, tB)
                 val avgCond = if (heatCondA > 1e-4 && heatCondB > 1e-4) heatCondA * heatCondB / (heatCondA + heatCondB) else 0.0
-                val passiveQ = (avgCond * (Math.PI * edge.radius * edge.radius) * ((tA - tB) / edge.length)) * tickDelta
+                val passiveQ = (avgCond * (Math.PI * edge.radius * edge.radius) * ((tA - tB) / edge.length)) *
+                    edge.passiveHeatMultiplier() * tickDelta
 
                 if (mA >= 0.1 && mB >= 0.1 && Math.abs(passiveQ) > 1e-4) {
-                    val qLimit = min(infoA.currentEnergy.absoluteValue, infoB.currentEnergy.absoluteValue)
+                    val capA = nodeHeatCapacity(infoA.currentGasMasses, network.nodes[edge.nodeA]!!.heatCapacity)
+                    val capB = nodeHeatCapacity(infoB.currentGasMasses, network.nodes[edge.nodeB]!!.heatCapacity)
+                    val equalizationLimit = if (capA > 1e-12 && capB > 1e-12)
+                        Math.abs(tA - tB) / ((1.0 / capA) + (1.0 / capB))
+                    else 0.0
+                    val energyLimit = if (passiveQ > 0.0) infoA.currentEnergy.absoluteValue else infoB.currentEnergy.absoluteValue
+                    val qLimit = min(energyLimit, equalizationLimit)
                     val qApplied = passiveQ.coerceIn(-qLimit, qLimit)
                     deltaEnergy[edge.nodeA] = deltaEnergy[edge.nodeA]!! - qApplied
                     deltaEnergy[edge.nodeB] = deltaEnergy[edge.nodeB]!! + qApplied
