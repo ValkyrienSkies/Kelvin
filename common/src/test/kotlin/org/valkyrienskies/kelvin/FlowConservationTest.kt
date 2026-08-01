@@ -9,8 +9,10 @@ import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.KelvinSolver
+import org.valkyrienskies.kelvin.api.NodeBehaviorType
 import org.valkyrienskies.kelvin.api.edges.OneWayDuctEdge
 import org.valkyrienskies.kelvin.api.edges.PipeDuctEdge
+import org.valkyrienskies.kelvin.api.nodes.PipeDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.solvers.ClassicSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSeidelSolver
@@ -30,6 +32,38 @@ import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
  *   incoming edges are added. Adding capacity should never reduce delivery.
  */
 class FlowConservationTest : KelvinTestBase() {
+
+    @Test
+    fun `reported flow is bounded by actual tick averaged mass transfer`() {
+        val engine = DuctNodePos(0.0, 0.0, 0.0)
+        val ductA = DuctNodePos(-1.0, 0.0, 0.0)
+        val ductB = DuctNodePos(1.0, 0.0, 0.0)
+        network.solver = JacobiSeidelSolver()
+        network.addNode(engine, pipeWithVolume(engine, 1.0))
+        network.addNode(ductA, pipeWithVolume(ductA, 0.4))
+        network.addNode(ductB, pipeWithVolume(ductB, 0.4))
+        network.addEdge(engine, ductA, clockworkPipeEdge(engine, ductA))
+        network.addEdge(engine, ductB, clockworkPipeEdge(engine, ductB))
+
+        network.addGasAtTemperature(engine, TEST_AIR, 11.0, 300.0)
+        network.addGasAtTemperature(ductA, TEST_AIR, 5.0, 300.0)
+        network.addGasAtTemperature(ductB, TEST_AIR, 5.0, 300.0)
+
+        val massBeforeA = network.nodeInfo[ductA]!!.currentGasMasses.values.sum()
+        network.solver.step(network, DEFAULT_SUBSTEPS)
+        val massAfterA = network.nodeInfo[ductA]!!.currentGasMasses.values.sum()
+        val reportedFlow = network.getEdgeBetween(engine, ductA)!!.currentFlowRate
+        val measuredFlow = (massAfterA - massBeforeA) / TICK_SECONDS
+
+        assertTrue(kotlin.math.abs(reportedFlow) <= kotlin.math.abs(measuredFlow) + 1e-9) {
+            "Reported edge flow must not exceed actual tick-averaged transfer: " +
+                "reported=$reportedFlow kg/s, measured=$measuredFlow kg/s"
+        }
+        assertTrue(reportedFlow == 0.0 || reportedFlow * measuredFlow > 0.0) {
+            "Reported edge flow must agree with actual transfer direction: " +
+                "reported=$reportedFlow kg/s, measured=$measuredFlow kg/s"
+        }
+    }
 
     @Test
     fun `ignore dense equilibrated loop circulation`() {
@@ -158,9 +192,27 @@ class FlowConservationTest : KelvinTestBase() {
         return net.nodeInfo[center]!!.currentGasMasses.values.sum()
     }
 
+    private fun pipeWithVolume(pos: DuctNodePos, volume: Double) = PipeDuctNode(
+        pos = pos,
+        behavior = NodeBehaviorType.PIPE,
+        volume = volume,
+        maxPressure = 16375049.0,
+        maxTemperature = 1478.0,
+        heatCapacity = 50.0,
+    )
+
+    private fun clockworkPipeEdge(from: DuctNodePos, to: DuctNodePos) = PipeDuctEdge(
+        type = ConnectionType.PIPE,
+        nodeA = from,
+        nodeB = to,
+        radius = 0.3125,
+        length = 0.375,
+    )
+
     companion object {
         private const val CHAIN_LENGTH = 20
         private const val MEASURE_STEPS = 100
+        private const val TICK_SECONDS = 1.0 / 20.0
 
         private const val SOURCE_MASS = 1000.0
         private const val SOURCE_TEMPERATURE = 400.0

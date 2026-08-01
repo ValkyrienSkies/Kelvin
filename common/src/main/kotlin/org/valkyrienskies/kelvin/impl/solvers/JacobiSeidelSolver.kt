@@ -223,7 +223,9 @@ class JacobiSeidelSolver : KelvinSolver {
             edgesWithEnds.add(EdgeWithEnds(edge, wA, wB))
         }
 
-        // Integrate mass/energy changes. Reported flow is recomputed from final state below.
+        // Accumulate signed mass moved per edge so currentFlowRate can be bounded by actual
+        // tick-averaged transfer instead of reporting the edge's theoretical flow capacity.
+        val edgeMassMoved = Object2DoubleOpenHashMap<DuctEdge>(edgesWithEnds.size)
         var completedSubsteps = 0
         for (substep in 1..subSteps) {
             completedSubsteps = substep
@@ -239,11 +241,11 @@ class JacobiSeidelSolver : KelvinSolver {
 
             if (substep % 2 == 1) {
                 for (e in edgesWithEnds) {
-                    processEdge(network, e, tickDelta)
+                    processEdge(network, e, tickDelta, edgeMassMoved)
                 }
             } else {
                 for (i in edgesWithEnds.size - 1 downTo 0) {
-                    processEdge(network, edgesWithEnds[i], tickDelta)
+                    processEdge(network, edgesWithEnds[i], tickDelta, edgeMassMoved)
                 }
             }
 
@@ -255,9 +257,8 @@ class JacobiSeidelSolver : KelvinSolver {
             applyPassiveConduction(edgesWithEnds, remainingTickDelta)
         }
 
-        // Recompute diagnostic flow from final normalized pressures to avoid fake loop circulation.
         normalizeNodes(network)
-        updateCurrentFlowRates(edgesWithEnds)
+        updateCurrentFlowRates(edgesWithEnds, edgeMassMoved, tickDelta * subSteps.toDouble())
     }
 
     /**
@@ -316,6 +317,7 @@ class JacobiSeidelSolver : KelvinSolver {
         network: DuctNetwork<*>,
         e: EdgeWithEnds,
         tickDelta: Double,
+        edgeMassMoved: Object2DoubleOpenHashMap<DuctEdge>,
     ) {
         val edge = e.edge
         val workA = e.workA
@@ -430,6 +432,7 @@ class JacobiSeidelSolver : KelvinSolver {
                     pressureEqualizationMassLimit(drivingPressure, workA, workB),
                 )
                 val dmActual = min(dmRequested, cap)
+                edgeMassMoved.addTo(edge, dmActual * srcSign)
                 val ratio = dmActual / srcAllowed
                 // Iterating gasScratch (not srcMasses) is safe to mutate srcMasses inside.
                 var i = 0
@@ -458,13 +461,27 @@ class JacobiSeidelSolver : KelvinSolver {
         applyPassiveConduction(workA, workB, edge, tickDelta)
     }
 
-    private fun updateCurrentFlowRates(edgesWithEnds: List<EdgeWithEnds>) {
+    private fun updateCurrentFlowRates(
+        edgesWithEnds: List<EdgeWithEnds>,
+        edgeMassMoved: Object2DoubleOpenHashMap<DuctEdge>,
+        tickDuration: Double,
+    ) {
         for (e in edgesWithEnds) {
             e.workA.dirty = true
             e.workB.dirty = true
         }
         for (e in edgesWithEnds) {
-            e.edge.currentFlowRate = calculateDiagnosticFlowRate(e.edge, e.workA, e.workB)
+            val averageFlowRate = if (tickDuration > 0.0) {
+                edgeMassMoved.getDouble(e.edge) / tickDuration
+            } else 0.0
+            val finalDrivingFlow = calculateDiagnosticFlowRate(e.edge, e.workA, e.workB)
+
+            // A final pressure gradient cannot circulate around a closed passive loop. Use its
+            // direction as a gate to discard Gauss-Seidel settling circulation, while retaining
+            // the magnitude of the mass that really crossed the edge during this tick.
+            e.edge.currentFlowRate = if (averageFlowRate * finalDrivingFlow > 0.0) {
+                averageFlowRate
+            } else 0.0
         }
     }
 
