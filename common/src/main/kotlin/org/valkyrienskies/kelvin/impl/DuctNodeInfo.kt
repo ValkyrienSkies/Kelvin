@@ -2,10 +2,8 @@ package org.valkyrienskies.kelvin.impl
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import org.valkyrienskies.kelvin.api.GasType
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
 
 data class DuctNodeInfo(
-    var nodeType: NodeBehaviorType,
     var currentTemperature: Double,
     var currentPressure: Double,
     /**

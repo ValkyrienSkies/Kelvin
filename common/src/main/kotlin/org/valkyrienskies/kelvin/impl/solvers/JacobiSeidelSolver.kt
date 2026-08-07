@@ -9,8 +9,6 @@ import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinSolver
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
-import org.valkyrienskies.kelvin.api.edges.ApertureEdge
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
 import org.valkyrienskies.kelvin.api.edges.PumpEdge
@@ -19,6 +17,7 @@ import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
+import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
@@ -212,7 +211,7 @@ class JacobiSeidelSolver : KelvinSolver {
             if (network.unloadedNodes.contains(pos)) continue
             val info = network.nodeInfo[pos] ?: continue
             val volume = node.volume + info.volumeChange
-            val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
+            val tankMult = if (node is TankDuctNode) node.size else 1.0
             nodeWork[pos] = NodeWork(pos, node, info, volume, tankMult)
         }
         val edgesWithEnds = ArrayList<EdgeWithEnds>(sortedEdges.size)
@@ -272,7 +271,6 @@ class JacobiSeidelSolver : KelvinSolver {
             var info = network.nodeInfo[pos]
             if (info == null) {
                 info = DuctNodeInfo(
-                    node.behavior,
                     273.15,
                     0.0,
                     Object2DoubleOpenHashMap(),
@@ -295,7 +293,7 @@ class JacobiSeidelSolver : KelvinSolver {
             val volume = node.volume + info.volumeChange
             info.totalVolume = volume
             val initTemp = if (capacity > 1e-12) (info.currentEnergy / capacity).coerceAtLeast(1e-4) else 273.15
-            val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
+            val tankMult = if (node is TankDuctNode) node.size else 1.0
 
             val pressure = calcPressureFromGamma(info.currentGasMasses, volume, initTemp) / tankMult
             val intermediaryEnergy = info.currentEnergy - pressure * deltaVolume
@@ -343,8 +341,7 @@ class JacobiSeidelSolver : KelvinSolver {
         val pumpPressure = if (edge is PumpEdge) {
             if (edge.target == edge.nodeB) edge.pumpPressure else -edge.pumpPressure
         } else 0.0
-        val aperture = if (edge is ApertureEdge) max(edge.aperture, -edge.radius) else 0.0
-        val effectiveRadius = edge.radius + aperture
+        val effectiveRadius = effectiveFlowRadius(edge, workA.node, workB.node)
 
         val rhoA = if (volA > 0.0) mTotA / volA else 0.0
         val rhoB = if (volB > 0.0) mTotB / volB else 0.0
@@ -504,8 +501,7 @@ class JacobiSeidelSolver : KelvinSolver {
         val pumpPressure = if (edge is PumpEdge) {
             if (edge.target == edge.nodeB) edge.pumpPressure else -edge.pumpPressure
         } else 0.0
-        val aperture = if (edge is ApertureEdge) max(edge.aperture, -edge.radius) else 0.0
-        val effectiveRadius = edge.radius + aperture
+        val effectiveRadius = effectiveFlowRadius(edge, workA.node, workB.node)
 
         val rhoA = if (volA > 0.0) mTotA / volA else 0.0
         val rhoB = if (volB > 0.0) mTotB / volB else 0.0
@@ -649,7 +645,7 @@ class JacobiSeidelSolver : KelvinSolver {
                 info.previousPressure = info.currentPressure
                 info.currentTemperature = (info.currentEnergy / cap).coerceAtLeast(1e-4)
                 val volume = node.volume + info.volumeChange
-                val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (node as TankDuctNode).size else 1.0
+                val tankMult = if (node is TankDuctNode) node.size else 1.0
                 info.currentPressure = calcPressureFromGamma(info.currentGasMasses, volume, info.currentTemperature) / tankMult
             }
         }

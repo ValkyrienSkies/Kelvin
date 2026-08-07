@@ -5,8 +5,6 @@ import net.minecraft.util.Mth
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinSolver
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
-import org.valkyrienskies.kelvin.api.edges.ApertureEdge
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
 import org.valkyrienskies.kelvin.api.edges.PumpEdge
@@ -19,6 +17,7 @@ import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.densityAverageOld
 import org.valkyrienskies.kelvin.util.GasPhysics.densityFromPressureAverageOld
 import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
+import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.specificHeatAverageOld
 import kotlin.collections.set
@@ -49,11 +48,11 @@ class ClassicSolver: KelvinSolver {
                 var madeNewB = false
 
                 if (nodeA == null) {
-                    network.nodeInfo[edge.nodeA] = DuctNodeInfo(network.nodes[edge.nodeA]!!.behavior,273.15, 0.0, Object2DoubleOpenHashMap<GasType>(), nodeDataA.volume)
+                    network.nodeInfo[edge.nodeA] = DuctNodeInfo(273.15, 0.0, Object2DoubleOpenHashMap<GasType>(), nodeDataA.volume)
                     madeNewA = true
                 }
                 if (nodeB == null) {
-                    network.nodeInfo[edge.nodeB] = DuctNodeInfo(network.nodes[edge.nodeB]!!.behavior,273.15, 0.0, Object2DoubleOpenHashMap<GasType>(), nodeDataB.volume)
+                    network.nodeInfo[edge.nodeB] = DuctNodeInfo(273.15, 0.0, Object2DoubleOpenHashMap<GasType>(), nodeDataB.volume)
                     madeNewB = true
                 }
 
@@ -83,8 +82,8 @@ class ClassicSolver: KelvinSolver {
                 val densityA = densityAverageOld(nodeA.currentGasMasses)
                 val densityB = densityAverageOld(nodeB.currentGasMasses)
 
-                val tankMultA = if (nodeA.nodeType == NodeBehaviorType.TANK) (nodeDataA as TankDuctNode).size else 1.0
-                val tankMultB = if (nodeB.nodeType == NodeBehaviorType.TANK) (nodeDataB as TankDuctNode).size else 1.0
+                val tankMultA = if (nodeDataA is TankDuctNode) nodeDataA.size else 1.0
+                val tankMultB = if (nodeDataB is TankDuctNode) nodeDataB.size else 1.0
 
                 val pressureA = calcPressure(totalGasMassA, nodeDataA.volume, nodeA.currentTemperature, densityA)/tankMultA
                 val pressureB = calcPressure(totalGasMassB, nodeDataB.volume, nodeB.currentTemperature, densityB)/tankMultB
@@ -102,15 +101,12 @@ class ClassicSolver: KelvinSolver {
                 else if (edge is PumpEdge && edge.target == edge.nodeA) pumpPressure = -edge.pumpPressure
 
 
-                var aperture = 0.0
-                if (edge is ApertureEdge) {
-                    aperture = Math.max(edge.aperture, -edge.radius)
-                }
+                val effectiveRadius = effectiveFlowRadius(edge, nodeDataA, nodeDataB)
 
                 val pressureDependentDensityA = densityFromPressureAverageOld(nodeA.currentGasMasses, nodeA.currentTemperature, pressureA)
                 val pressureDependentDensityB = densityFromPressureAverageOld(nodeB.currentGasMasses, nodeB.currentTemperature, pressureB)
 
-                var flowRate = calculateFlow(pressureA, pressureB, edge.radius + aperture, edge.length, pressureDependentDensityA, pressureDependentDensityB, viscosity, pumpPressure, edge.currentFlowRate)
+                var flowRate = calculateFlow(pressureA, pressureB, effectiveRadius, edge.length, pressureDependentDensityA, pressureDependentDensityB, viscosity, pumpPressure, edge.currentFlowRate)
 
 
                 if (edge is OneWayEdge) {
