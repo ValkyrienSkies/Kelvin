@@ -5,8 +5,6 @@ import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinSolver
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
-import org.valkyrienskies.kelvin.api.edges.ApertureEdge
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
 import org.valkyrienskies.kelvin.api.edges.PumpEdge
@@ -14,6 +12,7 @@ import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
+import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
@@ -58,7 +57,7 @@ class JacobiSimplifiedSolver: KelvinSolver {
 
                 val T = if (cap > 1e-12) (info.currentEnergy / cap).coerceAtLeast(1e-4) else 273.15
                 val V = nodeData.volume + info.volumeChange
-                val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (nodeData as TankDuctNode).size else 1.0
+                val tankMult = if (nodeData is TankDuctNode) nodeData.size else 1.0
                 val P = calcPressureFromGamma(info.currentGasMasses, V, T) / tankMult
                 val mTot = info.currentGasMasses.values.sum()
 
@@ -96,16 +95,16 @@ class JacobiSimplifiedSolver: KelvinSolver {
 
                 var pumpPressure = 0.0
                 if (edge is PumpEdge) pumpPressure = if (edge.target == edge.nodeB) edge.pumpPressure else -edge.pumpPressure
-                val aperture = if (edge is ApertureEdge) Math.max(edge.aperture, -edge.radius) else 0.0
+                val effectiveRadius = effectiveFlowRadius(edge, network.nodes[edge.nodeA]!!, network.nodes[edge.nodeB]!!)
 
-                var mdot = calculateFlow(pA, pB, edge.radius + aperture, edge.length, rhoA, rhoB, visc, pumpPressure, edge.currentFlowRate)
+                var mdot = calculateFlow(pA, pB, effectiveRadius, edge.length, rhoA, rhoB, visc, pumpPressure, edge.currentFlowRate)
 
                 // Choke limits
                 val upstreamIsA = pA > pB
                 val upInfo = if (upstreamIsA) infoA else infoB
                 val upP = if (upstreamIsA) pA else pB
                 val upT = if (upstreamIsA) tA else tB
-                val mdotMax = mdotChoked(upInfo.currentGasMasses, upP, upT, edge.radius + aperture)
+                val mdotMax = mdotChoked(upInfo.currentGasMasses, upP, upT, effectiveRadius)
                 mdot = mdot.coerceIn(-mdotMax, mdotMax)
 
                 // One-way rules
@@ -134,7 +133,10 @@ class JacobiSimplifiedSolver: KelvinSolver {
                     deltaEnergy[edge.nodeB] = deltaEnergy[edge.nodeB]!! + qApplied
                 }
 
-                if (mdot == 0.0 || mdot.isNaN()) continue
+                if (mdot == 0.0 || mdot.isNaN()) {
+                    edge.currentFlowRate = 0.0
+                    continue
+                }
 
                 // Queue Mass/Energy Transfer
                 val dtMass = mdot * tickDelta
@@ -226,7 +228,7 @@ class JacobiSimplifiedSolver: KelvinSolver {
                 } else {
                     info.currentTemperature = (info.currentEnergy / cap).coerceAtLeast(1e-4)
                     val V = nodeData.volume + info.volumeChange
-                    val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (nodeData as TankDuctNode).size else 1.0
+                    val tankMult = if (nodeData is TankDuctNode) nodeData.size else 1.0
                     info.currentPressure = calcPressureFromGamma(info.currentGasMasses, V, info.currentTemperature) / tankMult
                 }
             }

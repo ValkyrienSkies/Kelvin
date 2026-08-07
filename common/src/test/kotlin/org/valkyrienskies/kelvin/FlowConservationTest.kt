@@ -9,7 +9,6 @@ import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.KelvinSolver
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
 import org.valkyrienskies.kelvin.api.edges.OneWayDuctEdge
 import org.valkyrienskies.kelvin.api.edges.PipeDuctEdge
 import org.valkyrienskies.kelvin.api.nodes.PipeDuctNode
@@ -194,7 +193,6 @@ class FlowConservationTest : KelvinTestBase() {
 
     private fun pipeWithVolume(pos: DuctNodePos, volume: Double) = PipeDuctNode(
         pos = pos,
-        behavior = NodeBehaviorType.PIPE,
         volume = volume,
         maxPressure = 16375049.0,
         maxTemperature = 1478.0,
