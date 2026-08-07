@@ -4,7 +4,6 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.DuctNodePos
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
@@ -21,7 +20,6 @@ interface INodeBlockEntity {
         val compound = CompoundTag()
         NodeNBTUtil.serializeNode(pos, KelvinMod.getKelvinByPlatform()!!, compound)
         if (!client) {
-            compound.putString("NodeType", KelvinMod.getKelvin().nodeInfo[pos]?.nodeType?.name ?: NodeBehaviorType.PIPE.name)
             compound.putDouble("KelvinVolume", KelvinMod.getKelvin().nodeInfo[pos]?.totalVolume ?: 0.0)
             compound.putDouble("KelvinPressure", KelvinMod.getKelvin().getPressureAt(pos))
             compound.putDouble("KelvinEnergy", KelvinMod.getKelvin().getHeatEnergy(pos))
@@ -35,7 +33,9 @@ interface INodeBlockEntity {
             return
         }
         val kelvin = if (client) KelvinMod.getClientKelvin() else KelvinMod.getKelvin()
-        val info = kelvin.nodeInfo.computeIfAbsent(pos) { t -> DuctNodeInfo(NodeBehaviorType.valueOf(nodeData.getString("NodeType")), 273.15, 0.0, Object2DoubleOpenHashMap(), nodeData.getDouble("KelvinVolume") ?: 0.0) }
+        val info = kelvin.nodeInfo.computeIfAbsent(pos) {
+            DuctNodeInfo(273.15, 0.0, Object2DoubleOpenHashMap(), nodeData.getDouble("KelvinVolume"))
+        }
 
         val temperature = nodeData.getDouble("KelvinTemperature")
         // KelvinWallTemperature from old saves is intentionally ignored; the wall is now

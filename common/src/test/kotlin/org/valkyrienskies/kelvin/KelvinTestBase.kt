@@ -4,7 +4,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.valkyrienskies.kelvin.api.ConnectionType
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.GasType
-import org.valkyrienskies.kelvin.api.NodeBehaviorType
 import org.valkyrienskies.kelvin.api.edges.PipeDuctEdge
 import org.valkyrienskies.kelvin.api.nodes.PipeDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
@@ -94,7 +93,6 @@ abstract class KelvinTestBase {
 
         fun defaultPipe(pos: DuctNodePos): PipeDuctNode = PipeDuctNode(
             pos = pos,
-            behavior = NodeBehaviorType.PIPE,
             volume = 0.25,
             maxPressure = 16375049.0,
             maxTemperature = 1478.0,
