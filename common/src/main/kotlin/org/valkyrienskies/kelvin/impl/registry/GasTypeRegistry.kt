@@ -9,8 +9,37 @@ import org.valkyrienskies.kelvin.api.KelvinParticlePicker
 object GasTypeRegistry {
     val GAS_TYPES = mutableMapOf<ResourceLocation, GasType>()
 
+    /**
+     * A fake gas type object for storing the smallest found value for each gas property.
+     * Used for kelvins JEI compat, you should not use this.
+     */
+    var minGas: GasType? = null
+    /**
+     * A fake gas type object for storing the biggest found value for each gas property.
+     * Used for kelvins JEI compat, you should not use this.
+     */
+    var maxGas: GasType? = null
+
     fun registerGasType(resourceLocation: ResourceLocation, gasType: GasType) {
         GAS_TYPES[resourceLocation] = gasType
+
+        // Probably redundant safety
+        if (minGas == null) minGas = gasType
+        if (maxGas == null) maxGas = gasType
+
+        // Find the min and max for each properties out of all registered gasses
+        minGas = minGas!!.copy(
+            density= if(gasType.density < minGas!!.density) gasType.density else minGas!!.density,
+            viscosity= if(gasType.viscosity < minGas!!.viscosity) gasType.viscosity else minGas!!.viscosity,
+            specificHeatCapacity = if(gasType.specificHeatCapacity < minGas!!.specificHeatCapacity) gasType.specificHeatCapacity else minGas!!.specificHeatCapacity,
+            thermalConductivity = if(gasType.thermalConductivity < minGas!!.thermalConductivity) gasType.thermalConductivity else minGas!!.thermalConductivity,
+        )
+        maxGas = maxGas!!.copy(
+            density= if(gasType.density > maxGas!!.density) gasType.density else maxGas!!.density,
+            viscosity= if(gasType.viscosity > maxGas!!.viscosity) gasType.viscosity else maxGas!!.viscosity,
+            specificHeatCapacity = if(gasType.specificHeatCapacity > maxGas!!.specificHeatCapacity) gasType.specificHeatCapacity else maxGas!!.specificHeatCapacity,
+            thermalConductivity = if(gasType.thermalConductivity > maxGas!!.thermalConductivity) gasType.thermalConductivity else maxGas!!.thermalConductivity,
+        )
     }
 
     fun registerGasType(gasType: GasType) {
@@ -47,6 +76,8 @@ object GasTypeRegistry {
 
     fun init () {
         val air = GasType("Air",ResourceLocation(KelvinMod.MOD_ID, "air"), 1.293, 1.716e-5, 1.005, 0.026, iconLocation = getIcon("air"))
+        minGas = air.copy()
+        maxGas = air.copy()
 //        val exhaust = GasType("Exhaust", ResourceLocation(KelvinMod.MOD_ID, "exhaust"), 1.98, 1.10e-5, 2.2, 0.031, iconLocation = getIcon("exhaust"), fantasyName = "Smog")
 //        val steam = GasType("Steam", ResourceLocation(KelvinMod.MOD_ID, "steam"), 1.98, 1.716e-5, 2.2, 0.031, iconLocation = getIcon("steam"))
 //
