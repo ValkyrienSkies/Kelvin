@@ -309,12 +309,17 @@ class JacobiSolver: KelvinSolver {
                     val totalAvgHeatConductivity = if (heatConductivityA > 1e-4 && heatConductivityB > 1e-4) heatConductivityA * heatConductivityB / ( heatConductivityA + heatConductivityB ) else 0.0
 
                     //Calculates passive heat transfer between nodes
-                    val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * edge.radius) * ((currentTemperatureA - currentTemperatureB) / edge.length)) * tickDelta
-                    val passiveHeatLimit = min(nodeA.currentEnergy.absoluteValue + 1.0, nodeB.currentEnergy.absoluteValue + 1.0)
+                    val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * edge.radius) * ((currentTemperatureA - currentTemperatureB) / edge.length)) *
+                        edge.passiveHeatMultiplier() * tickDelta
+                    val passiveEqualizationLimit = if (capacityA > 1e-12 && capacityB > 1e-12)
+                        abs(currentTemperatureA - currentTemperatureB) / ((1.0 / capacityA) + (1.0 / capacityB))
+                    else 0.0
+                    val passiveEnergyLimit = if (passiveHeatDelta > 0.0) currentEnergyA.absoluteValue else currentEnergyB.absoluteValue
+                    val passiveHeatLimit = min(passiveEnergyLimit, passiveEqualizationLimit)
 
-                    if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite()) {
+                    if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite() && passiveHeatLimit > 0.0) {
                         if (totalGasMassA >= 0.1 && totalGasMassB >= 0.1) {
-                            val dE = Mth.clamp(passiveHeatDelta, -nodeB.currentEnergy.absoluteValue, nodeA.currentEnergy.absoluteValue)
+                            val dE = Mth.clamp(passiveHeatDelta, -passiveHeatLimit, passiveHeatLimit)
                             val pendingPassive = PendingPassiveTransfer(
                                 srcPos = edge.nodeA,
                                 dstPos = edge.nodeB,

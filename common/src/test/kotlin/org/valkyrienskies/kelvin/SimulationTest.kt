@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.DynamicTest.dynamicTest
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.KelvinSolver
@@ -102,6 +103,100 @@ class SimulationTest : KelvinTestBase() {
                 }
             }
         }
+
+    @Test
+    fun `JacobiSeidel passive heat transfer consumes remaining tick after mass equilibrium`() {
+        val hot = DuctNodePos(0.0, 0.0, 0.0)
+        val cold = DuctNodePos(1.0, 0.0, 0.0)
+        val conductiveAir = TEST_AIR.copy(name = "Conductive Test Air", thermalConductivity = 20.0)
+
+        network.solver = JacobiSeidelSolver()
+        network.addNode(hot, defaultPipe(hot))
+        network.addNode(cold, defaultPipe(cold))
+        network.addEdge(hot, cold, defaultPipeEdge(hot, cold))
+        network.addGasAtTemperature(hot, conductiveAir, 1.0, 300.0)
+        network.addGasAtTemperature(cold, conductiveAir, 2.0, 300.0)
+        network.modTemperature(hot, 600.0 - network.getTemperatureAt(hot))
+        network.modTemperature(cold, 300.0 - network.getTemperatureAt(cold))
+
+        val hotEnergyBefore = network.getHeatEnergy(hot)
+        val coldEnergyBefore = network.getHeatEnergy(cold)
+
+        simulate(steps = 1)
+
+        val hotEnergyLost = hotEnergyBefore - network.getHeatEnergy(hot)
+        val coldEnergyGained = network.getHeatEnergy(cold) - coldEnergyBefore
+
+        assertTrue(hotEnergyLost > 10.0) {
+            "Passive heat transfer should consume the full tick after mass equilibrium, lost only $hotEnergyLost J"
+        }
+        assertEquals(hotEnergyLost, coldEnergyGained, 1e-6) {
+            "Passive heat transfer should conserve energy between ducts"
+        }
+    }
+
+    @Test
+    fun `JacobiSeidel edge heat multiplier speeds passive heat transfer without overshoot`() {
+        val baselineLoss = passiveHeatLostWithMultiplier(1.0)
+        val boostedLoss = passiveHeatLostWithMultiplier(50.0)
+
+        assertTrue(baselineLoss > 0.0) {
+            "Baseline passive heat transfer should still move heat"
+        }
+        assertTrue(boostedLoss > baselineLoss * 10.0) {
+            "Boosted edge should move substantially more heat: baseline=$baselineLoss boosted=$boostedLoss"
+        }
+
+        val (hotTemp, coldTemp) = passiveTemperaturesAfterHugeMultiplier()
+        assertTrue(hotTemp >= coldTemp - 1e-6) {
+            "Passive heat transfer should not overshoot equilibrium: hot=$hotTemp cold=$coldTemp"
+        }
+    }
+
+    private fun passiveHeatLostWithMultiplier(multiplier: Double): Double {
+        val hot = DuctNodePos(0.0, 0.0, 0.0)
+        val cold = DuctNodePos(1.0, 0.0, 0.0)
+        val conductiveAir = TEST_AIR.copy(name = "Multiplier Test Air", thermalConductivity = 1.0)
+        val edge = defaultPipeEdge(hot, cold)
+        edge.thermalConductivityMultiplier = multiplier
+
+        resetNetwork()
+        network.solver = JacobiSeidelSolver()
+        network.addNode(hot, defaultPipe(hot))
+        network.addNode(cold, defaultPipe(cold))
+        network.addEdge(hot, cold, edge)
+        network.addGasAtTemperature(hot, conductiveAir, 1.0, 300.0)
+        network.addGasAtTemperature(cold, conductiveAir, 2.0, 300.0)
+        network.modTemperature(hot, 600.0 - network.getTemperatureAt(hot))
+        network.modTemperature(cold, 300.0 - network.getTemperatureAt(cold))
+
+        val hotEnergyBefore = network.getHeatEnergy(hot)
+        simulate(steps = 1)
+
+        return hotEnergyBefore - network.getHeatEnergy(hot)
+    }
+
+    private fun passiveTemperaturesAfterHugeMultiplier(): Pair<Double, Double> {
+        val hot = DuctNodePos(0.0, 0.0, 0.0)
+        val cold = DuctNodePos(1.0, 0.0, 0.0)
+        val conductiveAir = TEST_AIR.copy(name = "Overshoot Test Air", thermalConductivity = 1.0)
+        val edge = defaultPipeEdge(hot, cold)
+        edge.thermalConductivityMultiplier = 1e12
+
+        resetNetwork()
+        network.solver = JacobiSeidelSolver()
+        network.addNode(hot, defaultPipe(hot))
+        network.addNode(cold, defaultPipe(cold))
+        network.addEdge(hot, cold, edge)
+        network.addGasAtTemperature(hot, conductiveAir, 1.0, 300.0)
+        network.addGasAtTemperature(cold, conductiveAir, 2.0, 300.0)
+        network.modTemperature(hot, 600.0 - network.getTemperatureAt(hot))
+        network.modTemperature(cold, 300.0 - network.getTemperatureAt(cold))
+
+        simulate(steps = 1)
+
+        return network.getTemperatureAt(hot) to network.getTemperatureAt(cold)
+    }
 
     /**
      * Combined-capacity invariant: dumping E joules into a duct node should raise its

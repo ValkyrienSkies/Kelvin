@@ -223,8 +223,12 @@ class JacobiSeidelSolver : KelvinSolver {
             edgesWithEnds.add(EdgeWithEnds(edge, wA, wB))
         }
 
-        // Integrate mass/energy changes. Reported flow is recomputed from final state below.
+        // Accumulate signed mass moved per edge so currentFlowRate can be bounded by actual
+        // tick-averaged transfer instead of reporting the edge's theoretical flow capacity.
+        val edgeMassMoved = Object2DoubleOpenHashMap<DuctEdge>(edgesWithEnds.size)
+        var completedSubsteps = 0
         for (substep in 1..subSteps) {
+            completedSubsteps = substep
             applyVolumeWork(network, nodeWork)
 
             // Refresh & snapshot every node in one pass — cheaper than per-pos lookups.
@@ -237,20 +241,24 @@ class JacobiSeidelSolver : KelvinSolver {
 
             if (substep % 2 == 1) {
                 for (e in edgesWithEnds) {
-                    processEdge(network, e, tickDelta)
+                    processEdge(network, e, tickDelta, edgeMassMoved)
                 }
             } else {
                 for (i in edgesWithEnds.size - 1 downTo 0) {
-                    processEdge(network, edgesWithEnds[i], tickDelta)
+                    processEdge(network, edgesWithEnds[i], tickDelta, edgeMassMoved)
                 }
             }
 
             if (substep >= minSubsteps && atEquilibrium(nodeWork, edgesWithEnds)) break
         }
 
-        // Recompute diagnostic flow from final normalized pressures to avoid fake loop circulation.
+        val remainingTickDelta = tickDelta * (subSteps - completedSubsteps).toDouble()
+        if (remainingTickDelta > 0.0) {
+            applyPassiveConduction(edgesWithEnds, remainingTickDelta)
+        }
+
         normalizeNodes(network)
-        updateCurrentFlowRates(edgesWithEnds)
+        updateCurrentFlowRates(edgesWithEnds, edgeMassMoved, tickDelta * subSteps.toDouble())
     }
 
     /**
@@ -309,6 +317,7 @@ class JacobiSeidelSolver : KelvinSolver {
         network: DuctNetwork<*>,
         e: EdgeWithEnds,
         tickDelta: Double,
+        edgeMassMoved: Object2DoubleOpenHashMap<DuctEdge>,
     ) {
         val edge = e.edge
         val workA = e.workA
@@ -423,6 +432,7 @@ class JacobiSeidelSolver : KelvinSolver {
                     pressureEqualizationMassLimit(drivingPressure, workA, workB),
                 )
                 val dmActual = min(dmRequested, cap)
+                edgeMassMoved.addTo(edge, dmActual * srcSign)
                 val ratio = dmActual / srcAllowed
                 // Iterating gasScratch (not srcMasses) is safe to mutate srcMasses inside.
                 var i = 0
@@ -451,13 +461,27 @@ class JacobiSeidelSolver : KelvinSolver {
         applyPassiveConduction(workA, workB, edge, tickDelta)
     }
 
-    private fun updateCurrentFlowRates(edgesWithEnds: List<EdgeWithEnds>) {
+    private fun updateCurrentFlowRates(
+        edgesWithEnds: List<EdgeWithEnds>,
+        edgeMassMoved: Object2DoubleOpenHashMap<DuctEdge>,
+        tickDuration: Double,
+    ) {
         for (e in edgesWithEnds) {
             e.workA.dirty = true
             e.workB.dirty = true
         }
         for (e in edgesWithEnds) {
-            e.edge.currentFlowRate = calculateDiagnosticFlowRate(e.edge, e.workA, e.workB)
+            val averageFlowRate = if (tickDuration > 0.0) {
+                edgeMassMoved.getDouble(e.edge) / tickDuration
+            } else 0.0
+            val finalDrivingFlow = calculateDiagnosticFlowRate(e.edge, e.workA, e.workB)
+
+            // A final pressure gradient cannot circulate around a closed passive loop. Use its
+            // direction as a gate to discard Gauss-Seidel settling circulation, while retaining
+            // the magnitude of the mass that really crossed the edge during this tick.
+            e.edge.currentFlowRate = if (averageFlowRate * finalDrivingFlow > 0.0) {
+                averageFlowRate
+            } else 0.0
         }
     }
 
@@ -540,20 +564,39 @@ class JacobiSeidelSolver : KelvinSolver {
         workA: NodeWork, workB: NodeWork, edge: DuctEdge, tickDelta: Double,
     ) {
         if (workA.totalMass < 0.1 || workB.totalMass < 0.1) return
+        val heatMultiplier = edge.passiveHeatMultiplier()
+        if (heatMultiplier <= 0.0) return
         val condA = heatConductivityAverage(workA.info.currentGasMasses, workA.pressure, workA.temperature)
         val condB = heatConductivityAverage(workB.info.currentGasMasses, workB.pressure, workB.temperature)
         if (condA <= 1e-4 || condB <= 1e-4) return
         val avgCond = condA * condB / (condA + condB)
         val area = Math.PI * edge.radius * edge.radius
-        val dQ = avgCond * area * (workA.temperature - workB.temperature) / edge.length * tickDelta
+        val dQ = avgCond * area * (workA.temperature - workB.temperature) / edge.length * heatMultiplier * tickDelta
         if (!dQ.isFinite()) return
-        val limit = min(workA.info.currentEnergy.absoluteValue, workB.info.currentEnergy.absoluteValue)
+        val energyLimit = if (dQ > 0.0) workA.info.currentEnergy.absoluteValue else workB.info.currentEnergy.absoluteValue
+        val limit = min(energyLimit, passiveEqualizationLimit(workA, workB))
+        if (limit <= 0.0) return
         val dE = Mth.clamp(dQ, -limit, limit)
         if (dE == 0.0) return
         workA.info.currentEnergy -= dE
         workB.info.currentEnergy += dE
         workA.dirty = true
         workB.dirty = true
+    }
+
+    private fun passiveEqualizationLimit(workA: NodeWork, workB: NodeWork): Double {
+        val capA = workA.capacity
+        val capB = workB.capacity
+        if (capA <= 1e-12 || capB <= 1e-12) return 0.0
+        return abs(workA.temperature - workB.temperature) / ((1.0 / capA) + (1.0 / capB))
+    }
+
+    private fun applyPassiveConduction(edgesWithEnds: List<EdgeWithEnds>, tickDelta: Double) {
+        for (e in edgesWithEnds) {
+            e.workA.ensureFresh()
+            e.workB.ensureFresh()
+            applyPassiveConduction(e.workA, e.workB, e.edge, tickDelta)
+        }
     }
 
     /**
