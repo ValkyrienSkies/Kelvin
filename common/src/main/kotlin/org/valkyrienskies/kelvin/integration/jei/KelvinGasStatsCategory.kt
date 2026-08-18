@@ -8,6 +8,7 @@ import mezz.jei.api.recipe.IFocusGroup
 import mezz.jei.api.recipe.RecipeIngredientRole
 import mezz.jei.api.recipe.RecipeType
 import mezz.jei.api.recipe.category.IRecipeCategory
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
@@ -123,13 +124,17 @@ class KelvinGasStatsCategory : IRecipeCategory<GasType> {
         return (amount - min)/(max-min)
     }
 
-    fun getProgressBar(amount: Double, width: Int): String {
+    fun getProgressBar(amount: Double, width: Int): Component {
         val amount = amount.coerceIn(0.0, 1.0)
-        var s = ""
-        s += "█".repeat(floor(width*amount).toInt())
+        val s = "█".repeat(floor(width*amount).toInt())
+        val comp = Component.literal(s)
         val currentLength = s.length
-        s += "▒".repeat(max(width - currentLength, 0))
-        return s
+
+        comp.append(Component.literal(
+            "▒".repeat(max(width - currentLength, 0))
+        ).withStyle(ChatFormatting.GRAY))
+
+        return comp
     }
 }
 
