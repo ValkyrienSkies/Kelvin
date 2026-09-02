@@ -4,6 +4,7 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder
 import mezz.jei.api.gui.builder.ITooltipBuilder
 import mezz.jei.api.gui.drawable.IDrawable
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView
+import mezz.jei.api.helpers.IGuiHelper
 import mezz.jei.api.recipe.IFocusGroup
 import mezz.jei.api.recipe.RecipeIngredientRole
 import mezz.jei.api.recipe.RecipeType
@@ -21,7 +22,7 @@ import org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin.Companion.GAS_I
 import kotlin.math.floor
 import kotlin.math.max
 
-class KelvinGasStatsCategory : IRecipeCategory<GasType> {
+class KelvinGasStatsCategory(private val guiHelper: IGuiHelper) : IRecipeCategory<GasType> {
 
     override fun getWidth(): Int {
         return 150
@@ -40,7 +41,9 @@ class KelvinGasStatsCategory : IRecipeCategory<GasType> {
         return Component.literal("Gas Properties")
     }
 
-    override fun getBackground(): IDrawable? = null
+    // JEI draws the background unconditionally, so this must not be null even though
+    // this category paints all of its own contents.
+    override fun getBackground(): IDrawable = guiHelper.createBlankDrawable(width, height)
 
     override fun getIcon(): IDrawable {
         return ImageDrawable(16,16, GasTypeRegistry.getGasType(ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "air"))!!.iconLocation)

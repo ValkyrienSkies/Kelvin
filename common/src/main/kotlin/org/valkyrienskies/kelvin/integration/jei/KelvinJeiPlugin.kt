@@ -31,10 +31,12 @@ class KelvinJeiPlugin: IModPlugin {
     override fun registerCategories(registration: IRecipeCategoryRegistration) {
         super.registerCategories(registration)
 
-        registration.addRecipeCategories(KelvinGasStatsCategory())
+        val guiHelper = registration.jeiHelpers.guiHelper
+
+        registration.addRecipeCategories(KelvinGasStatsCategory(guiHelper))
 
         if (!KelvinMod.disableReactionJEI) {
-            registration.addRecipeCategories(KelvinReactionRecipeCategory())
+            registration.addRecipeCategories(KelvinReactionRecipeCategory(guiHelper))
         }
     }
 
