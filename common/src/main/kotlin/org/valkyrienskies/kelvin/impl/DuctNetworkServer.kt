@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.util.Mth
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.*
 import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
@@ -113,12 +114,8 @@ class DuctNetworkServer(
         return nodeInfo[node]?.currentTemperature ?: 0.0001
     }
 
-    override fun getWallTemperatureAt(node: DuctNodePos): Double {
-        return nodeInfo[node]?.wallTemperature ?: 0.0001
-    }
-
-    override fun getGasMassAt(node: DuctNodePos): HashMap<GasType, Double> {
-        return nodeInfo[node]?.currentGasMasses ?: HashMap()
+    override fun getGasMassAt(node: DuctNodePos): Map<GasType, Double> {
+        return nodeInfo[node]?.currentGasMasses ?: emptyMap()
     }
 
     override fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge? {
@@ -137,7 +134,9 @@ class DuctNetworkServer(
             markLoaded(pos)
         }
         nodes[pos] = node
-        nodeInfo[pos] = DuctNodeInfo(node.behavior, 273.15, 0.0, HashMap(), node.volume)
+        // Seed wall thermal energy at ambient (273.15K) so a fresh node doesn't act as a
+        // 0K cold sink for the first gas to enter. Combined energy = wallCap * T_ambient.
+        nodeInfo[pos] = DuctNodeInfo(node.behavior, 273.15, 0.0, Object2DoubleOpenHashMap(), node.volume, currentEnergy = node.heatCapacity * 273.15)
         if (nodesInDimension[pos.dimensionId] == null) {
             nodesInDimension[pos.dimensionId] = hashSetOf()
         }
@@ -193,17 +192,9 @@ class DuctNetworkServer(
             return
         }
         nodeInfo[pos]?.currentTemperature = max(nodeInfo[pos]?.currentTemperature?.plus(deltaTemperature) ?: 0.0001, 0.0001)
-        // update thermal energy
-        val gasMasses = getGasMassAt(pos)
-        val capacity = mixtureCapacity(gasMasses)
+        // update thermal energy using combined gas+wall capacity
+        val capacity = getNodeHeatCapacity(pos)
         nodeInfo[pos]?.currentEnergy = nodeInfo[pos]?.currentTemperature?.times(capacity) ?: 0.0001
-    }
-
-    override fun setWallTemperature(pos: DuctNodePos, temperature: Double) {
-        if (temperature.isNaN() || temperature.isInfinite()) {
-            return
-        }
-        nodeInfo[pos]?.wallTemperature = temperature
     }
 
     override fun modPressure(pos: DuctNodePos, deltaPressure: Double) {
@@ -211,22 +202,25 @@ class DuctNetworkServer(
     }
 
     override fun modGasMass(pos: DuctNodePos, gasType: GasType, deltaMass: Double) {
-        nodeInfo[pos]?.currentGasMasses?.put(gasType, nodeInfo[pos]?.currentGasMasses?.get(gasType)?.plus(deltaMass) ?: deltaMass)
+        nodeInfo[pos]?.currentGasMasses?.addTo(gasType, deltaMass)
     }
 
     override fun modGasMassOfTemperature(pos: DuctNodePos, gasType: GasType, deltaMass: Double, gasTemperature: Double ) {
-        var massInNode = 0.0
-        nodeInfo[pos]?.currentGasMasses?.forEach { massInNode += it.value } ?: return
-        val specificHeatOfNode = mixtureCapacity(nodeInfo[pos]!!.currentGasMasses)
-        val tempInNode = nodeInfo[pos]!!.currentTemperature
+        val info = nodeInfo[pos] ?: return
+        val nodeCapacity = getNodeHeatCapacity(pos) // gas + wall, J/K
+        val gasCv = (gasType.specificHeatCapacity / gasType.adiabaticIndex) * 1000.0 // J/(kg·K)
+        val addedGasCapacity = deltaMass * gasCv
 
-        val temp = (massInNode*specificHeatOfNode*tempInNode + deltaMass*gasTemperature*(gasType.specificHeatCapacity/gasType.adiabaticIndex*1000.0)) / (massInNode*specificHeatOfNode + deltaMass*(gasType.specificHeatCapacity/gasType.adiabaticIndex*1000.0))
+        val newCapacity = nodeCapacity + addedGasCapacity
+        val newTemperature = if (newCapacity > 1e-12) {
+            (nodeCapacity * info.currentTemperature + addedGasCapacity * gasTemperature) / newCapacity
+        } else {
+            info.currentTemperature
+        }
 
-        nodeInfo[pos]!!.currentTemperature = max(temp, 0.0001)
+        info.currentTemperature = max(newTemperature, 0.0001)
         modGasMass(pos, gasType, deltaMass)
-        val newSpecificHeat = mixtureCapacity(nodeInfo[pos]!!.currentGasMasses)
-        nodeInfo[pos]!!.currentEnergy = nodeInfo[pos]!!.currentTemperature * newSpecificHeat
-
+        info.currentEnergy = info.currentTemperature * getNodeHeatCapacity(pos)
     }
 
     override fun getHeatEnergy(pos: DuctNodePos): Double {
@@ -249,7 +243,7 @@ class DuctNetworkServer(
 
     override fun addGas(pos: DuctNodePos, gasType: GasType, amount: Double, energyDelta: Double): Boolean {
         val node = nodes[pos] ?: return false
-        nodeInfo[pos]?.currentGasMasses?.put(gasType, nodeInfo[pos]?.currentGasMasses?.get(gasType)?.plus(amount) ?: amount)
+        nodeInfo[pos]?.currentGasMasses?.addTo(gasType, amount)
         modHeatEnergy(pos, energyDelta)
         return true
     }
@@ -258,7 +252,7 @@ class DuctNetworkServer(
         val node = nodes[pos] ?: return false
         val specificHeat = (gasType.specificHeatCapacity * 1000.0) / gasType.adiabaticIndex
         val energyToAdd = amount * specificHeat * temperature
-        nodeInfo[pos]?.currentGasMasses?.put(gasType, nodeInfo[pos]?.currentGasMasses?.get(gasType)?.plus(amount) ?: amount)
+        nodeInfo[pos]?.currentGasMasses?.addTo(gasType, amount)
         modHeatEnergy(pos, energyToAdd)
         return true
     }
@@ -266,12 +260,13 @@ class DuctNetworkServer(
     override fun removeGas(pos: DuctNodePos, gasType: GasType, amount: Double): Boolean {
         val node = nodes[pos] ?: return false
         var amountToRemove = amount
-        val currentAmount = nodeInfo[pos]?.currentGasMasses?.get(gasType) ?: 0.0
+        val currentAmount = nodeInfo[pos]?.currentGasMasses?.getDouble(gasType) ?: 0.0
         if (currentAmount < amount) {
             amountToRemove = currentAmount
         }
-        val sourceTemp = getHeatEnergy(pos) / mixtureCapacity(nodeInfo[pos]!!.currentGasMasses)
+        val sourceTemp = getTemperatureAt(pos)
         // now, let's make sure we remove the appropriate amount of thermal energy from the system
+        // (bare-gas cv: the wall stays in place when gas is removed)
         val cv = (gasType.specificHeatCapacity * 1000.0) / gasType.adiabaticIndex
         var energyToRemove = amountToRemove * cv * sourceTemp
         if (energyToRemove.isNaN() || energyToRemove.isInfinite()) {
@@ -344,7 +339,7 @@ class DuctNetworkServer(
                 KELVINLOGGER.info("Node at $nodePos exploded due to Overpressure. Pressure at time of failure: ${info.currentPressure}")
             }
 
-            if (info.wallTemperature > node.maxTemperature) {
+            if (info.currentTemperature > node.maxTemperature) {
                 melted.add(nodePos)
                 KELVINLOGGER.info("Node at $nodePos reached its Melting Point. Temperature at time of failure: ${info.currentTemperature}")
             }
@@ -401,7 +396,7 @@ class DuctNetworkServer(
         }
     }
 
-    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: HashMap<GasType, Double>, inputGasses: HashMap<GasType, Double>, outputGasses: HashMap<GasType, Double>, deltaEnergy: Double) {
+    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: Map<GasType, Double>, inputGasses: Map<GasType, Double>, outputGasses: Map<GasType, Double>, deltaEnergy: Double) {
 
         var reactionAmount = Double.MAX_VALUE
         for (gas in inputGasses) {

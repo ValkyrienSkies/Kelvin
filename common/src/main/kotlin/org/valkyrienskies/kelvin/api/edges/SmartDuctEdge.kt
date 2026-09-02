@@ -13,6 +13,7 @@ open class SmartDuctEdge(
     override var length: Double,
     override var currentFlowRate: Double,
     override var unloaded: Boolean,
+    override var thermalConductivityMultiplier: Double = 1.0,
 ) : DuctEdge, SmartEdge {
     override var filter = SmartEdge.FilterType.NONE
     override var comparisonValue = 0.0

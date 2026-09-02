@@ -11,7 +11,6 @@ open class PocketDuctNode(
     override val volume: Double,
     override val maxPressure: Double,
     override val maxTemperature: Double,
-    override val heatConductivity: Double,
     override val heatCapacity: Double,
     val partnerNodes: HashSet<DuctNode>,
     var totalVolume: Double, var totalMaxPressure: Double, var totalMaxTemperature: Double

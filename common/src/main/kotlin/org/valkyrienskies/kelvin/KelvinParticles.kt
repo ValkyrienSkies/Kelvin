@@ -14,8 +14,8 @@ object KelvinParticles {
     val ALL: HashSet<RegistrySupplier<DefaultGasParticleType>> = HashSet()
     val PARTICLES = DeferredRegister.create(KelvinMod.MOD_ID, Registries.PARTICLE_TYPE)
 
-    fun registerDefaultParticle(name: String):  RegistrySupplier<DefaultGasParticleType> {
-        val supplier = PARTICLES.register(name) { DefaultGasParticleType() }
+    fun registerDefaultParticle(name: String, density: Float):  RegistrySupplier<DefaultGasParticleType> {
+        val supplier = PARTICLES.register(name) { DefaultGasParticleType(density) }
         ALL.add(supplier)
         KelvinMod.KELVINLOGGER.info("Registered particle: ${supplier.id}")
         return supplier

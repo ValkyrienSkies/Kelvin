@@ -1,5 +1,6 @@
 package org.valkyrienskies.kelvin.impl.solvers
 
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import net.minecraft.util.Mth
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNetwork
@@ -25,7 +26,7 @@ import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
-import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
+import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -55,14 +56,22 @@ class JacobiSolver: KelvinSolver {
                 if (network.unloadedNodes.contains(nodeKey)) continue
                 val info = network.nodeInfo[nodeKey]
                 if (info == null) {
-                    network.nodeInfo[nodeKey] = DuctNodeInfo(network.nodes[nodeKey]!!.behavior,273.15, 0.0, HashMap<GasType, Double>(), network.nodes[nodeKey]!!.volume)
+                    // Seed the wall's thermal energy at ambient (273.15K) so an empty node
+                    // doesn't act as a 0K cold sink for the first gas to enter.
+                    network.nodeInfo[nodeKey] = DuctNodeInfo(
+                        network.nodes[nodeKey]!!.behavior,
+                        273.15,
+                        0.0,
+                        Object2DoubleOpenHashMap<GasType>(),
+                        network.nodes[nodeKey]!!.volume,
+                        currentEnergy = network.nodes[nodeKey]!!.heatCapacity * 273.15
+                    )
                     continue
                 }
-                val capacity = mixtureCapacity(info.currentGasMasses)
+                val capacity = nodeHeatCapacity(info.currentGasMasses, node.heatCapacity)
                 val volume = network.nodes[nodeKey]!!.volume + info.volumeChange
                 info.totalVolume = volume
-                val cap = mixtureCapacity(info.currentGasMasses)
-                val initTemp = if (cap > 1e-12) (info.currentEnergy / cap).coerceAtLeast(1e-4) else 273.15
+                val initTemp = if (capacity > 1e-12) (info.currentEnergy / capacity).coerceAtLeast(1e-4) else 273.15
                 val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (network.nodes[nodeKey] as TankDuctNode).size else 1.0
 
                 val pressure = calcPressureFromGamma(info.currentGasMasses, volume, initTemp) / tankMult
@@ -81,36 +90,13 @@ class JacobiSolver: KelvinSolver {
                 info.currentEnergy -= 0.5 * (intermediaryPressure + pressure) * deltaVolumeA
 
                 info.currentTemperature = (info.currentEnergy / capacity).coerceAtLeast(1e-4)
-
-                //region heat transfer to the duct wall
-                val heatConductivityGas = heatConductivityAverage(info.currentGasMasses, info.currentPressure, info.currentTemperature)
-                val heatConductivityInternal =
-                    if (heatConductivityGas > 1e-4 && node.heatConductivity > 1e-4)
-                        heatConductivityGas * node.heatConductivity / (heatConductivityGas + node.heatConductivity)
-                    else 0.0
-                val innerHeatDelta = ((info.currentTemperature - info.wallTemperature) * tickDelta * heatConductivityInternal)
-
-                // Ambient heat transfer. Commented out for now!
-                //val heatConductivityAmbient =
-                //    if (node.heatConductivity > 1e-4)
-                //        0.2 * node.heatConductivity / (0.2 + node.heatConductivity)
-                //    else 0.0
-                //val outerHeatDelta = (info.wallTemperature - 300.0) * tickDelta * heatConductivityAmbient
-                //info.wallTemperature -= outerHeatDelta / node.heatCapacity
-
-                if(info.currentGasMasses.values.sum() > 1e-4) {
-                    info.currentEnergy -= innerHeatDelta
-                    info.wallTemperature += innerHeatDelta / node.heatCapacity
-                    info.currentTemperature = (info.currentEnergy / capacity).coerceAtLeast(1e-4)
-                }
-                //endregion
             }
 
             val snap: MutableMap<DuctNodePos, NodeSnapshot> = HashMap()
             for ((pos, info) in network.nodeInfo) {
                 val nodeData = network.nodes[pos] ?: continue
                 val V = nodeData.volume + info.volumeChange
-                val CvCap = mixtureCapacity(info.currentGasMasses) // Σ m * cv, J/K (your existing function)
+                val CvCap = nodeHeatCapacity(info.currentGasMasses, nodeData.heatCapacity)
                 val T = if (CvCap > 1e-12) (info.currentEnergy / CvCap).coerceAtLeast(1e-4) else 273.15
                 val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (nodeData as TankDuctNode).size else 1.0
                 val P = calcPressureFromGamma(info.currentGasMasses, V, T) / tankMult
@@ -160,8 +146,8 @@ class JacobiSolver: KelvinSolver {
                         continue
                     }
 
-                    val capacityA = mixtureCapacity(nodeA.currentGasMasses)
-                    val capacityB = mixtureCapacity(nodeB.currentGasMasses)
+                    val capacityA = nodeHeatCapacity(nodeA.currentGasMasses, nodeDataA.heatCapacity)
+                    val capacityB = nodeHeatCapacity(nodeB.currentGasMasses, nodeDataB.heatCapacity)
 
                     var currentEnergyA = nodeA.currentEnergy
                     var currentEnergyB = nodeB.currentEnergy
@@ -312,12 +298,6 @@ class JacobiSolver: KelvinSolver {
                         pendingTransfers.add(pending)
                     }
 
-                    // Section: Thermal Transfer
-
-                    //update temperature from energy
-                    val newCapacityA = mixtureCapacity(nodeA.currentGasMasses)
-                    val newCapacityB = mixtureCapacity(nodeB.currentGasMasses)
-
                     // Section : Passive Thermal Transfer
 
                     val newNewPressureA = calcPressureFromGamma(nodeA.currentGasMasses, volumeA, currentTemperatureA)/tankMultA
@@ -329,12 +309,17 @@ class JacobiSolver: KelvinSolver {
                     val totalAvgHeatConductivity = if (heatConductivityA > 1e-4 && heatConductivityB > 1e-4) heatConductivityA * heatConductivityB / ( heatConductivityA + heatConductivityB ) else 0.0
 
                     //Calculates passive heat transfer between nodes
-                    val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * edge.radius) * ((currentTemperatureA - currentTemperatureB) / edge.length)) * tickDelta
-                    val passiveHeatLimit = min(nodeA.currentEnergy.absoluteValue + 1.0, nodeB.currentEnergy.absoluteValue + 1.0)
+                    val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * edge.radius) * ((currentTemperatureA - currentTemperatureB) / edge.length)) *
+                        edge.passiveHeatMultiplier() * tickDelta
+                    val passiveEqualizationLimit = if (capacityA > 1e-12 && capacityB > 1e-12)
+                        abs(currentTemperatureA - currentTemperatureB) / ((1.0 / capacityA) + (1.0 / capacityB))
+                    else 0.0
+                    val passiveEnergyLimit = if (passiveHeatDelta > 0.0) currentEnergyA.absoluteValue else currentEnergyB.absoluteValue
+                    val passiveHeatLimit = min(passiveEnergyLimit, passiveEqualizationLimit)
 
-                    if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite()) {
-                        if (totalGasMassA >= 0.1 && totalGasMassB >= 0.1 && newCapacityA >= 0.001 && newCapacityB >= 0.001) {
-                            val dE = Mth.clamp(passiveHeatDelta, -nodeB.currentEnergy.absoluteValue, nodeA.currentEnergy.absoluteValue)
+                    if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite() && passiveHeatLimit > 0.0) {
+                        if (totalGasMassA >= 0.1 && totalGasMassB >= 0.1) {
+                            val dE = Mth.clamp(passiveHeatDelta, -passiveHeatLimit, passiveHeatLimit)
                             val pendingPassive = PendingPassiveTransfer(
                                 srcPos = edge.nodeA,
                                 dstPos = edge.nodeB,
@@ -418,12 +403,16 @@ class JacobiSolver: KelvinSolver {
             for ((pos, info) in network.nodeInfo) {
                 val nodeData = network.nodes[pos] ?: continue
                 val mTot = info.currentGasMasses.values.sum()
-                val cap = mixtureCapacity(info.currentGasMasses)
-                if (mTot <= 1e-9 || cap <= 1e-9) {
+                val cap = nodeHeatCapacity(info.currentGasMasses, nodeData.heatCapacity)
+                if (mTot <= 1e-9) {
+                    // Gas drained: keep currentEnergy as-is (it now equals wall energy
+                    // since the gas portion went to neighbors), and re-derive T from the
+                    // wall-only capacity. This conserves energy across drain transitions.
                     info.currentGasMasses.clear()
-                    info.currentEnergy = 0.0
-                    info.currentTemperature = 273.15
                     info.currentPressure = 0.0
+                    info.currentTemperature = if (nodeData.heatCapacity > 1e-12)
+                        (info.currentEnergy / nodeData.heatCapacity).coerceAtLeast(1e-4)
+                    else 273.15
                 } else {
                     info.previousPressure = info.currentPressure
                     info.currentTemperature = (info.currentEnergy / cap).coerceAtLeast(1e-4)
