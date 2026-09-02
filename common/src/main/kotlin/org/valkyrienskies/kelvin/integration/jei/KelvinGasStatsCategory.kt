@@ -40,8 +40,10 @@ class KelvinGasStatsCategory : IRecipeCategory<GasType> {
         return Component.literal("Gas Properties")
     }
 
+    override fun getBackground(): IDrawable? = null
+
     override fun getIcon(): IDrawable {
-        return ImageDrawable(16,16, GasTypeRegistry.getGasType(ResourceLocation(KelvinMod.MOD_ID, "air"))!!.iconLocation)
+        return ImageDrawable(16,16, GasTypeRegistry.getGasType(ResourceLocation.fromNamespaceAndPath(KelvinMod.MOD_ID, "air"))!!.iconLocation)
     }
 
     override fun setRecipe(builder: IRecipeLayoutBuilder, recipe: GasType, focuses: IFocusGroup) {

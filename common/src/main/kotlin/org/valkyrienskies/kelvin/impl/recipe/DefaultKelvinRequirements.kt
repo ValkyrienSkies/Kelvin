@@ -101,5 +101,5 @@ object DefaultKelvinRequirements {
  * Assumes the JsonElement is a String resource location for a registered gas
  */
 private fun JsonElement.getGasName(): String {
-    return GasTypeRegistry.getGasType(ResourceLocation(this.asString))?.name ?: this.asString
+    return GasTypeRegistry.getGasType(ResourceLocation.parse(this.asString))?.name ?: this.asString
 }
