@@ -9,10 +9,14 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.*
 import org.valkyrienskies.kelvin.api.nodes.ILeakNode
+import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
+import org.valkyrienskies.kelvin.api.recipe.GasBaseRecipe
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSeidelSolver
 import org.valkyrienskies.kelvin.util.*
+import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
+import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toMinecraft
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -368,38 +372,105 @@ class DuctNetworkServer(
         }
 
 
-        val reactions = KelvinReactionDataLoader.gas_reactions
-        // Process recipes
+        processReactions(level, dimensionNodes, KelvinReactionDataLoader.gas_reactions.values)
+    }
+
+    /**
+     * Runs every reaction at every node in [dimensionNodes]. Each reaction runs by the largest
+     * amount allowed by both its input gasses and all of its requirements, so a requirement
+     * bounds how far the reaction gets rather than only whether it starts. For example a
+     * reaction inhibited by its own product stops exactly when the product reaches the
+     * inhibiting ratio instead of converting every input in one tick.
+     */
+    internal fun processReactions(level: Level, dimensionNodes: Collection<DuctNodePos>, reactions: Collection<GasBaseRecipe>) {
         for (node in dimensionNodes) {
-            val gasMasses = getGasMassAt(node)
-            if (gasMasses.size == 0) continue
+            val info = nodeInfo[node] ?: continue
+            if (info.currentGasMasses.isEmpty()) continue
 
-            for (reaction in reactions.values) {
-                var con = false
-                reaction.requirements.forEach {if (!it.key.apply_requirement(level, node, this, it.value)) { con = true; return@forEach }}
-                if (con) continue
+            for (reaction in reactions) {
+                // Live view: reflects gas consumed / produced by earlier reactions this tick.
+                val maxAmount = maxReactionAmountFromInputs(info.currentGasMasses, reaction.gasses)
+                if (maxAmount <= 0.0) continue
 
-                calcReaction(node, gasMasses, reaction.gasses, reaction.result, reaction.energy)
+                val amount = limitByRequirements(level, node, reaction, maxAmount)
+                if (amount <= 0.0) continue
+
+                applyReaction(node, reaction, amount)
             }
         }
     }
 
-    private fun calcReaction(ductNodePos: DuctNodePos, gasMasses: Map<GasType, Double>, inputGasses: Map<GasType, Double>, outputGasses: Map<GasType, Double>, deltaEnergy: Double) {
+    /** How many times a reaction can run before one of its input gasses is used up. */
+    private fun maxReactionAmountFromInputs(gasMasses: Map<GasType, Double>, inputGasses: Map<GasType, Double>): Double {
+        var amount = Double.MAX_VALUE
+        for ((gas, massPerReaction) in inputGasses) {
+            val available = gasMasses[gas] ?: return 0.0
+            if (available < MIN_REACTANT_MASS) return 0.0
+            amount = min(amount, available / massPerReaction)
+        }
+        return if (inputGasses.isEmpty()) 0.0 else amount
+    }
 
-        var reactionAmount = Double.MAX_VALUE
-        for (gas in inputGasses) {
-            if (gas.key !in gasMasses || gasMasses[gas.key]!! < 0.0001) return
+    /**
+     * The largest amount in `[0, maxAmount]` of [reaction] that keeps every requirement satisfied
+     * after it has run at [node]. `0` means the reaction can't run at all.
+     *
+     * Requirements are checked against a preview of the node (see [previewReaction]); nothing is
+     * modified. Assumes requirements are monotone in the amount: once one breaks it stays broken
+     * for any larger amount. Only the endpoints are checked unless the requirements hold now but
+     * not at [maxAmount], in which case the boundary is found by bisection.
+     */
+    private fun limitByRequirements(level: Level, node: DuctNodePos, reaction: GasBaseRecipe, maxAmount: Double): Double {
+        if (reaction.requirements.isEmpty()) return maxAmount
 
-            val thisOutput =  gasMasses[gas.key]!! / gas.value
-            if (thisOutput < reactionAmount) reactionAmount = thisOutput
+        fun holdsAfter(amount: Double): Boolean {
+            val state = previewReaction(node, reaction, amount)
+            return reaction.requirements.all { (requirement, value) -> requirement.apply_requirement(level, state, value) }
         }
 
-        for (gas in inputGasses) modGasMass(ductNodePos,gas.key,-reactionAmount * gas.value)
+        if (!holdsAfter(0.0)) return 0.0
+        if (holdsAfter(maxAmount)) return maxAmount
 
-        for (gas in outputGasses) modGasMass(ductNodePos,gas.key,reactionAmount * gas.value)
+        // Invariant: the requirements hold at lo and not at hi.
+        var lo = 0.0
+        var hi = maxAmount
+        repeat(REQUIREMENT_BISECTION_STEPS) {
+            val mid = 0.5 * (lo + hi)
+            if (holdsAfter(mid)) lo = mid else hi = mid
+        }
+        return lo
+    }
 
-        modHeatEnergy(ductNodePos, deltaEnergy * reactionAmount)
+    /**
+     * The state [pos] would be in after [reaction] has run [amount] times, without modifying the
+     * node. Temperature and pressure are derived from the resulting masses and energy the same way
+     * the solver does at the end of a step, so `amount == 0` is the node's current state even if
+     * earlier reactions this tick have changed it.
+     */
+    private fun previewReaction(pos: DuctNodePos, reaction: GasBaseRecipe, amount: Double): DuctNodeState {
+        val info = nodeInfo[pos]!!
+        val node = nodes[pos]
 
+        val masses = HashMap<GasType, Double>(info.currentGasMasses)
+        for ((gas, mass) in reaction.gasses) masses[gas] = (masses[gas] ?: 0.0) - amount * mass
+        for ((gas, mass) in reaction.result) masses[gas] = (masses[gas] ?: 0.0) + amount * mass
+        // Mirrors modHeatEnergy, which never lets a node's energy drop below this floor.
+        val energy = (info.currentEnergy + amount * reaction.energy).coerceAtLeast(0.001)
+
+        val wallCapacity = node?.heatCapacity ?: 0.0
+        val volume = (node?.volume ?: info.totalVolume) + info.volumeChange
+        val temperature = if (masses.values.sum() <= 1e-9 && wallCapacity <= 1e-12) 273.15
+            else (energy / nodeHeatCapacity(masses, wallCapacity)).coerceAtLeast(1e-4)
+        val tankMult = if (node is TankDuctNode) node.size else 1.0
+        val pressure = calcPressureFromGamma(masses, volume, temperature) / tankMult
+
+        return DuctNodeState(pos, temperature, pressure, masses, energy, volume)
+    }
+
+    private fun applyReaction(node: DuctNodePos, reaction: GasBaseRecipe, amount: Double) {
+        for ((gas, mass) in reaction.gasses) modGasMass(node, gas, -amount * mass)
+        for ((gas, mass) in reaction.result) modGasMass(node, gas, amount * mass)
+        modHeatEnergy(node, reaction.energy * amount)
     }
 
     override fun dump() {
@@ -463,5 +534,10 @@ class DuctNetworkServer(
     companion object {
         private const val R_UNIVERSAL = 8.31446261815324 // J/(mol*K)
         private const val MOLAR_VOLUME_STP = 0.022414    // m^3/mol (approx at 0°C, 1 atm)
+
+        /** Input gasses below this mass (kg) are treated as absent for reactions. */
+        private const val MIN_REACTANT_MASS = 0.0001
+
+        private const val REQUIREMENT_BISECTION_STEPS = 16
     }
 }
