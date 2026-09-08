@@ -3,28 +3,16 @@ package org.valkyrienskies.kelvin.impl
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
-import net.minecraft.util.Mth
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.api.*
-import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
-import org.valkyrienskies.kelvin.api.edges.ApertureEdge
-import org.valkyrienskies.kelvin.api.edges.FilteredEdge
-import org.valkyrienskies.kelvin.api.edges.OneWayEdge
-import org.valkyrienskies.kelvin.api.edges.PumpEdge
-import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.ILeakNode
-import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
-import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
-import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry.DEBUG_REGISTRY
-import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
-import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
+import org.valkyrienskies.kelvin.impl.solvers.JacobiSeidelSolver
 import org.valkyrienskies.kelvin.util.*
-import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toChunkPos
 import org.valkyrienskies.kelvin.util.KelvinExtensions.toMinecraft
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -43,7 +31,7 @@ class DuctNetworkServer(
     private val syncTimers = HashMap<ResourceLocation, Int>()
     private val chunkSyncRequests = HashMap<ResourceLocation, ConcurrentLinkedQueue<Pair<ServerPlayer, KelvinChunkPos>>>().withDefault { ConcurrentLinkedQueue() }
 
-    var solver: KelvinSolver = JacobiSolver()
+    var solver: KelvinSolver = JacobiSeidelSolver()
     var isTestingEnvironment: Boolean = false
 
     override fun markLoaded(pos: DuctNodePos) {
