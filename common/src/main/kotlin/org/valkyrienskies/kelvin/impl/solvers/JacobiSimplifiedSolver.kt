@@ -17,6 +17,7 @@ import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
+import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -53,22 +54,13 @@ class JacobiSimplifiedSolver: KelvinSolver {
                 if (network.unloadedNodes.contains(pos)) continue
                 val nodeData = network.nodes[pos] ?: continue
 
-                val cap = mixtureCapacity(info.currentGasMasses)
-                val mTot = info.currentGasMasses.values.sum()
-
-                // Simplified Inner Wall Heat Transfer
-                if (mTot > 1e-4 && cap > 1e-4) {
-                    val kGas = heatConductivityAverage(info.currentGasMasses, info.currentPressure, info.currentTemperature)
-                    val kInt = if (kGas > 1e-4 && nodeData.heatConductivity > 1e-4) (kGas * nodeData.heatConductivity) / (kGas + nodeData.heatConductivity) else 0.0
-                    val q = (info.currentTemperature - info.wallTemperature) * tickDelta * kInt
-                    info.currentEnergy -= q
-                    info.wallTemperature += q / nodeData.heatCapacity
-                }
+                val cap = nodeHeatCapacity(info.currentGasMasses, nodeData.heatCapacity)
 
                 val T = if (cap > 1e-12) (info.currentEnergy / cap).coerceAtLeast(1e-4) else 273.15
                 val V = nodeData.volume + info.volumeChange
                 val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (nodeData as TankDuctNode).size else 1.0
                 val P = calcPressureFromGamma(info.currentGasMasses, V, T) / tankMult
+                val mTot = info.currentGasMasses.values.sum()
 
                 pSnap[pos] = P
                 tSnap[pos] = T
@@ -126,10 +118,17 @@ class JacobiSimplifiedSolver: KelvinSolver {
                 val heatCondA = heatConductivityAverage(infoA.currentGasMasses, pA, tA)
                 val heatCondB = heatConductivityAverage(infoB.currentGasMasses, pB, tB)
                 val avgCond = if (heatCondA > 1e-4 && heatCondB > 1e-4) heatCondA * heatCondB / (heatCondA + heatCondB) else 0.0
-                val passiveQ = (avgCond * (Math.PI * edge.radius * edge.radius) * ((tA - tB) / edge.length)) * tickDelta
+                val passiveQ = (avgCond * (Math.PI * edge.radius * edge.radius) * ((tA - tB) / edge.length)) *
+                    edge.passiveHeatMultiplier() * tickDelta
 
                 if (mA >= 0.1 && mB >= 0.1 && Math.abs(passiveQ) > 1e-4) {
-                    val qLimit = min(infoA.currentEnergy.absoluteValue, infoB.currentEnergy.absoluteValue)
+                    val capA = nodeHeatCapacity(infoA.currentGasMasses, network.nodes[edge.nodeA]!!.heatCapacity)
+                    val capB = nodeHeatCapacity(infoB.currentGasMasses, network.nodes[edge.nodeB]!!.heatCapacity)
+                    val equalizationLimit = if (capA > 1e-12 && capB > 1e-12)
+                        Math.abs(tA - tB) / ((1.0 / capA) + (1.0 / capB))
+                    else 0.0
+                    val energyLimit = if (passiveQ > 0.0) infoA.currentEnergy.absoluteValue else infoB.currentEnergy.absoluteValue
+                    val qLimit = min(energyLimit, equalizationLimit)
                     val qApplied = passiveQ.coerceIn(-qLimit, qLimit)
                     deltaEnergy[edge.nodeA] = deltaEnergy[edge.nodeA]!! - qApplied
                     deltaEnergy[edge.nodeB] = deltaEnergy[edge.nodeB]!! + qApplied
@@ -211,18 +210,23 @@ class JacobiSimplifiedSolver: KelvinSolver {
                     }
                 }
 
-                val cap = mixtureCapacity(info.currentGasMasses)
+                val nodeData = network.nodes[pos] ?: continue
+                val cap = nodeHeatCapacity(info.currentGasMasses, nodeData.heatCapacity)
                 val mTot = info.currentGasMasses.values.sum()
 
-                if (mTot <= 1e-9 || cap <= 1e-9) {
+                if (mTot <= 1e-9) {
+                    // Gas drained: keep currentEnergy as-is (it now equals wall energy
+                    // since the gas portion went to neighbors), and re-derive T from the
+                    // wall-only capacity. This conserves energy across drain transitions.
                     info.currentGasMasses.clear()
-                    info.currentEnergy = 0.0
-                    info.currentTemperature = 273.15
                     info.currentPressure = 0.0
+                    info.currentTemperature = if (nodeData.heatCapacity > 1e-12)
+                        (info.currentEnergy / nodeData.heatCapacity).coerceAtLeast(1e-4)
+                    else 273.15
                 } else {
                     info.currentTemperature = (info.currentEnergy / cap).coerceAtLeast(1e-4)
-                    val V = network.nodes[pos]!!.volume + info.volumeChange
-                    val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (network.nodes[pos] as TankDuctNode).size else 1.0
+                    val V = nodeData.volume + info.volumeChange
+                    val tankMult = if (info.nodeType == NodeBehaviorType.TANK) (nodeData as TankDuctNode).size else 1.0
                     info.currentPressure = calcPressureFromGamma(info.currentGasMasses, V, info.currentTemperature) / tankMult
                 }
             }

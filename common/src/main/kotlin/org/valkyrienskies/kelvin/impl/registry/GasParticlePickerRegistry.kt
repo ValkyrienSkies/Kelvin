@@ -26,7 +26,7 @@ object GasParticlePickerRegistry {
     }
 
     fun registerWithDefaultParticlePicker(gasType: GasType) {
-        KelvinParticles.registerDefaultParticle(gasType.resourceLocation.path).listen {
+        KelvinParticles.registerDefaultParticle(gasType.resourceLocation.path, gasType.density.toFloat()).listen {
             register(gasType.resourceLocation, gasType, DefaultGasParticlePicker(it.type))
         }
     }

@@ -26,6 +26,9 @@
         "adapter": "kotlin",
         "value": "org.valkyrienskies.kelvin.fabric.KelvinModFabric${'$'}Client"
       }
+    ],
+    "jei_mod_plugin": [
+      "org.valkyrienskies.kelvin.integration.jei.KelvinJeiPlugin"
     ]
   },
   "mixins": [

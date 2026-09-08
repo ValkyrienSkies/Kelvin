@@ -84,12 +84,8 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
         return nodeInfo[node]?.currentTemperature ?: -1.0
     }
 
-    override fun getWallTemperatureAt(node: DuctNodePos): Double {
-        return nodeInfo[node]?.wallTemperature ?: -1.0
-    }
-
-    override fun getGasMassAt(node: DuctNodePos): HashMap<GasType, Double> {
-        return nodeInfo[node]?.currentGasMasses ?: HashMap()
+    override fun getGasMassAt(node: DuctNodePos): Map<GasType, Double> {
+        return nodeInfo[node]?.currentGasMasses ?: emptyMap()
     }
 
     override fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge? {
@@ -121,36 +117,20 @@ class DuctNetworkClient: DuctNetwork<ClientLevel> {
     }
 
     override fun getHeatEnergy(pos: DuctNodePos): Double {
-        return getTemperatureAt(pos) * specificHeatAverage(getGasMassAt(pos)) * getGasMassAt(pos).values.sum()
+        return nodeInfo[pos]?.currentEnergy ?: 0.0
     }
 
-    private fun specificHeatAverage(gasMasses: HashMap<GasType, Double>): Double {
-        val totalMass = gasMasses.values.sum()
-        if (totalMass == 0.0) {
-            return 0.0
-        }
-
-        val massPerGas = HashMap<GasType, Double>()
-
-        val gasWeight = HashMap<GasType, Double>()
-
-        gasMasses.keys.forEach {
-            if (gasMasses[it] != 0.0 ) {
-                massPerGas[it] =  gasMasses[it]!!
-            }
-
-        }
-
-        for (gas in massPerGas.keys) {
-            gasWeight[gas] = massPerGas[gas]!! / totalMass
-        }
+    private fun specificHeatAverage(gasMasses: Map<GasType, Double>): Double {
+        var totalMass = 0.0
+        for (m in gasMasses.values) totalMass += m
+        if (totalMass <= 0.0) return 0.0
 
         var specificHeat = 0.0
-
-        for (gas in gasWeight.keys) {
-            specificHeat += gasWeight[gas]!! * gas.specificHeatCapacity
+        for ((gas, mass) in gasMasses) {
+            if (mass == 0.0) continue
+            specificHeat += (mass / totalMass) * gas.specificHeatCapacity
         }
-
         return specificHeat
     }
+
 }

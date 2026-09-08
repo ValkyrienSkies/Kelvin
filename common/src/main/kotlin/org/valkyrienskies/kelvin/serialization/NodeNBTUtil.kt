@@ -12,27 +12,25 @@ object NodeNBTUtil {
     fun <T: Level> serializeNode(pos: DuctNodePos, network: DuctNetwork<T>, tag: CompoundTag) {
         val gasMasses = network.getGasMassAt(pos)
         val temperature = network.getTemperatureAt(pos)
-        val wallTemperature = network.getWallTemperatureAt(pos)
 
         for ((gas, mass) in gasMasses) {
             tag.putDouble(gas.resourceLocation.toString(), mass)
         }
 
         tag.putDouble("KelvinTemperature",temperature)
-        tag.putDouble("KelvinWallTemperature", wallTemperature)
     }
 
     fun <T: Level> deserializeNode(pos: DuctNodePos, network: DuctNetwork<T>, tag: CompoundTag) {
         val temperature = tag.getDouble("KelvinTemperature")
-        val wallTemperature = tag.getDouble("KelvinWallTemperature")
 
         for (gasResourceLocation in tag.allKeys) {
+            // Skip "KelvinWallTemperature" from old saves — the wall is now part of the
+            // combined node thermal mass, no separate wall temperature is tracked.
             if (gasResourceLocation == "KelvinTemperature" || gasResourceLocation == "KelvinWallTemperature") continue
 
             val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation.parse(gasResourceLocation)] ?: continue
             network.modGasMass(pos,gasType,tag.getDouble(gasResourceLocation))
         }
-        network.setWallTemperature(pos, wallTemperature)
         network.modTemperature(pos, temperature)
     }
 
