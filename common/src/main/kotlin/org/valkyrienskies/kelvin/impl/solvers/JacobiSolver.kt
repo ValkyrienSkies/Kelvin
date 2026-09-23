@@ -250,9 +250,9 @@ class JacobiSolver: KelvinSolver {
                         val dmTotal = abs(dtMass)
 
                         // Build list of allowed gases (respect edge filters/pumps)
-                        val registry = if ((network as? DuctNetworkServer)?.isTestingEnvironment ?: false) GasTypeRegistry.DEBUG_REGISTRY
-                        else GasTypeRegistry.GAS_TYPES
-                        val allowed = registry.values.filter { gas ->
+                        val registry = if ((network as? DuctNetworkServer)?.isTestingEnvironment ?: false) GasTypeRegistry.DEBUG_REGISTRY.values
+                        else GasTypeRegistry.getGasTypes()
+                        val allowed = registry.filter { gas ->
                             // pump direction rule (copy your rule, but apply once here)
                             if (edge is PumpEdge && ((dtMass < 0 && edge.target == edge.nodeB) || (dtMass > 0 && edge.target == edge.nodeA))) return@filter false
 

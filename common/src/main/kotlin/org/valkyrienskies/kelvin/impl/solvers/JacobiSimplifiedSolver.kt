@@ -144,7 +144,7 @@ class JacobiSimplifiedSolver: KelvinSolver {
                 val srcTemp = if (dtMass > 0) tA else tB
                 val dmTotal = Math.abs(dtMass)
 
-                //val registry = if (!isTestingEnvironment) GasTypeRegistry.GAS_TYPES else GasTypeRegistry.DEBUG_REGISTRY
+                //val registry = if (!isTestingEnvironment) GasTypeRegistry.getGasTypes() else GasTypeRegistry.DEBUG_REGISTRY.values
                 var allowedMass = 0.0
                 for ((gas, mass) in srcInfo.currentGasMasses) {
                     if (edge is FilteredEdge && (if (edge.blacklist) edge.filter.contains(gas) else !edge.filter.contains(gas))) continue

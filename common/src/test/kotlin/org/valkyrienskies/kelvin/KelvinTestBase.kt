@@ -8,6 +8,7 @@ import org.valkyrienskies.kelvin.api.NodeBehaviorType
 import org.valkyrienskies.kelvin.api.edges.PipeDuctEdge
 import org.valkyrienskies.kelvin.api.nodes.PipeDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
+import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry.DEBUG_REGISTRY
 
 /**
@@ -27,8 +28,11 @@ abstract class KelvinTestBase {
         resetNetwork()
     }
 
-    protected fun newNetwork(): DuctNetworkServer =
-        DuctNetworkServer(disabled = false).apply { isTestingEnvironment = true }
+    protected fun newNetwork(): DuctNetworkServer {
+        // No platform registry exists in unit tests; serve gas lookups from DEBUG_REGISTRY instead.
+        GasTypeRegistry.isTestingEnvironment = true
+        return DuctNetworkServer(disabled = false).apply { isTestingEnvironment = true }
+    }
 
     protected fun resetNetwork() {
         network = newNetwork()

@@ -12,9 +12,7 @@ import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.recipe.GasBaseRecipe
 import org.valkyrienskies.kelvin.api.recipe.GasReactionRequirement
 import org.valkyrienskies.kelvin.impl.recipe.DefaultKelvinRequirements
-import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import com.google.gson.JsonElement
-import org.junit.jupiter.api.BeforeEach
 
 /**
  * Reaction requirements must bound how far a reaction runs in a tick, not just whether it starts.
@@ -23,12 +21,6 @@ class ReactionRequirementTest : KelvinTestBase() {
 
     private val level: Level = mockk(relaxed = true)
     private val pos = DuctNodePos(0.0, 0.0, 0.0)
-
-    @BeforeEach
-    fun registerTestGasses() {
-        // inhibited_by looks its gas up by id in the main registry.
-        for (gas in listOf(TEST_AIR, TEST_HELIUM, TEST_HYDROGEN)) GasTypeRegistry.GAS_TYPES[gas.resourceLocation] = gas
-    }
 
     private fun recipe(
         inputs: Map<GasType, Double>,

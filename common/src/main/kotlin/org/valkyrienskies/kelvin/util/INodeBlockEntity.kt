@@ -1,7 +1,6 @@
 package org.valkyrienskies.kelvin.util
 
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.NodeBehaviorType
@@ -43,10 +42,10 @@ interface INodeBlockEntity {
         val volume = nodeData.getDouble("KelvinVolume")
         val energy = nodeData.getDouble("KelvinEnergy")
 
-        for (gasResourceLocation in GasTypeRegistry.GAS_TYPES.keys) {
-            if (!nodeData.contains(gasResourceLocation.toString())) continue
-            val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation.parse(gasResourceLocation.toString())] ?: continue
-            info.currentGasMasses[gasType] = nodeData.getDouble(gasResourceLocation.toString())
+        for (gasType in GasTypeRegistry.getGasTypes()) {
+            val gasResourceLocation = gasType.resourceLocation.toString()
+            if (!nodeData.contains(gasResourceLocation)) continue
+            info.currentGasMasses[gasType] = nodeData.getDouble(gasResourceLocation)
         }
         info.currentTemperature = temperature
         info.previousPressure = info.currentPressure

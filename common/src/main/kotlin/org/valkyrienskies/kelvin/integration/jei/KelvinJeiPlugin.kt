@@ -24,7 +24,7 @@ class KelvinJeiPlugin: IModPlugin {
 
     override fun registerIngredients(registration: IModIngredientRegistration) {
         val recipes = HashSet<KelvinGasIngredient>()
-        GasTypeRegistry.GAS_TYPES.values.forEach {type -> recipes.add(KelvinGasIngredient(type, 0.0))}
+        GasTypeRegistry.getGasTypes().forEach {type -> recipes.add(KelvinGasIngredient(type, 0.0))}
         registration.register(GAS_INGREDIENT_TYPE, recipes, GasIngredientHelper(), GasIngredientRenderer())
     }
 
@@ -45,7 +45,7 @@ class KelvinJeiPlugin: IModPlugin {
         val recipes = KelvinReactionDataLoader.gas_reactions.values
         registration.addRecipes(GAS_REACTION_RECIPE_TYPE, recipes.toList())
 
-        val gasStatRecipes = GasTypeRegistry.GAS_TYPES.values
+        val gasStatRecipes = GasTypeRegistry.getGasTypes()
         registration.addRecipes(GAS_STATS_RECIPE_TYPE, gasStatRecipes.toList())
     }
 

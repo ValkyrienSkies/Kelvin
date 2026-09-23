@@ -28,7 +28,7 @@ object NodeNBTUtil {
             // combined node thermal mass, no separate wall temperature is tracked.
             if (gasResourceLocation == "KelvinTemperature" || gasResourceLocation == "KelvinWallTemperature") continue
 
-            val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation.parse(gasResourceLocation)] ?: continue
+            val gasType = GasTypeRegistry.getGasType(ResourceLocation.parse(gasResourceLocation)) ?: continue
             network.modGasMass(pos,gasType,tag.getDouble(gasResourceLocation))
         }
         network.modTemperature(pos, temperature)

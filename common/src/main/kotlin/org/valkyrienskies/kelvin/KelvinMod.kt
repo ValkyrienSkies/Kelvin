@@ -120,7 +120,7 @@ object KelvinMod {
         ReactionRequirementRegistry.init()
         GasParticlePickerRegistry.init()
         KELVINLOGGER.info("--- --- ---")
-        KELVINLOGGER.info("Finished registering gas types. We have ${GasTypeRegistry.GAS_TYPES.size} gasses registered!")
+        KELVINLOGGER.info("Finished registering gas types. We have ${GasTypeRegistry.ALL.size} gasses queued for registration!")
 
         KELVINLOGGER.info("Kelvin has been initialized.")
     }
