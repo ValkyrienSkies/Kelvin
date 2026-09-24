@@ -34,6 +34,6 @@ data class GasType(
     }
 
     companion object {
-        val PLACEHOLDER_ICON = KelvinMod.asResouceLocation("textures/icons/placeholder.png")
+        val PLACEHOLDER_ICON = KelvinMod.asResourceLocation("textures/icons/placeholder.png")
     }
 }

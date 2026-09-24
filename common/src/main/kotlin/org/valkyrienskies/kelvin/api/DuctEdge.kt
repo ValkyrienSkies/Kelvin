@@ -33,6 +33,10 @@ interface DuctEdge {
     var length: Double
     var currentFlowRate: Double
 
+    var thermalConductivityMultiplier: Double
+        get() = 1.0
+        set(_) {}
+
     var unloaded : Boolean
 
     fun interact(player: ServerPlayer): Boolean {
@@ -48,8 +52,24 @@ interface DuctEdge {
     }
 
     fun serialize(tag: CompoundTag): CompoundTag {
+        if (thermalConductivityMultiplier != 1.0) {
+            tag.putDouble(THERMAL_CONDUCTIVITY_MULTIPLIER_KEY, thermalConductivityMultiplier)
+        }
         return tag
     }
 
-    fun deserialize(tag: CompoundTag) {}
+    fun deserialize(tag: CompoundTag) {
+        if (tag.contains(THERMAL_CONDUCTIVITY_MULTIPLIER_KEY)) {
+            thermalConductivityMultiplier = tag.getDouble(THERMAL_CONDUCTIVITY_MULTIPLIER_KEY)
+        }
+    }
+
+    fun passiveHeatMultiplier(): Double {
+        val multiplier = thermalConductivityMultiplier
+        return if (multiplier.isFinite() && multiplier > 0.0) multiplier else 0.0
+    }
+
+    companion object {
+        const val THERMAL_CONDUCTIVITY_MULTIPLIER_KEY = "thermalConductivityMultiplier"
+    }
 }

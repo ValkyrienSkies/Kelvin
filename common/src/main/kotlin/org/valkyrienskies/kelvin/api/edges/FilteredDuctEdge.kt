@@ -16,6 +16,7 @@ open class FilteredDuctEdge(
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,
     override var radius: Double = 0.125, override var length: Double = 0.5, override var currentFlowRate: Double = 0.0,
+    override var thermalConductivityMultiplier: Double = 1.0,
     override var filter: HashSet<GasType> = HashSet(),
     override var blacklist: Boolean = false,
     override var unloaded: Boolean = false

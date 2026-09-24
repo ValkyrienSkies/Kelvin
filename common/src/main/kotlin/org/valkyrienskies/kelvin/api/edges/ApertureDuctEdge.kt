@@ -13,6 +13,7 @@ open class ApertureDuctEdge(
     override val nodeA: DuctNodePos,
     override val nodeB: DuctNodePos,
     override var radius: Double = 0.125, override var length: Double = 0.5, override var currentFlowRate: Double = 0.0,
+    override var thermalConductivityMultiplier: Double = 1.0,
     override var aperture: Double = 0.0,
     override var unloaded: Boolean = false
 ) : DuctEdge, ApertureEdge {
