@@ -70,6 +70,23 @@ interface DuctNetwork<T: Level> {
      */
     fun getGasMassAt(node: DuctNodePos): Map<GasType, Double>
 
+    /**
+     * A snapshot of the current state of the node at [nodePos], or null if there is no info for it.
+     * The gas masses are copied, so the result is unaffected by later ticks.
+     */
+    fun getNodeState(nodePos: DuctNodePos): DuctNodeState? {
+        val info = nodeInfo[nodePos] ?: return null
+        val volume = (nodes[nodePos]?.volume ?: info.totalVolume) + info.volumeChange
+        return DuctNodeState(
+            nodePos,
+            getTemperatureAt(nodePos),
+            getPressureAt(nodePos),
+            HashMap<GasType, Double>(info.currentGasMasses),
+            info.currentEnergy,
+            volume
+        )
+    }
+
     fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge?
     fun getNodeAt(pos: DuctNodePos): DuctNode?
 
