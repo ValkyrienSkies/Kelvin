@@ -50,7 +50,9 @@ dependencies {
 
     //JEI
     modCompileOnly  "mezz.jei:jei-${rootProject.minecraft_version}-forge-api:${rootProject.jei_version}"
-    modRuntimeOnly  "mezz.jei:jei-${rootProject.minecraft_version}-forge:${rootProject.jei_version}"
+    //modRuntimeOnly  "mezz.jei:jei-${rootProject.minecraft_version}-forge:${rootProject.jei_version}"
+    modRuntimeOnly("maven.modrinth:jei:MdKE2PdF")
+
 
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive = false }
@@ -75,6 +77,14 @@ repositories {
         name = "ModMaven"
         url = "https://modmaven.dev"
     }
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content {
+            includeGroup("maven.modrinth")
+        }
+    }
+
 }
 
 processResources {
