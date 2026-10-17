@@ -382,7 +382,8 @@ class DuctNetworkServer(
      * reaction inhibited by its own product stops exactly when the product reaches the
      * inhibiting ratio instead of converting every input in one tick.
      */
-    internal fun processReactions(level: Level, dimensionNodes: Collection<DuctNodePos>, reactions: Collection<GasBaseRecipe>) {
+    internal fun processReactions(level: Level?, dimensionNodes: Collection<DuctNodePos>, reactions: Collection<GasBaseRecipe>) {
+        assert(isTestingEnvironment || (level != null)) { "level can only be null when being run in a unit test environment" }
         for (node in dimensionNodes) {
             val info = nodeInfo[node] ?: continue
             if (info.currentGasMasses.isEmpty()) continue
@@ -419,8 +420,12 @@ class DuctNetworkServer(
      * modified. Assumes requirements are monotone in the amount: once one breaks it stays broken
      * for any larger amount. Only the endpoints are checked unless the requirements hold now but
      * not at [maxAmount], in which case the boundary is found by bisection.
+     *
+     *
      */
-    private fun limitByRequirements(level: Level, node: DuctNodePos, reaction: GasBaseRecipe, maxAmount: Double): Double {
+    private fun limitByRequirements(level: Level?, node: DuctNodePos, reaction: GasBaseRecipe, maxAmount: Double): Double {
+        assert(isTestingEnvironment || (level != null)) { "level can only be null when being run in a unit test environment" }
+
         if (reaction.requirements.isEmpty()) return maxAmount
 
         fun holdsAfter(amount: Double): Boolean {

@@ -14,7 +14,7 @@ object DefaultKelvinRequirements {
     val defaultRequirements = listOf(minTemperature, maxTemperature, minPressure, maxPressure, inhibitedBy)
 
     object minTemperature: GasReactionRequirement(KelvinMod.asResourceLocation("min_temperature")) {
-        override fun apply_requirement(level: Level, state: DuctNodeState, value: JsonElement): Boolean {
+        override fun apply_requirement(level: Level?, state: DuctNodeState, value: JsonElement): Boolean {
             val doubleValue = value.asDouble
 
             return state.temperature >= doubleValue
@@ -29,7 +29,7 @@ object DefaultKelvinRequirements {
     }
 
     object maxTemperature: GasReactionRequirement(KelvinMod.asResourceLocation("max_temperature")) {
-        override fun apply_requirement(level: Level, state: DuctNodeState, value: JsonElement): Boolean {
+        override fun apply_requirement(level: Level?, state: DuctNodeState, value: JsonElement): Boolean {
             val doubleValue = value.asDouble
 
             return state.temperature <= doubleValue
@@ -43,7 +43,7 @@ object DefaultKelvinRequirements {
     }
 
     object minPressure: GasReactionRequirement(KelvinMod.asResourceLocation("min_pressure")) {
-        override fun apply_requirement(level: Level, state: DuctNodeState, value: JsonElement): Boolean {
+        override fun apply_requirement(level: Level?, state: DuctNodeState, value: JsonElement): Boolean {
             val doubleValue = value.asDouble
 
             return state.pressure >= doubleValue
@@ -57,7 +57,7 @@ object DefaultKelvinRequirements {
     }
 
     object maxPressure: GasReactionRequirement(KelvinMod.asResourceLocation("max_pressure")) {
-        override fun apply_requirement(level: Level, state: DuctNodeState, value: JsonElement): Boolean {
+        override fun apply_requirement(level: Level?, state: DuctNodeState, value: JsonElement): Boolean {
             val doubleValue = value.asDouble
 
             return state.pressure <= doubleValue
@@ -71,7 +71,7 @@ object DefaultKelvinRequirements {
     }
 
     object inhibitedBy: GasReactionRequirement(KelvinMod.asResourceLocation("inhibited_by")) {
-        override fun apply_requirement(level: Level, state: DuctNodeState, value: JsonElement): Boolean {
+        override fun apply_requirement(level: Level?, state: DuctNodeState, value: JsonElement): Boolean {
             val gasTypeId = value.asJsonObject["gas"].asString
             val gasType = GasTypeRegistry.getGasType(ResourceLocation.of(gasTypeId, ':'))
             val ratio = value.asJsonObject["ratio"].asDouble
