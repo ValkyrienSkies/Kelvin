@@ -1,8 +1,12 @@
 package org.valkyrienskies.kelvin.util
 
 import net.minecraft.util.Mth
+import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
+import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.api.edges.ApertureEdge
+import org.valkyrienskies.kelvin.api.nodes.ValveDuctNode
 import kotlin.collections.forEach
 import kotlin.math.absoluteValue
 import kotlin.math.max
@@ -11,6 +15,24 @@ import kotlin.math.sign
 import kotlin.math.sqrt
 
 object GasPhysics {
+
+    /**
+     * Returns the radius used for mass-flow calculations after applying edge and endpoint
+     * restrictions. The physical edge radius remains unchanged for passive heat conduction.
+     */
+    fun effectiveFlowRadius(edge: DuctEdge, nodeA: DuctNode, nodeB: DuctNode): Double {
+        var radius = edge.radius
+        if (edge is ApertureEdge) {
+            radius += max(edge.aperture, -edge.radius)
+        }
+        if (nodeA is ValveDuctNode) {
+            radius = min(radius, nodeA.radius)
+        }
+        if (nodeB is ValveDuctNode) {
+            radius = min(radius, nodeB.radius)
+        }
+        return if (radius.isFinite()) radius.coerceAtLeast(0.0) else 0.0
+    }
 
     fun calcPressure(mass: Double, volume: Double, temp: Double, standardDensity: Double): Double {
         if (volume == 0.0 || mass == 0.0) return 0.0
@@ -115,6 +137,7 @@ object GasPhysics {
     }
 
     fun mdotChoked(upMasses: Map<GasType, Double>, upP: Double, upT: Double, radius: Double, Cd: Double = 0.8): Double {
+        if (!radius.isFinite() || radius <= 0.0) return 0.0
         if (upP <= 0.0) return 0.0
         val T0 = upT.coerceAtLeast(1e-4)
         val R = mixtureR(upMasses)
@@ -132,6 +155,7 @@ object GasPhysics {
      * once for `gammaMix`).
      */
     fun mdotChoked(upP: Double, upT: Double, radius: Double, Cd: Double, rmix: Double, gamma: Double): Double {
+        if (!radius.isFinite() || radius <= 0.0) return 0.0
         if (upP <= 0.0) return 0.0
         if (rmix <= 1e-12 || gamma <= 1.0) return 0.0
         val T0 = upT.coerceAtLeast(1e-4)
@@ -195,8 +219,11 @@ object GasPhysics {
 //        return ((pressureOne - pressureTwo + pumpPressure) * radius.pow(4.0)) / ((8.0/Math.PI) * viscosity * (10.0/16.0))
 //    }
 
-     fun calculateFlow(pressureOne: Double, pressureTwo: Double, radius: Double, length: Double, densityA: Double, densityB: Double, viscosity: Double, pumpPressure: Double = 0.0, previousFlowRate: Double = 0.0): Double {
+    fun calculateFlow(pressureOne: Double, pressureTwo: Double, radius: Double, length: Double, densityA: Double, densityB: Double, viscosity: Double, pumpPressure: Double = 0.0, previousFlowRate: Double = 0.0): Double {
         var flowRate = 0.0
+        if (!radius.isFinite() || radius <= 0.0) {
+            return flowRate
+        }
         if (densityA <= 0 && densityB <= 0) {
             return flowRate
         }

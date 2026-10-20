@@ -7,6 +7,7 @@ import org.valkyrienskies.kelvin.api.nodes.PipeDuctNode
 import org.valkyrienskies.kelvin.api.nodes.PocketDuctNode
 import org.valkyrienskies.kelvin.api.nodes.PumpDuctNode
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
+import org.valkyrienskies.kelvin.api.nodes.ValveDuctNode
 import java.util.*
 
 @JsonTypeInfo(
@@ -18,11 +19,11 @@ import java.util.*
     JsonSubTypes.Type(value = PocketDuctNode::class, name = "PocketDuctNode"),
     JsonSubTypes.Type(value = PipeDuctNode::class, name = "PipeDuctNode"),
     JsonSubTypes.Type(value = PumpDuctNode::class, name = "PumpDuctNode"),
-    JsonSubTypes.Type(value = TankDuctNode::class, name = "TankDuctNode")
+    JsonSubTypes.Type(value = TankDuctNode::class, name = "TankDuctNode"),
+    JsonSubTypes.Type(value = ValveDuctNode::class, name = "ValveDuctNode")
 )
 interface DuctNode {
     val pos: DuctNodePos
-    val behavior: NodeBehaviorType
 
     val nodeEdges: HashSet<DuctEdge>
 
