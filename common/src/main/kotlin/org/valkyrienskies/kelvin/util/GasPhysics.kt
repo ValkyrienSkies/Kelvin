@@ -6,6 +6,8 @@ import org.valkyrienskies.kelvin.api.DuctNetwork.Companion.idealGasConstant
 import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.edges.ApertureEdge
+import org.valkyrienskies.kelvin.api.edges.PumpEdge
+import org.valkyrienskies.kelvin.api.nodes.PumpDuctNode
 import org.valkyrienskies.kelvin.api.nodes.ValveDuctNode
 import kotlin.collections.forEach
 import kotlin.math.absoluteValue
@@ -15,6 +17,32 @@ import kotlin.math.sign
 import kotlin.math.sqrt
 
 object GasPhysics {
+
+    /** Pump head contributed along an edge, including legacy pump edges and pump nodes. */
+    fun pumpPressureForEdge(edge: DuctEdge, nodeA: DuctNode, nodeB: DuctNode): Double {
+        var pressure = if (edge is PumpEdge) {
+            when (edge.target) {
+                edge.nodeB -> edge.pumpPressure
+                edge.nodeA -> -edge.pumpPressure
+                else -> 0.0
+            }
+        } else 0.0
+
+        if (nodeA is PumpDuctNode) pressure += nodeA.pressureOffsetToward(nodeB.pos)
+        if (nodeB is PumpDuctNode) pressure -= nodeB.pressureOffsetToward(nodeA.pos)
+        return if (pressure.isFinite()) pressure else 0.0
+    }
+
+    /** True if a legacy pump edge or either endpoint pump node rejects this signed flow. */
+    fun pumpBlocksFlow(edge: DuctEdge, nodeA: DuctNode, nodeB: DuctNode, flowRate: Double): Boolean {
+        if (edge is PumpEdge &&
+            ((flowRate < 0.0 && edge.target == edge.nodeB) || (flowRate > 0.0 && edge.target == edge.nodeA))) {
+            return true
+        }
+        if (nodeA is PumpDuctNode && nodeA.blocksFlowToward(nodeB.pos, flowRate)) return true
+        if (nodeB is PumpDuctNode && nodeB.blocksFlowToward(nodeA.pos, -flowRate)) return true
+        return false
+    }
 
     /**
      * Returns the radius used for mass-flow calculations after applying edge and endpoint

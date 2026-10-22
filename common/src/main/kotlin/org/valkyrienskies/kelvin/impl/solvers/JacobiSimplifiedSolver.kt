@@ -7,7 +7,6 @@ import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
-import org.valkyrienskies.kelvin.api.edges.PumpEdge
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
@@ -17,6 +16,8 @@ import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
 import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
+import org.valkyrienskies.kelvin.util.GasPhysics.pumpBlocksFlow
+import org.valkyrienskies.kelvin.util.GasPhysics.pumpPressureForEdge
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -93,9 +94,10 @@ class JacobiSimplifiedSolver: KelvinSolver {
                 val viscB = dynamicViscosityAverage(infoB.currentGasMasses, tB)
                 val visc = (viscA + viscB) * 0.5
 
-                var pumpPressure = 0.0
-                if (edge is PumpEdge) pumpPressure = if (edge.target == edge.nodeB) edge.pumpPressure else -edge.pumpPressure
-                val effectiveRadius = effectiveFlowRadius(edge, network.nodes[edge.nodeA]!!, network.nodes[edge.nodeB]!!)
+                val nodeDataA = network.nodes[edge.nodeA]!!
+                val nodeDataB = network.nodes[edge.nodeB]!!
+                val pumpPressure = pumpPressureForEdge(edge, nodeDataA, nodeDataB)
+                val effectiveRadius = effectiveFlowRadius(edge, nodeDataA, nodeDataB)
 
                 var mdot = calculateFlow(pA, pB, effectiveRadius, edge.length, rhoA, rhoB, visc, pumpPressure, edge.currentFlowRate)
 
@@ -112,6 +114,7 @@ class JacobiSimplifiedSolver: KelvinSolver {
                     if (!edge.reversed && mdot < 0.0) mdot = 0.0
                     else if (edge.reversed && mdot > 0.0) mdot = 0.0
                 }
+                if (pumpBlocksFlow(edge, nodeDataA, nodeDataB, mdot)) mdot = 0.0
 
                 // Passive Heat Transfer (Conduction)
                 val heatCondA = heatConductivityAverage(infoA.currentGasMasses, pA, tA)

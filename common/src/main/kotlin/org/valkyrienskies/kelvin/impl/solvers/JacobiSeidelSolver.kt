@@ -11,7 +11,6 @@ import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
-import org.valkyrienskies.kelvin.api.edges.PumpEdge
 import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
@@ -21,6 +20,8 @@ import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
+import org.valkyrienskies.kelvin.util.GasPhysics.pumpBlocksFlow
+import org.valkyrienskies.kelvin.util.GasPhysics.pumpPressureForEdge
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.max
@@ -338,9 +339,7 @@ class JacobiSeidelSolver : KelvinSolver {
         val volB = workB.volume
         val viscosity = (workA.viscosity + workB.viscosity) * 0.5
 
-        val pumpPressure = if (edge is PumpEdge) {
-            if (edge.target == edge.nodeB) edge.pumpPressure else -edge.pumpPressure
-        } else 0.0
+        val pumpPressure = pumpPressureForEdge(edge, workA.node, workB.node)
         val effectiveRadius = effectiveFlowRadius(edge, workA.node, workB.node)
 
         val rhoA = if (volA > 0.0) mTotA / volA else 0.0
@@ -371,6 +370,7 @@ class JacobiSeidelSolver : KelvinSolver {
             if (!edge.reversed && flowRate < 0.0) flowRate = 0.0
             else if (edge.reversed && flowRate > 0.0) flowRate = 0.0
         }
+        if (pumpBlocksFlow(edge, workA.node, workB.node, flowRate)) flowRate = 0.0
         if (edge is SmartEdge && edge.filter != SmartEdge.FilterType.NONE) {
             val toCheck = if (flowRate > 0)
                 if (edge.filter == SmartEdge.FilterType.PRESSURE) pA else tA
@@ -381,13 +381,6 @@ class JacobiSeidelSolver : KelvinSolver {
         }
         if (!flowRate.isFinite()) flowRate = 0.0
 
-        // Pump direction guard — if the pump's blocking flow this direction, nothing moves.
-        if (edge is PumpEdge) {
-            if ((flowRate < 0.0 && edge.target == edge.nodeB) ||
-                (flowRate > 0.0 && edge.target == edge.nodeA)) {
-                flowRate = 0.0
-            }
-        }
 
         // Under-relaxed mass step: apply only `relaxation` fraction of the physics-computed dm.
         val dmRequested = abs(flowRate * tickDelta * relaxation)
@@ -498,9 +491,7 @@ class JacobiSeidelSolver : KelvinSolver {
         val volB = workB.volume
         val viscosity = (workA.viscosity + workB.viscosity) * 0.5
 
-        val pumpPressure = if (edge is PumpEdge) {
-            if (edge.target == edge.nodeB) edge.pumpPressure else -edge.pumpPressure
-        } else 0.0
+        val pumpPressure = pumpPressureForEdge(edge, workA.node, workB.node)
         val effectiveRadius = effectiveFlowRadius(edge, workA.node, workB.node)
 
         val rhoA = if (volA > 0.0) mTotA / volA else 0.0
@@ -524,6 +515,7 @@ class JacobiSeidelSolver : KelvinSolver {
             if (!edge.reversed && flowRate < 0.0) flowRate = 0.0
             else if (edge.reversed && flowRate > 0.0) flowRate = 0.0
         }
+        if (pumpBlocksFlow(edge, workA.node, workB.node, flowRate)) flowRate = 0.0
         if (edge is SmartEdge && edge.filter != SmartEdge.FilterType.NONE) {
             val toCheck = if (flowRate > 0)
                 if (edge.filter == SmartEdge.FilterType.PRESSURE) pA else tA
@@ -534,12 +526,6 @@ class JacobiSeidelSolver : KelvinSolver {
         }
         if (!flowRate.isFinite()) flowRate = 0.0
 
-        if (edge is PumpEdge) {
-            if ((flowRate < 0.0 && edge.target == edge.nodeB) ||
-                (flowRate > 0.0 && edge.target == edge.nodeA)) {
-                flowRate = 0.0
-            }
-        }
 
         return flowRate
     }

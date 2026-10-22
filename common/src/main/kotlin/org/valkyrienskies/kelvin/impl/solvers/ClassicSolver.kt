@@ -7,7 +7,6 @@ import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
-import org.valkyrienskies.kelvin.api.edges.PumpEdge
 import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
@@ -19,6 +18,8 @@ import org.valkyrienskies.kelvin.util.GasPhysics.densityFromPressureAverageOld
 import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
+import org.valkyrienskies.kelvin.util.GasPhysics.pumpBlocksFlow
+import org.valkyrienskies.kelvin.util.GasPhysics.pumpPressureForEdge
 import org.valkyrienskies.kelvin.util.GasPhysics.specificHeatAverageOld
 import kotlin.collections.set
 import kotlin.math.absoluteValue
@@ -96,10 +97,7 @@ class ClassicSolver: KelvinSolver {
                 val viscosity = (viscosityA + viscosityB) / 2.0
 
 
-                var pumpPressure = 0.0
-                if (edge is PumpEdge && edge.target == edge.nodeB) pumpPressure = edge.pumpPressure
-                else if (edge is PumpEdge && edge.target == edge.nodeA) pumpPressure = -edge.pumpPressure
-
+                val pumpPressure = pumpPressureForEdge(edge, nodeDataA, nodeDataB)
 
                 val effectiveRadius = effectiveFlowRadius(edge, nodeDataA, nodeDataB)
 
@@ -116,6 +114,7 @@ class ClassicSolver: KelvinSolver {
                         flowRate = 0.0
                     }
                 }
+                if (pumpBlocksFlow(edge, nodeDataA, nodeDataB, flowRate)) flowRate = 0.0
 
                 if (flowRate.isInfinite() || flowRate.isNaN()) {
                     flowRate = 0.0
@@ -191,7 +190,7 @@ class ClassicSolver: KelvinSolver {
                             }
                         }
                     }
-                    if (edge is PumpEdge && ((flowRate < 0 && edge.target==edge.nodeB) || (flowRate > 0 && edge.target==edge.nodeA))) continue
+                    if (pumpBlocksFlow(edge, nodeDataA, nodeDataB, flowRate)) continue
 
 
                     if (nodeA.currentGasMasses[gas] == null) {
