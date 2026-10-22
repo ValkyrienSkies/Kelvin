@@ -9,7 +9,6 @@ import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
-import org.valkyrienskies.kelvin.api.edges.PumpEdge
 import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
@@ -25,6 +24,8 @@ import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
+import org.valkyrienskies.kelvin.util.GasPhysics.pumpBlocksFlow
+import org.valkyrienskies.kelvin.util.GasPhysics.pumpPressureForEdge
 import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -181,10 +182,7 @@ class JacobiSolver: KelvinSolver {
                     currentPressureA = newPressureA
                     currentPressureB = newPressureB
 
-                    var pumpPressure = 0.0
-                    if (edge is PumpEdge && edge.target == edge.nodeB) pumpPressure = edge.pumpPressure
-                    else if (edge is PumpEdge && edge.target == edge.nodeA) pumpPressure = -edge.pumpPressure
-
+                    val pumpPressure = pumpPressureForEdge(edge, nodeDataA, nodeDataB)
 
                     val effectiveRadius = effectiveFlowRadius(edge, nodeDataA, nodeDataB)
 
@@ -211,6 +209,7 @@ class JacobiSolver: KelvinSolver {
                             flowRate = 0.0
                         }
                     }
+                    if (pumpBlocksFlow(edge, nodeDataA, nodeDataB, flowRate)) flowRate = 0.0
 
                     if (flowRate.isInfinite() || flowRate.isNaN()) {
                         flowRate = 0.0
@@ -247,8 +246,7 @@ class JacobiSolver: KelvinSolver {
                         val registry = if ((network as? DuctNetworkServer)?.isTestingEnvironment ?: false) GasTypeRegistry.DEBUG_REGISTRY
                         else GasTypeRegistry.GAS_TYPES
                         val allowed = registry.values.filter { gas ->
-                            // pump direction rule (copy your rule, but apply once here)
-                            if (edge is PumpEdge && ((dtMass < 0 && edge.target == edge.nodeB) || (dtMass > 0 && edge.target == edge.nodeA))) return@filter false
+                            if (pumpBlocksFlow(edge, nodeDataA, nodeDataB, dtMass)) return@filter false
 
                             if (edge is FilteredEdge) {
                                 if (edge.blacklist) !edge.filter.contains(gas) else edge.filter.contains(gas)
