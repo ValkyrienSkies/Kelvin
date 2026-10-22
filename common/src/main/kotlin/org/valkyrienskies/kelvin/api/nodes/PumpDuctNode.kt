@@ -15,6 +15,19 @@ open class PumpDuctNode(
     var pumpTarget: DuctNodePos? = null
 ) : DuctNode {
 
+    /** Pump pressure offset measured from this pump node toward an adjacent node. */
+    fun pressureOffsetToward(neighbor: DuctNodePos): Double {
+        val target = pumpTarget ?: return 0.0
+        val pressure = pumpPressure.takeIf { it.isFinite() }?.coerceAtLeast(0.0) ?: 0.0
+        return if (neighbor == target) pressure else -pressure
+    }
+
+    /** Whether a flow rate measured from this pump node toward [neighbor] is against the pump. */
+    fun blocksFlowToward(neighbor: DuctNodePos, flowRate: Double): Boolean {
+        val target = pumpTarget ?: return false
+        return if (neighbor == target) flowRate < 0.0 else flowRate > 0.0
+    }
+
     override fun getEdges(): Set<DuctEdge> {
         return nodeEdges
     }
