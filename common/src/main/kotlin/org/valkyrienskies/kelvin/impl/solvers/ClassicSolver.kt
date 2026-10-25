@@ -120,14 +120,10 @@ class ClassicSolver: KelvinSolver {
                     flowRate = 0.0
                 }
 
-                if (edge is SmartEdge && edge.filter != SmartEdge.FilterType.NONE) {
-                    val toCheck: Double
-                    if (flowRate > 0) toCheck = if (edge.filter == SmartEdge.FilterType.PRESSURE) pressureA else nodeA.currentTemperature
-                    else toCheck =  if (edge.filter == SmartEdge.FilterType.PRESSURE) pressureB else nodeB.currentTemperature
-
-                    val checked = if (edge.moreThan) toCheck >= edge.comparisonValue else toCheck <= edge.comparisonValue
-                    if (!checked) continue
-                }
+                if (edge is SmartEdge && !edge.allowsFlow(
+                        flowRate, pressureA, nodeA.currentTemperature, nodeA.currentGasMasses,
+                        pressureB, nodeB.currentTemperature, nodeB.currentGasMasses,
+                    )) flowRate = 0.0
 
                 if (flowRate>0) {
                     flowRate = flowRate.coerceAtMost(totalGasMassA)
