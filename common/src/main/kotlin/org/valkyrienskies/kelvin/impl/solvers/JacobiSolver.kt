@@ -215,14 +215,10 @@ class JacobiSolver: KelvinSolver {
                         flowRate = 0.0
                     }
 
-                    if (edge is SmartEdge && edge.filter != SmartEdge.FilterType.NONE) {
-                        val toCheck: Double
-                        if (flowRate > 0) toCheck = if (edge.filter == SmartEdge.FilterType.PRESSURE) currentPressureA else currentTemperatureA
-                        else toCheck =  if (edge.filter == SmartEdge.FilterType.PRESSURE) currentPressureB else currentTemperatureB
-
-                        val checked = if (edge.moreThan) toCheck >= edge.comparisonValue else toCheck <= edge.comparisonValue
-                        if (!checked) continue
-                    }
+                    if (edge is SmartEdge && !edge.allowsFlow(
+                            flowRate, currentPressureA, currentTemperatureA, nodeA.currentGasMasses,
+                            currentPressureB, currentTemperatureB, nodeB.currentGasMasses,
+                        )) flowRate = 0.0
 
 
                     val transferredGasses = HashMap<GasType, Double>()
