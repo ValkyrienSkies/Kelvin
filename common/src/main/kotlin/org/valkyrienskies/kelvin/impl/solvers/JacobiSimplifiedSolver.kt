@@ -7,6 +7,7 @@ import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.api.edges.FilteredEdge
 import org.valkyrienskies.kelvin.api.edges.OneWayEdge
+import org.valkyrienskies.kelvin.api.edges.SmartEdge
 import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
@@ -115,6 +116,9 @@ class JacobiSimplifiedSolver: KelvinSolver {
                     else if (edge.reversed && mdot > 0.0) mdot = 0.0
                 }
                 if (pumpBlocksFlow(edge, nodeDataA, nodeDataB, mdot)) mdot = 0.0
+                if (edge is SmartEdge && !edge.allowsFlow(
+                        mdot, pA, tA, infoA.currentGasMasses, pB, tB, infoB.currentGasMasses,
+                    )) mdot = 0.0
 
                 // Passive Heat Transfer (Conduction)
                 val heatCondA = heatConductivityAverage(infoA.currentGasMasses, pA, tA)

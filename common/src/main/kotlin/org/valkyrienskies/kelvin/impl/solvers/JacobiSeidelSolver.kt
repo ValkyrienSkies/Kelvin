@@ -371,14 +371,9 @@ class JacobiSeidelSolver : KelvinSolver {
             else if (edge.reversed && flowRate > 0.0) flowRate = 0.0
         }
         if (pumpBlocksFlow(edge, workA.node, workB.node, flowRate)) flowRate = 0.0
-        if (edge is SmartEdge && edge.filter != SmartEdge.FilterType.NONE) {
-            val toCheck = if (flowRate > 0)
-                if (edge.filter == SmartEdge.FilterType.PRESSURE) pA else tA
-            else
-                if (edge.filter == SmartEdge.FilterType.PRESSURE) pB else tB
-            val passed = if (edge.moreThan) toCheck >= edge.comparisonValue else toCheck <= edge.comparisonValue
-            if (!passed) flowRate = 0.0
-        }
+        if (edge is SmartEdge && !edge.allowsFlow(
+                flowRate, pA, tA, infoA.currentGasMasses, pB, tB, infoB.currentGasMasses,
+            )) flowRate = 0.0
         if (!flowRate.isFinite()) flowRate = 0.0
 
 
@@ -516,14 +511,9 @@ class JacobiSeidelSolver : KelvinSolver {
             else if (edge.reversed && flowRate > 0.0) flowRate = 0.0
         }
         if (pumpBlocksFlow(edge, workA.node, workB.node, flowRate)) flowRate = 0.0
-        if (edge is SmartEdge && edge.filter != SmartEdge.FilterType.NONE) {
-            val toCheck = if (flowRate > 0)
-                if (edge.filter == SmartEdge.FilterType.PRESSURE) pA else tA
-            else
-                if (edge.filter == SmartEdge.FilterType.PRESSURE) pB else tB
-            val passed = if (edge.moreThan) toCheck >= edge.comparisonValue else toCheck <= edge.comparisonValue
-            if (!passed) flowRate = 0.0
-        }
+        if (edge is SmartEdge && !edge.allowsFlow(
+                flowRate, pA, tA, workA.info.currentGasMasses, pB, tB, workB.info.currentGasMasses,
+            )) flowRate = 0.0
         if (!flowRate.isFinite()) flowRate = 0.0
 
 
