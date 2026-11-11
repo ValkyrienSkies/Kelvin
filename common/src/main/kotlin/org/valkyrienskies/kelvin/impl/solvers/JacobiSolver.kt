@@ -239,9 +239,9 @@ class JacobiSolver: KelvinSolver {
                         val dmTotal = abs(dtMass)
 
                         // Build list of allowed gases (respect edge filters/pumps)
-                        val registry = if ((network as? DuctNetworkServer)?.isTestingEnvironment ?: false) GasTypeRegistry.DEBUG_REGISTRY
-                        else GasTypeRegistry.GAS_TYPES
-                        val allowed = registry.values.filter { gas ->
+                        val registry = if ((network as? DuctNetworkServer)?.isTestingEnvironment ?: false) GasTypeRegistry.DEBUG_REGISTRY.values
+                        else GasTypeRegistry.getGasTypes()
+                        val allowed = registry.filter { gas ->
                             if (pumpBlocksFlow(edge, nodeDataA, nodeDataB, dtMass)) return@filter false
 
                             if (edge is FilteredEdge) {

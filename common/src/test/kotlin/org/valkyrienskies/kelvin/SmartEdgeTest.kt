@@ -12,7 +12,6 @@ import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.KelvinSolver
 import org.valkyrienskies.kelvin.api.edges.SmartDuctEdge
 import org.valkyrienskies.kelvin.api.edges.SmartEdge.FilterType
-import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.solvers.ClassicSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSeidelSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
@@ -79,7 +78,6 @@ class SmartEdgeTest : KelvinTestBase() {
 
     @Test
     fun `settings survive NBT and older saves measure all gases`() {
-        GasTypeRegistry.registerGasType(TEST_HELIUM)
         val original = edge().apply {
             filter = FilterType.HEAT_ENERGY
             comparisonValue = 123_456.789
@@ -112,8 +110,6 @@ class SmartEdgeTest : KelvinTestBase() {
                     DynamicTest.dynamicTest("$name $type reversed=$reversed") {
                         resetNetwork()
                         network.solver = factory()
-                        GasTypeRegistry.registerGasType(TEST_AIR)
-                        GasTypeRegistry.registerGasType(TEST_HELIUM)
                         val edge = edge().apply {
                             filter = type
                             moreThan = true

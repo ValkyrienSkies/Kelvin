@@ -171,7 +171,7 @@ class ClassicSolver: KelvinSolver {
 
                 val transferredGasses = Object2DoubleOpenHashMap<GasType>()
 
-                for (gas in GasTypeRegistry.GAS_TYPES.values) {
+                for (gas in GasTypeRegistry.getGasTypes()) {
                     if (flowRate == 0.0) {
                         continue
                     }
