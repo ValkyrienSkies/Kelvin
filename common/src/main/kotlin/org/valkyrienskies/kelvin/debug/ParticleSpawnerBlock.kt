@@ -18,7 +18,7 @@ class ParticleSpawnerBlock(properties: Properties) : Block(properties) {
 
         kelvin.createGasParticle(
             level as ClientLevel,
-            GasTypeRegistry.GAS_TYPES.values.shuffled().first(),
+            GasTypeRegistry.getGasTypes().shuffled().first(),
             pos.toDuctNodePos(level.dimension().location()),
             pos.x.toDouble(),
             pos.y.toDouble() + 1.0,
