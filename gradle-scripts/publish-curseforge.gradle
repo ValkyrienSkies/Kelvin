@@ -19,23 +19,30 @@ def fileDisplayName = "[${project.loader_platform} ${project.minecraft_version}]
 def curseForgeReleaseType = vsReleaseType == 'alpha' ? 'beta' : vsReleaseType
 
 // Publish to CurseForge
-curseforge {
-    if (project.curse_api_key) {
-        apiKey = project.curse_api_key
-        project {
-            id = project.kelvin_curse_project_id
-            releaseType = curseForgeReleaseType
-            addGameVersion project.minecraft_version
-            addGameVersion project.loader_platform
+tasks.register('curseforge') {
+    dependsOn remapJar
 
-            mainArtifact(remapJar.archiveFile.get().asFile) {
-                displayName = fileDisplayName
-            }
+    doLast {
+        if (!project.curse_api_key) {
+            throw new GradleException('Set the CurseForge upload token before publishing')
         }
-    }
-    options {
-        forgeGradleIntegration = false
-        javaVersionAutoDetect = false
+
+        def metadata = [
+            displayName: fileDisplayName,
+            releaseType: curseForgeReleaseType,
+            changelog: '',
+            gameVersionNames: [project.minecraft_version, project.loader_platform, 'Client', 'Server']
+        ]
+
+        def jarFile = remapJar.archiveFile.get().asFile
+        project.exec {
+            standardInput = new ByteArrayInputStream("X-Api-Token: ${project.curse_api_key}\n".getBytes('UTF-8'))
+            commandLine 'curl', '--fail-with-body', '--silent', '--show-error',
+                '--header', '@-',
+                '--form-string', "metadata=${groovy.json.JsonOutput.toJson(metadata)}",
+                '--form', "file=@${jarFile}",
+                "https://minecraft.curseforge.com/api/projects/${project.kelvin_curse_project_id}/upload-file"
+        }
     }
 }
 
