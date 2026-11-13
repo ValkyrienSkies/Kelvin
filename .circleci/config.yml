@@ -19,7 +19,22 @@ jobs:
           command: |
             : "${ORG_GRADLE_PROJECT_curse_api_key:?Set the CurseForge upload token in curse_publishing}"
             git checkout --detach be273209b2e1fd515910a454209948c84aaa82d1
-            ./gradlew build :fabric:curseforge :forge:curseforge --no-daemon --stacktrace --max-workers 1
+            ./gradlew build --no-daemon --stacktrace --max-workers 1
+            for loader in Fabric Forge; do
+              mapfile -t jars < <(find "${loader,,}/build/libs" -maxdepth 1 -name '*-1.20.1-0.5.2.jar' -type f)
+              if (( ${#jars[@]} != 1 )); then
+                echo "Expected one release jar for $loader, found ${#jars[@]}"
+                exit 1
+              fi
+              metadata=$(printf '{"displayName":"[%s 1.20.1] v1.20.1-0.5.2","releaseType":"release","changelog":"","gameVersionNames":["1.20.1","%s","Client","Server"]}' "$loader" "$loader")
+              echo "Uploading $loader to CurseForge"
+              curl --fail-with-body --silent --show-error \
+                --header "X-Api-Token: $ORG_GRADLE_PROJECT_curse_api_key" \
+                --form-string "metadata=$metadata" \
+                --form "file=@${jars[0]}" \
+                https://minecraft.curseforge.com/api/projects/1751257/upload-file
+              printf '\n'
+            done
 
 workflows:
   curseforge_0_5_2_retry:
