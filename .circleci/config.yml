@@ -102,9 +102,13 @@ jobs:
     executor: java_large
     steps:
       - checkout_and_cache
-      - run: echo 'export ORG_GRADLE_PROJECT_CustomReleaseVersion=${CIRCLE_TAG}' >> "$BASH_ENV"
       - run:
-          command: "./gradlew build modrinth curseforge --no-daemon --stacktrace --continue --max-workers 1"
+          name: Publish Kelvin to CurseForge and Modrinth
+          command: |
+            : "${ORG_GRADLE_PROJECT_curse_api_key:?Set the CurseForge upload token in curse_publishing}"
+            : "${ORG_GRADLE_PROJECT_modrinth_api_key:?Set the Modrinth upload token in curse_publishing}"
+            export ORG_GRADLE_PROJECT_CustomReleaseVersion="$CIRCLE_TAG"
+            ./gradlew build modrinth curseforge --no-daemon --stacktrace --max-workers 1
   notify_playtesters:
     executor: java_large
     steps:
@@ -141,7 +145,7 @@ workflows:
       - deploy_to_curse:
           filters:
             tags:
-              only: /^release.*/
+              only: /^release\/(\d+\.){1,2}\d+(-(alpha|beta)\.\d+)?$/
             branches:
               ignore: /.*/
           context:

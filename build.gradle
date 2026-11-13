@@ -19,8 +19,12 @@ plugins {
 // Determine the version
 String platform = String.valueOf(loader_platform).toLowerCase()
 
-String gitRevision = ["git", "-C", rootDir.absolutePath, "rev-parse", "HEAD"].execute().text.trim()
-version = minecraft_version + "-" + mod_version + "+" + gitRevision.substring(0, 10)
+if (gradle.parent == null && project.hasProperty("CustomReleaseVersion")) {
+    version = minecraft_version + "-" + project.property("CustomReleaseVersion").replaceFirst("^release/", "")
+} else {
+    String gitRevision = ["git", "-C", rootDir.absolutePath, "rev-parse", "HEAD"].execute().text.trim()
+    version = minecraft_version + "-" + mod_version + "+" + gitRevision.substring(0, 10)
+}
 
 architectury {
     minecraft = rootProject.minecraft_version
