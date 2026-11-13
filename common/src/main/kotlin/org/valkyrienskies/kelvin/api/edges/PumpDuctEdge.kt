@@ -18,6 +18,7 @@ open class PumpDuctEdge(
     override var unloaded: Boolean = false
 
 ) : DuctEdge, PumpEdge {
+    override var wallThermalConductance: Double = 0.0
 
     fun invert() {
         if (target==nodeA) target = nodeB

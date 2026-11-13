@@ -1,7 +1,6 @@
 package org.valkyrienskies.kelvin.impl.solvers
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
-import net.minecraft.util.Mth
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNodePos
@@ -14,7 +13,6 @@ import org.valkyrienskies.kelvin.api.nodes.TankDuctNode
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer.NodeDelta
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer.NodeSnapshot
-import org.valkyrienskies.kelvin.impl.DuctNetworkServer.PendingPassiveTransfer
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer.PendingTransfer
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
@@ -22,21 +20,20 @@ import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
-import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.pumpBlocksFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.pumpPressureForEdge
 import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
+import org.valkyrienskies.kelvin.util.PassiveHeatTransfer
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 import kotlin.collections.set
 import kotlin.math.abs
-import kotlin.math.absoluteValue
-import kotlin.math.min
 
 class JacobiSolver: KelvinSolver {
     override fun step(network: DuctNetwork<*>, subSteps: Int) {
+        require(subSteps > 0) { "subSteps must be positive" }
 
         val tickDelta = 1.0 / 20.0 / subSteps.toDouble()
         val edgesToProcess = HashMap(network.edges.filterNot { it.value.unloaded })
@@ -112,7 +109,6 @@ class JacobiSolver: KelvinSolver {
             val delta: HashMap<DuctNodePos, NodeDelta> = HashMap()
             for (pos in snap.keys) delta[pos] = NodeDelta()
             val pendingTransfers: MutableList<PendingTransfer> = mutableListOf()
-            val pendingPassiveTransfers: MutableList<PendingPassiveTransfer> = mutableListOf()
 
             val outWanted = HashMap<DuctNodePos, MutableMap<GasType, Double>>()
 
@@ -286,36 +282,6 @@ class JacobiSolver: KelvinSolver {
                         pendingTransfers.add(pending)
                     }
 
-                    // Section : Passive Thermal Transfer
-
-                    val newNewPressureA = calcPressureFromGamma(nodeA.currentGasMasses, volumeA, currentTemperatureA)/tankMultA
-                    val newNewPressureB = calcPressureFromGamma(nodeB.currentGasMasses, volumeB, currentTemperatureB)/tankMultB
-
-                    val heatConductivityA = heatConductivityAverage(nodeA.currentGasMasses, newNewPressureA, currentTemperatureA)
-                    val heatConductivityB = heatConductivityAverage(nodeB.currentGasMasses, newNewPressureB, currentTemperatureB)
-
-                    val totalAvgHeatConductivity = if (heatConductivityA > 1e-4 && heatConductivityB > 1e-4) heatConductivityA * heatConductivityB / ( heatConductivityA + heatConductivityB ) else 0.0
-
-                    //Calculates passive heat transfer between nodes
-                    val passiveHeatDelta = (totalAvgHeatConductivity * (Math.PI * edge.radius * edge.radius) * ((currentTemperatureA - currentTemperatureB) / edge.length)) *
-                        edge.passiveHeatMultiplier() * tickDelta
-                    val passiveEqualizationLimit = if (capacityA > 1e-12 && capacityB > 1e-12)
-                        abs(currentTemperatureA - currentTemperatureB) / ((1.0 / capacityA) + (1.0 / capacityB))
-                    else 0.0
-                    val passiveEnergyLimit = if (passiveHeatDelta > 0.0) currentEnergyA.absoluteValue else currentEnergyB.absoluteValue
-                    val passiveHeatLimit = min(passiveEnergyLimit, passiveEqualizationLimit)
-
-                    if (!passiveHeatDelta.isNaN() && passiveHeatLimit.isFinite() && passiveHeatLimit > 0.0) {
-                        if (totalGasMassA >= 0.1 && totalGasMassB >= 0.1) {
-                            val dE = Mth.clamp(passiveHeatDelta, -passiveHeatLimit, passiveHeatLimit)
-                            val pendingPassive = PendingPassiveTransfer(
-                                srcPos = edge.nodeA,
-                                dstPos = edge.nodeB,
-                                dE = dE
-                            )
-                            pendingPassiveTransfers.add(pendingPassive)
-                        }
-                    }
                 }
             }
 
@@ -364,12 +330,6 @@ class JacobiSolver: KelvinSolver {
                 val mdotEffective = (dmAppliedTotal / tickDelta) * p.sign
                 edgeMdot[p.edge] = (edgeMdot[p.edge] ?: 0.0) + mdotEffective
             }
-            for (p in pendingPassiveTransfers) {
-                // ensure we can actually pull that much=
-                delta[p.srcPos]!!.deltaEnergy -= p.dE * 0.5
-                delta[p.dstPos]!!.deltaEnergy += p.dE * 0.5
-            }
-
             for ((edge, mdot) in edgeMdot) edge.currentFlowRate = mdot
 
             //apply delta
@@ -385,6 +345,9 @@ class JacobiSolver: KelvinSolver {
                 }
                 info.currentEnergy += (d.deltaEnergy)
             }
+
+            // Heat reads post-advection state and applies each bounded pair transfer once.
+            PassiveHeatTransfer.apply(network, edgesToProcess.values, tickDelta)
 
             //normalize
 

@@ -30,11 +30,17 @@ interface DuctEdge {
     val nodeB: DuctNodePos
 
     var radius: Double
+    /** Full path length between the two endpoints, in meters. */
     var length: Double
     var currentFlowRate: Double
 
     var thermalConductivityMultiplier: Double
         get() = 1.0
+        set(_) {}
+
+    /** Solid-wall conductance in W/K, independent of gas content, flow and the gas multiplier. */
+    var wallThermalConductance: Double
+        get() = 0.0
         set(_) {}
 
     var unloaded : Boolean
@@ -55,6 +61,11 @@ interface DuctEdge {
         if (thermalConductivityMultiplier != 1.0) {
             tag.putDouble(THERMAL_CONDUCTIVITY_MULTIPLIER_KEY, thermalConductivityMultiplier)
         }
+        if (wallThermalConductance.isFinite() && wallThermalConductance > 0.0) {
+            tag.putDouble(WALL_THERMAL_CONDUCTANCE_KEY, wallThermalConductance)
+        } else {
+            tag.remove(WALL_THERMAL_CONDUCTANCE_KEY)
+        }
         return tag
     }
 
@@ -62,6 +73,8 @@ interface DuctEdge {
         if (tag.contains(THERMAL_CONDUCTIVITY_MULTIPLIER_KEY)) {
             thermalConductivityMultiplier = tag.getDouble(THERMAL_CONDUCTIVITY_MULTIPLIER_KEY)
         }
+        // Missing in older saves: generic Kelvin edges have no solid-wall path by default.
+        wallThermalConductance = tag.getDouble(WALL_THERMAL_CONDUCTANCE_KEY)
     }
 
     fun passiveHeatMultiplier(): Double {
@@ -71,5 +84,6 @@ interface DuctEdge {
 
     companion object {
         const val THERMAL_CONDUCTIVITY_MULTIPLIER_KEY = "thermalConductivityMultiplier"
+        const val WALL_THERMAL_CONDUCTANCE_KEY = "wallThermalConductance"
     }
 }

@@ -17,4 +17,6 @@ open class AllInOneDuctEdge(
     override var aperture: Double = 0.0,
     override var reversed: Boolean = false, override val filter: HashSet<GasType> = HashSet(), override var blacklist: Boolean = false,
     override var unloaded: Boolean = false
-) : DuctEdge, ApertureEdge, OneWayEdge, FilteredEdge
+) : DuctEdge, ApertureEdge, OneWayEdge, FilteredEdge {
+    override var wallThermalConductance: Double = 0.0
+}

@@ -18,6 +18,7 @@ open class OneWayDuctEdge(
     override var reversed: Boolean = false,
     override var unloaded: Boolean = false
 ) : DuctEdge, OneWayEdge {
+    override var wallThermalConductance: Double = 0.0
 
     override fun interact(player: ServerPlayer): Boolean {
         reversed = !reversed
