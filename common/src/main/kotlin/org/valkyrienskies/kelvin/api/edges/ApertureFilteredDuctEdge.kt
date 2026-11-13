@@ -17,4 +17,6 @@ open class ApertureFilteredDuctEdge(
     override var blacklist: Boolean = false,
     override var aperture: Double = 0.0,
     override var unloaded: Boolean = false
-) : ApertureEdge, FilteredEdge
+) : ApertureEdge, FilteredEdge {
+    override var wallThermalConductance: Double = 0.0
+}
