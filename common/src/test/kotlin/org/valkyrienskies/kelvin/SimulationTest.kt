@@ -204,14 +204,11 @@ class SimulationTest : KelvinTestBase() {
      * wall thermal mass into the node's heat capacity — a reaction that releases E joules
      * can't push the gas to "temperature of the sun" anymore because the wall absorbs its
      * share immediately. Only meaningful for solvers that track currentEnergy (Jacobi
-     * family); ClassicSolver tracks temperature directly and is excluded.
+     * family and ClassicSolver).
      */
     @TestFactory
     fun `energy injection respects combined gas plus wall heat capacity`(): List<DynamicTest> =
-        listOf<Pair<String, () -> KelvinSolver>>(
-            "Jacobi" to ::JacobiSolver,
-            "JacobiSimplified" to ::JacobiSimplifiedSolver,
-        ).map { (name, factory) ->
+        ALL_SOLVERS.map { (name, factory) ->
             dynamicTest("$name: ΔT = E / (C_gas + C_wall)") {
                 resetNetwork()
                 val pos = DuctNodePos(0.0, 0.0, 0.0)

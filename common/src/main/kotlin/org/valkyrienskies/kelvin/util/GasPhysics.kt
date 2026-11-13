@@ -10,6 +10,7 @@ import org.valkyrienskies.kelvin.api.edges.PumpEdge
 import org.valkyrienskies.kelvin.api.nodes.PumpDuctNode
 import org.valkyrienskies.kelvin.api.nodes.ValveDuctNode
 import kotlin.collections.forEach
+import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.min
@@ -17,6 +18,22 @@ import kotlin.math.sign
 import kotlin.math.sqrt
 
 object GasPhysics {
+
+    /**
+     * Bound an explicit mass step to half the pressure imbalance. For simultaneous updates,
+     * divide each node's pressure budget among its incident connections. maxRT uses the
+     * larger mixture gas constant and temperature to account for heating the receiver.
+     * Effective tank volumes include their size.
+     */
+    fun pressureEqualizationMassLimit(
+        pressureDifference: Double, maxRT: Double, volumeA: Double, volumeB: Double,
+        connectionsA: Int = 1, connectionsB: Int = 1,
+    ): Double {
+        if (volumeA <= 0.0 || volumeB <= 0.0 || maxRT <= 0.0) return 0.0
+        val pressurePerMass = maxRT * (connectionsA / volumeA + connectionsB / volumeB)
+        val limit = 0.5 * abs(pressureDifference) / pressurePerMass
+        return if (limit.isFinite() && limit > 0.0) limit else 0.0
+    }
 
     /** Pump head contributed along an edge, including legacy pump edges and pump nodes. */
     fun pumpPressureForEdge(edge: DuctEdge, nodeA: DuctNode, nodeB: DuctNode): Double {
