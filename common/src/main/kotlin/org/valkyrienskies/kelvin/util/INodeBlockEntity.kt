@@ -43,6 +43,8 @@ interface INodeBlockEntity {
         val volume = nodeData.getDouble("KelvinVolume")
         val energy = nodeData.getDouble("KelvinEnergy")
 
+        // Node data is a full snapshot; omitted gases have been depleted or removed.
+        info.currentGasMasses.clear()
         for (gasResourceLocation in GasTypeRegistry.GAS_TYPES.keys) {
             if (!nodeData.contains(gasResourceLocation.toString())) continue
             val gasType = GasTypeRegistry.GAS_TYPES[ResourceLocation(gasResourceLocation.toString())] ?: continue
