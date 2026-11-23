@@ -7,6 +7,8 @@ import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
@@ -19,6 +21,7 @@ import net.minecraft.server.packs.resources.ResourceManager
 import net.minecraft.util.profiling.ProfilerFiller
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener
 import org.valkyrienskies.kelvin.KelvinParticles
+import org.valkyrienskies.kelvin.networking.GasTagSyncPacket
 import java.util.concurrent.Executor
 
 
@@ -26,6 +29,13 @@ object KelvinModFabric: ModInitializer {
 
     override fun onInitialize() {
         init()
+
+        ServerPlayConnectionEvents.JOIN.register { handler, _, _ ->
+            GasTagSyncPacket().sendTo(handler.player)
+        }
+        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register { server, _, success ->
+            if (success) GasTagSyncPacket().sendToAll(server)
+        }
 
 
         ServerChunkEvents.CHUNK_LOAD.register { serverWorld, chunk ->

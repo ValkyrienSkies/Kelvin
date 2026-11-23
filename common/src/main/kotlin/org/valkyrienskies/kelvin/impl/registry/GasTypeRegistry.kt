@@ -55,6 +55,7 @@ object GasTypeRegistry {
      */
     var maxGas: GasType? = null
 
+    @Synchronized
     private fun updateMinMax(gasType: GasType) {
         // Probably redundant safety
         if (minGas == null) minGas = gasType
@@ -75,17 +76,18 @@ object GasTypeRegistry {
         )
     }
 
+    @Synchronized
     fun registerGasType(resourceLocation: ResourceLocation, gasType: GasType): RegistrySupplier<GasType> {
         KELVINLOGGER.info("Registering gas type $resourceLocation...")
-        val supplier = GAS_TYPES.register(resourceLocation) { gasType }
-        ALL.add(supplier)
-        supplier.listen { registered ->
-            updateMinMax(registered)
-            KELVINLOGGER.info("Registered gas type ${supplier.id}, with properties:")
-            KELVINLOGGER.info("Density: ${registered.density} | Viscosity: ${registered.viscosity} | Specific Heat Capacity: ${registered.specificHeatCapacity} | Thermal Conductivity: ${registered.thermalConductivity}")
-            KELVINLOGGER.info("Sutherland Constant: ${registered.sutherlandConstant} | Adiabatic Index: ${registered.adiabaticIndex}")
-            KELVINLOGGER.info("Icon Location: ${registered.iconLocation}")
+        val supplier = GAS_TYPES.register(resourceLocation) {
+            updateMinMax(gasType)
+            KELVINLOGGER.info("Registered gas type $resourceLocation, with properties:")
+            KELVINLOGGER.info("Density: ${gasType.density} | Viscosity: ${gasType.viscosity} | Specific Heat Capacity: ${gasType.specificHeatCapacity} | Thermal Conductivity: ${gasType.thermalConductivity}")
+            KELVINLOGGER.info("Sutherland Constant: ${gasType.sutherlandConstant} | Adiabatic Index: ${gasType.adiabaticIndex}")
+            KELVINLOGGER.info("Icon Location: ${gasType.iconLocation}")
+            gasType
         }
+        ALL.add(supplier)
         return supplier
     }
 
@@ -123,6 +125,7 @@ object GasTypeRegistry {
         return KelvinMod.asResourceLocation("textures/icons/$name.png")
     }
 
+    @Synchronized
     fun init () {
         // Force the custom registry to be created before the deferred register is resolved against it.
         REGISTRAR

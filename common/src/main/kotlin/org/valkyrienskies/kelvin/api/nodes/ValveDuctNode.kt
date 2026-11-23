@@ -4,6 +4,7 @@ import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import java.util.HashSet
+import org.valkyrienskies.kelvin.api.simulation.NodeFlowContext
 
 /**
  * A duct node whose incident connections are restricted to [radius].
@@ -19,7 +20,9 @@ open class ValveDuctNode(
     override val maxTemperature: Double,
     override val heatCapacity: Double,
     radius: Double = 0.0,
-) : DuctNode {
+) : DuctNode, INodeFlowRadiusModifier {
+
+    override fun modifyFlowRadius(context: NodeFlowContext, radius: Double): Double = minOf(radius, this.radius)
 
     var radius: Double = sanitizeRadius(radius)
         set(value) {

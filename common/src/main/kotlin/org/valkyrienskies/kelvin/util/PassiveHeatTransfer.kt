@@ -3,8 +3,9 @@ package org.valkyrienskies.kelvin.util
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.api.simulation.*
+import org.valkyrienskies.kelvin.impl.solvers.HeatBehavior
 import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
-import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
 import kotlin.math.expm1
 import kotlin.math.max
 import kotlin.math.min
@@ -19,15 +20,32 @@ object PassiveHeatTransfer {
         massesA: Map<GasType, Double>, temperatureA: Double,
         massesB: Map<GasType, Double>, temperatureB: Double,
     ): Double {
+        return conductance(EdgeView(EdgeId(edge.nodeA, edge.nodeB), edge.type, edge.radius, edge.length,
+            edge.currentFlowRate, edge.passiveHeatMultiplier(), edge.wallThermalConductance),
+            massesA, temperatureA, massesB, temperatureB)
+    }
+
+    fun conductance(
+        edge: EdgeView,
+        massesA: Map<GasType, Double>, temperatureA: Double,
+        massesB: Map<GasType, Double>, temperatureB: Double,
+    ): Double = conductance(edge, massesA.values.sum(), heatConductivityAverage(massesA, 0.0, temperatureA),
+        massesB.values.sum(), heatConductivityAverage(massesB, 0.0, temperatureB))
+
+    internal fun conductance(
+        edge: EdgeView,
+        massA: Double, conductivityA: Double,
+        massB: Double, conductivityB: Double,
+    ): Double {
         val wall = edge.wallThermalConductance.positiveFinite()
-        val multiplier = edge.passiveHeatMultiplier()
+        val multiplier = edge.thermalConductivityMultiplier.positiveFinite()
         if (multiplier == 0.0 || !edge.radius.isFinite() || edge.radius <= 0.0 ||
             !edge.length.isFinite() || edge.length <= 0.0 ||
-            massesA.values.sum() <= MASS_EPSILON || massesB.values.sum() <= MASS_EPSILON
+            massA <= MASS_EPSILON || massB <= MASS_EPSILON
         ) return wall
 
-        val kA = heatConductivityAverage(massesA, 0.0, temperatureA).positiveFinite()
-        val kB = heatConductivityAverage(massesB, 0.0, temperatureB).positiveFinite()
+        val kA = conductivityA.positiveFinite()
+        val kB = conductivityB.positiveFinite()
         if (kA == 0.0 || kB == 0.0) return wall
 
         // Each endpoint supplies half of edge.length. Equal gases must yield their own k,
@@ -71,21 +89,16 @@ object PassiveHeatTransfer {
             val nodeB = network.nodes[edge.nodeB] ?: continue
             val infoA = network.nodeInfo[edge.nodeA] ?: continue
             val infoB = network.nodeInfo[edge.nodeB] ?: continue
-            val capacityA = nodeHeatCapacity(infoA.currentGasMasses, nodeA.heatCapacity)
-            val capacityB = nodeHeatCapacity(infoB.currentGasMasses, nodeB.heatCapacity)
-            if (!capacityA.isFinite() || capacityA <= 1e-12 || !capacityB.isFinite() || capacityB <= 1e-12 ||
-                !infoA.currentEnergy.isFinite() || infoA.currentEnergy < 0.0 ||
-                !infoB.currentEnergy.isFinite() || infoB.currentEnergy < 0.0
-            ) continue
-            val conductance = conductance(
-                edge, infoA.currentGasMasses, infoA.currentEnergy / capacityA,
-                infoB.currentGasMasses, infoB.currentEnergy / capacityB,
-            )
-            val transfer = energyTransfer(infoA.currentEnergy, capacityA, infoB.currentEnergy, capacityB, conductance, seconds)
+            val a = NodeThermodynamics.snapshot(nodeA, infoA)
+            val b = NodeThermodynamics.snapshot(nodeB, infoB)
+            val view = EdgeView(EdgeId(edge.nodeA, edge.nodeB), edge.type, edge.radius, edge.length,
+                edge.currentFlowRate, edge.passiveHeatMultiplier(), edge.wallThermalConductance)
+            val context = EdgeFlowContext(SimulationStep(0, 0.0, seconds), view, a, b)
+            val transfer = HeatBehavior.transfer(edge, context)
             infoA.currentEnergy -= transfer
             infoB.currentEnergy += transfer
-            infoA.currentTemperature = (infoA.currentEnergy / capacityA).coerceAtLeast(1e-4)
-            infoB.currentTemperature = (infoB.currentEnergy / capacityB).coerceAtLeast(1e-4)
+            NodeThermodynamics.update(nodeA, infoA)
+            NodeThermodynamics.update(nodeB, infoB)
         }
     }
 

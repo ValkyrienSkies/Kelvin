@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.util.KelvinKeyMapper
+import java.util.function.Supplier
 
 @JsonSerialize(using = KelvinKeyMapper.GasTypeSerializer::class)
 @JsonDeserialize(using = KelvinKeyMapper.GasTypeDeserializer::class)
@@ -19,6 +20,10 @@ data class GasType(
     val adiabaticIndex: Double = 1.4, // (dimensionless) (see https://en.wikipedia.org/wiki/Adiabatic_index) Not required, 1.4 is air's. Technically an approximation, only useful for pockets, but oh well.
     val iconLocation: ResourceLocation = PLACEHOLDER_ICON
 ) {
+
+    fun hasTag(tag: GasTag): Boolean = this in tag
+
+    fun hasTag(tag: Supplier<GasTag>): Boolean = hasTag(tag.get())
 
     override fun toString(): String {
         val iconLoc = iconLocation.toString()

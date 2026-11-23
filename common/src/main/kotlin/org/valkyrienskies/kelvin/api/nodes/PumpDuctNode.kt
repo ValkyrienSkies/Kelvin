@@ -3,6 +3,7 @@ package org.valkyrienskies.kelvin.api.nodes
 import net.minecraft.server.level.ServerLevel
 import org.valkyrienskies.kelvin.api.*
 import java.util.HashSet
+import org.valkyrienskies.kelvin.api.simulation.NodeFlowContext
 
 open class PumpDuctNode(
     override val pos: DuctNodePos,
@@ -13,7 +14,12 @@ open class PumpDuctNode(
     override val heatCapacity: Double,
     var pumpPressure: Double = 0.0,
     var pumpTarget: DuctNodePos? = null
-) : DuctNode {
+) : DuctNode, INodePressureOffsetProvider, INodeFlowGate {
+
+    override fun getPressureOffset(context: NodeFlowContext): Double = pressureOffsetToward(context.neighbor.pos)
+
+    override fun allowsFlow(context: NodeFlowContext, flowRate: Double): Boolean =
+        !blocksFlowToward(context.neighbor.pos, flowRate)
 
     /** Pump pressure offset measured from this pump node toward an adjacent node. */
     fun pressureOffsetToward(neighbor: DuctNodePos): Double {

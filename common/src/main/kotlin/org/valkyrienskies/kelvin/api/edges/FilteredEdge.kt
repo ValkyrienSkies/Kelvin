@@ -3,11 +3,15 @@ package org.valkyrienskies.kelvin.api.edges
 import net.minecraft.server.level.ServerPlayer
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.api.simulation.EdgeFlowContext
 
 /**
  * Represents a filtered connection in the graph. Filtered connections only allow certain gases to flow through.
  */
-interface FilteredEdge: DuctEdge {
+interface FilteredEdge : DuctEdge, IEdgeGasFlowGate {
+    override fun allowsGasFlow(context: EdgeFlowContext, gas: GasType, gasFlowRate: Double): Boolean =
+        (gas in filter) != blacklist
+
     /**
      * The current filter set for this connection. Behavior determined by the [blacklist] variable.
      */

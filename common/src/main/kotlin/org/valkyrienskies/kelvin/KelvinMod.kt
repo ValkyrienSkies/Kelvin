@@ -6,16 +6,20 @@ import dev.architectury.event.events.common.LifecycleEvent
 import dev.architectury.event.events.common.TickEvent
 import dev.architectury.networking.simple.SimpleNetworkManager
 import dev.architectury.platform.Platform
+import dev.architectury.registry.ReloadListenerRegistry
 import dev.architectury.utils.Env
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.packs.PackType
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.debug.KelvinBlocks
 import org.valkyrienskies.kelvin.impl.DuctNetworkServer
 import org.valkyrienskies.kelvin.impl.client.DuctNetworkClient
 import org.valkyrienskies.kelvin.impl.logger
 import org.valkyrienskies.kelvin.impl.registry.GasParticlePickerRegistry
+import org.valkyrienskies.kelvin.impl.registry.GasTagDataLoader
+import org.valkyrienskies.kelvin.impl.registry.GasTagRegistry
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.impl.registry.ReactionRequirementRegistry
 import org.valkyrienskies.kelvin.networking.KelvinNetworking
@@ -53,6 +57,7 @@ object KelvinMod {
 
         LifecycleEvent.SERVER_STOPPED.register {
             Kelvin.dump()
+            GasTagRegistry.clear()
         }
 
         TickEvent.SERVER_LEVEL_POST.register {
@@ -117,6 +122,8 @@ object KelvinMod {
 
         KELVINLOGGER.info("Registering gas types...")
         GasTypeRegistry.init()
+        GasTagRegistry.init()
+        ReloadListenerRegistry.register(PackType.SERVER_DATA, GasTagDataLoader(), asResourceLocation("gas_tags"))
         ReactionRequirementRegistry.init()
         GasParticlePickerRegistry.init()
         KELVINLOGGER.info("--- --- ---")
@@ -135,6 +142,7 @@ object KelvinMod {
 
         ClientPlayerEvent.CLIENT_PLAYER_QUIT.register {
             if (Platform.getEnvironment() == Env.CLIENT) KelvinClient.dump()
+            GasTagRegistry.clear()
         }
 
         ClientTickEvent.CLIENT_LEVEL_POST.register {
