@@ -1,9 +1,15 @@
-// Determine release type
+if (gradle.parent != null) {
+    return
+}
+
 def vsReleaseType = 'alpha'
 if (project.hasProperty("CustomReleaseVersion")) {
-    def matches = project.property("CustomReleaseVersion") =~ 'release/(?:\\d+\\.){1,2}\\d+(?:-(alpha|beta).\\d+)?'
-
-    vsReleaseType = matches[0][1] ?: 'release'
+    def tag = project.property("CustomReleaseVersion")
+    def matches = tag =~ /^release\/(?:\d+\.){1,2}\d+(?:-(alpha|beta)\.\d+)?$/
+    if (!matches.matches()) {
+        throw new GradleException("Invalid Kelvin release tag: ${tag}")
+    }
+    vsReleaseType = matches.group(1) ?: 'release'
 }
 
 def fileDisplayName = "[${project.loader_platform} ${project.minecraft_version}] v${project.version}"
@@ -13,33 +19,40 @@ def fileDisplayName = "[${project.loader_platform} ${project.minecraft_version}]
 def curseForgeReleaseType = vsReleaseType == 'alpha' ? 'beta' : vsReleaseType
 
 // Publish to CurseForge
-curseforge {
-    if (project.curse_api_key) {
-        apiKey = project.curse_api_key
-        project {
-            id = project.curse_project_id
-            releaseType = curseForgeReleaseType
-            addGameVersion project.minecraft_version
-            addGameVersion project.loader_platform
+tasks.register('curseforge') {
+    dependsOn remapJar
 
-            mainArtifact(remapJar.archiveFile.get().asFile) {
-                displayName = fileDisplayName
-            }
+    doLast {
+        if (!project.curse_api_key) {
+            throw new GradleException('Set the CurseForge upload token before publishing')
         }
-    }
-    options {
-        forgeGradleIntegration = false
-        javaVersionAutoDetect = false
+
+        def metadata = [
+            displayName: fileDisplayName,
+            releaseType: curseForgeReleaseType,
+            changelog: '',
+            gameVersionNames: [project.minecraft_version, project.loader_platform, 'Client', 'Server']
+        ]
+
+        def jarFile = remapJar.archiveFile.get().asFile
+        project.exec {
+            standardInput = new ByteArrayInputStream("X-Api-Token: ${project.curse_api_key}\n".getBytes('UTF-8'))
+            commandLine 'curl', '--fail-with-body', '--silent', '--show-error',
+                '--header', '@-',
+                '--form-string', "metadata=${groovy.json.JsonOutput.toJson(metadata)}",
+                '--form', "file=@${jarFile}",
+                "https://minecraft.curseforge.com/api/projects/${project.kelvin_curse_project_id}/upload-file"
+        }
     }
 }
 
 // Publish to Modrinth
 modrinth {
     token = project.modrinth_api_key
-    projectId = project.modrinth_project_id
+    projectId = project.kelvin_modrinth_project_id
     versionType = vsReleaseType
     versionName = fileDisplayName
-    versionNumber = "${project.minecraft_version}-${project.loader_platform.toLowerCase()}-${project.version}"
+    versionNumber = "${project.version}-${project.loader_platform.toLowerCase()}"
     uploadFile = remapJar
     gameVersions = [project.minecraft_version]
     loaders = [project.loader_platform.toLowerCase()]

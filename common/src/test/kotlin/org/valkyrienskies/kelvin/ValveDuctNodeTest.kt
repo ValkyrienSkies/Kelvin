@@ -13,7 +13,6 @@ import org.valkyrienskies.kelvin.impl.solvers.ClassicSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSeidelSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSimplifiedSolver
 import org.valkyrienskies.kelvin.impl.solvers.JacobiSolver
-import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
 
 class ValveDuctNodeTest : KelvinTestBase() {
@@ -55,7 +54,6 @@ class ValveDuctNodeTest : KelvinTestBase() {
                 network.addNode(valvePos, valve)
                 network.addNode(pipePos, defaultPipe(pipePos))
                 network.addEdge(valvePos, pipePos, defaultPipeEdge(valvePos, pipePos))
-                GasTypeRegistry.registerGasType(TEST_AIR)
                 network.addGasAtTemperature(valvePos, TEST_AIR, 10.0, 300.0)
                 network.addGasAtTemperature(pipePos, TEST_AIR, 0.001, 273.15)
 

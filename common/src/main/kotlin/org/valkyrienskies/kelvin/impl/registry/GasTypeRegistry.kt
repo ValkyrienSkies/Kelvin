@@ -1,5 +1,11 @@
 package org.valkyrienskies.kelvin.impl.registry
 
+import dev.architectury.registry.registries.DeferredRegister
+import dev.architectury.registry.registries.Registrar
+import dev.architectury.registry.registries.RegistrarManager
+import dev.architectury.registry.registries.RegistrySupplier
+import net.minecraft.core.Registry
+import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
 import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
@@ -7,7 +13,36 @@ import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.KelvinParticlePicker
 
 object GasTypeRegistry {
-    val GAS_TYPES = mutableMapOf<ResourceLocation, GasType>()
+    /**
+     * Lazy because on 1.20.1 [ResourceKey.createRegistryKey] initialises the vanilla built-in
+     * registries, which throws "Not bootstrapped" in unit tests.
+     */
+    val GAS_TYPE_REGISTRY_KEY: ResourceKey<Registry<GasType>> by lazy {
+        ResourceKey.createRegistryKey(ResourceLocation(KelvinMod.MOD_ID, "gas_type"))
+    }
+
+    /**
+     * The custom gas type registry. Built lazily so that unit tests (which have no platform
+     * registrar implementation) can use [DEBUG_REGISTRY] without touching Architectury.
+     * [init] forces it to be built before [GAS_TYPES] is registered.
+     */
+    val REGISTRAR: Registrar<GasType> by lazy {
+        RegistrarManager.get(KelvinMod.MOD_ID)
+            .builder<GasType>(GAS_TYPE_REGISTRY_KEY.location())
+            .syncToClients()
+            .build()
+    }
+
+    /** Deferred register for gas types, same shape as [org.valkyrienskies.kelvin.KelvinParticles.PARTICLES]. */
+    val GAS_TYPES: DeferredRegister<GasType> by lazy { DeferredRegister.create(KelvinMod.MOD_ID, GAS_TYPE_REGISTRY_KEY) }
+
+    val ALL: HashSet<RegistrySupplier<GasType>> = HashSet()
+
+    /**
+     * When true, gas lookups are served from [DEBUG_REGISTRY] instead of the real registry.
+     * Only for unit tests, where no platform registry exists.
+     */
+    var isTestingEnvironment = false
 
     /**
      * A fake gas type object for storing the smallest found value for each gas property.
@@ -21,9 +56,7 @@ object GasTypeRegistry {
     var maxGas: GasType? = null
 
     @Synchronized
-    fun registerGasType(resourceLocation: ResourceLocation, gasType: GasType) {
-        GAS_TYPES[resourceLocation] = gasType
-
+    private fun updateMinMax(gasType: GasType) {
         // Probably redundant safety
         if (minGas == null) minGas = gasType
         if (maxGas == null) maxGas = gasType
@@ -43,39 +76,60 @@ object GasTypeRegistry {
         )
     }
 
-    fun registerGasType(gasType: GasType) {
-        KELVINLOGGER.info("Registering gas type ${gasType.resourceLocation}...")
-        registerGasType(gasType.resourceLocation, gasType)
-        KELVINLOGGER.info("Registered gas type ${gasType.resourceLocation}, with properties:")
-        KELVINLOGGER.info("Density: ${gasType.density} | Viscosity: ${gasType.viscosity} | Specific Heat Capacity: ${gasType.specificHeatCapacity} | Thermal Conductivity: ${gasType.thermalConductivity}")
-        KELVINLOGGER.info("Sutherland Constant: ${gasType.sutherlandConstant} | Adiabatic Index: ${gasType.adiabaticIndex}")
-        KELVINLOGGER.info("Icon Location: ${gasType.iconLocation}")
+    @Synchronized
+    fun registerGasType(resourceLocation: ResourceLocation, gasType: GasType): RegistrySupplier<GasType> {
+        KELVINLOGGER.info("Registering gas type $resourceLocation...")
+        val supplier = GAS_TYPES.register(resourceLocation) {
+            updateMinMax(gasType)
+            KELVINLOGGER.info("Registered gas type $resourceLocation, with properties:")
+            KELVINLOGGER.info("Density: ${gasType.density} | Viscosity: ${gasType.viscosity} | Specific Heat Capacity: ${gasType.specificHeatCapacity} | Thermal Conductivity: ${gasType.thermalConductivity}")
+            KELVINLOGGER.info("Sutherland Constant: ${gasType.sutherlandConstant} | Adiabatic Index: ${gasType.adiabaticIndex}")
+            KELVINLOGGER.info("Icon Location: ${gasType.iconLocation}")
+            gasType
+        }
+        ALL.add(supplier)
+        return supplier
     }
 
-    fun register(gasType: GasType, particlePicker: KelvinParticlePicker) {
+    fun registerGasType(gasType: GasType): RegistrySupplier<GasType> {
+        return registerGasType(gasType.resourceLocation, gasType)
+    }
+
+    fun register(gasType: GasType, particlePicker: KelvinParticlePicker): RegistrySupplier<GasType> {
         GasParticlePickerRegistry.registerParticlePicker(gasType.resourceLocation, particlePicker)
         GasParticlePickerRegistry.registerGasToParticlePicker(gasType.resourceLocation, gasType)
-        registerGasType(gasType)
+        return registerGasType(gasType)
     }
 
-    fun register(gasType: GasType) {
+    fun register(gasType: GasType): RegistrySupplier<GasType> {
         GasParticlePickerRegistry.registerWithDefaultParticlePicker(gasType)
-        registerGasType(gasType)
+        return registerGasType(gasType)
     }
 
     fun getGasType(resourceLocation: ResourceLocation): GasType? {
-        return GAS_TYPES[resourceLocation]
+        if (isTestingEnvironment) return DEBUG_REGISTRY.values.firstOrNull { it.resourceLocation == resourceLocation }
+        return REGISTRAR.get(resourceLocation)
     }
 
     fun getGasType(modid: String, name: String): GasType? {
         return getGasType(ResourceLocation(modid, name))
     }
 
+    /** Every gas type currently in the registry. Empty until the platform has processed [GAS_TYPES]. */
+    fun getGasTypes(): Iterable<GasType> {
+        if (isTestingEnvironment) return DEBUG_REGISTRY.values
+        return REGISTRAR
+    }
+
     private fun getIcon(name: String): ResourceLocation {
         return KelvinMod.asResourceLocation("textures/icons/$name.png")
     }
 
+    @Synchronized
     fun init () {
+        // Force the custom registry to be created before the deferred register is resolved against it.
+        REGISTRAR
+
         val air = GasType("Air",ResourceLocation(KelvinMod.MOD_ID, "air"), 1.293, 1.716e-5, 1.005, 0.026, iconLocation = getIcon("air"))
 //        val exhaust = GasType("Exhaust", ResourceLocation(KelvinMod.MOD_ID, "exhaust"), 1.98, 1.10e-5, 2.2, 0.031, iconLocation = getIcon("exhaust"), fantasyName = "Smog")
 //        val steam = GasType("Steam", ResourceLocation(KelvinMod.MOD_ID, "steam"), 1.98, 1.716e-5, 2.2, 0.031, iconLocation = getIcon("steam"))
@@ -94,6 +148,8 @@ object GasTypeRegistry {
 //        register(helium)
 //        register(hydrogen)
 //        register(methane)
+
+        GAS_TYPES.register()
     }
 
     //for testing purposes
