@@ -19,11 +19,12 @@ class PipeFlowModel(
         val tolerance = max(absolutePressureTolerance,
             max(max(a.pressure, b.pressure), abs(parameters.pressureOffset)) * relativePressureTolerance)
         if (abs(difference) <= tolerance) return 0.0
-        val viscosity = (GasPhysics.dynamicViscosityAverage(a.gasMasses, a.temperature) +
-            GasPhysics.dynamicViscosityAverage(b.gasMasses, b.temperature)) * 0.5
+        val mixtureA = context.thermodynamicsA.mixture
+        val mixtureB = context.thermodynamicsB.mixture
+        val viscosity = (mixtureA.viscosity + mixtureB.viscosity) * 0.5
         return GasPhysics.calculateFlow(
             a.pressure, b.pressure, parameters.radius, parameters.length,
-            a.totalGasMass / a.volume, b.totalGasMass / b.volume, viscosity, parameters.pressureOffset, 0.0,
+            mixtureA.totalMass / a.volume, mixtureB.totalMass / b.volume, viscosity, parameters.pressureOffset, 0.0,
         ).let { if (it.isFinite()) it else 0.0 }
     }
 
@@ -32,26 +33,29 @@ class PipeFlowModel(
         val requested = abs(signedMass)
         if (requested == 0.0 || !requested.isFinite()) return 0.0
         val direction = if (signedMass > 0.0) 1.0 else -1.0
-        val source = if (direction > 0.0) context.nodeA else context.nodeB
+        val source = if (direction > 0.0) context.thermodynamicsA else context.thermodynamicsB
         val difference = context.nodeA.pressure - context.nodeB.pressure + parameters.pressureOffset
         if (difference * direction <= 0.0) return 0.0
-        val choked = GasPhysics.mdotChoked(source.gasMasses, source.pressure, source.temperature, parameters.radius)
+        val choked = GasPhysics.mdotChoked(source.state.pressure, source.state.temperature, parameters.radius,
+            0.8, source.mixture.gasConstant, source.mixture.gamma)
         var upper = min(1.0, choked * context.step.durationSeconds / requested)
         if (!upper.isFinite() || upper <= 0.0) return 0.0
 
         val a = context.nodeA
         val b = context.nodeB
-        val slope = (if (a.totalGasMass > 0.0) a.pressure / a.totalGasMass else 0.0) +
-            (if (b.totalGasMass > 0.0) b.pressure / b.totalGasMass else 0.0)
+        val massA = context.thermodynamicsA.mixture.totalMass
+        val massB = context.thermodynamicsB.mixture.totalMass
+        val slope = (if (massA > 0.0) a.pressure / massA else 0.0) +
+            (if (massB > 0.0) b.pressure / massB else 0.0)
         val fraction = pressureEqualizationFraction.coerceIn(0.0, 1.0)
         if (slope > 0.0) upper = min(upper, fraction * abs(difference) / (slope * requested))
 
         val minimumDifference = abs(difference) * (1.0 - fraction)
+        val predictionA = context.thermodynamicsA.prepareStateChange(transfer.gasMasses, transfer.advectedEnergy)
+        val predictionB = context.thermodynamicsB.prepareStateChange(transfer.gasMasses, transfer.advectedEnergy)
         fun permits(scale: Double): Boolean {
-            val delta = transfer.gasMasses.mapValues { it.value * scale }
-            val nextA = context.thermodynamicsA.calculateState(delta.mapValues { -it.value }, -transfer.advectedEnergy * scale)
-            val nextB = context.thermodynamicsB.calculateState(delta, transfer.advectedEnergy * scale)
-            val nextDifference = (nextA.pressure - nextB.pressure + parameters.pressureOffset) * direction
+            val nextDifference = (predictionA.calculatePressure(-scale) - predictionB.calculatePressure(scale) +
+                parameters.pressureOffset) * direction
             return nextDifference.isFinite() && nextDifference >= minimumDifference
         }
         if (permits(upper)) return upper

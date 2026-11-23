@@ -2,6 +2,7 @@ package org.valkyrienskies.kelvin.util
 
 import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodeState
+import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.nodes.INodeThermodynamicModel
 import org.valkyrienskies.kelvin.api.simulation.*
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
@@ -46,18 +47,23 @@ object NodeThermodynamics {
         return lower + (upper - lower) * 0.5
     }
 
-    fun snapshot(node: DuctNode, info: DuctNodeInfo): NodeThermodynamicView {
-        val material = material(node, info)
+    fun snapshot(node: DuctNode, info: DuctNodeInfo): NodeThermodynamicView = snapshot(node, material(node, info))
+
+    private fun snapshot(node: DuctNode, material: NodeMaterialState): NodeThermodynamicView {
         val properties = calculateState(node, material)
         val state = DuctNodeState(node.pos, properties.temperature, properties.pressure,
             material.gasMasses, material.heatEnergy, material.volume)
         return NodeThermodynamicView(state, material, properties, model(node))
     }
 
-    fun update(node: DuctNode, info: DuctNodeInfo): NodeThermodynamicView = snapshot(node, info).also {
-        info.previousPressure = info.currentPressure
-        info.currentPressure = it.state.pressure
-        info.currentTemperature = it.state.temperature
-        info.totalVolume = it.state.volume
-    }
+    fun update(node: DuctNode, info: DuctNodeInfo): NodeThermodynamicView = update(node, info,
+        Collections.unmodifiableMap(HashMap(info.currentGasMasses)))
+
+    internal fun update(node: DuctNode, info: DuctNodeInfo, masses: Map<GasType, Double>): NodeThermodynamicView =
+        snapshot(node, NodeMaterialState(masses, info.currentEnergy, node.volume + info.volumeChange, node.heatCapacity)).also {
+            info.previousPressure = info.currentPressure
+            info.currentPressure = it.state.pressure
+            info.currentTemperature = it.state.temperature
+            info.totalVolume = it.state.volume
+        }
 }

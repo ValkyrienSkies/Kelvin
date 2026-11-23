@@ -21,6 +21,8 @@ internal data class SolverSettings(
     val pressureEqualizationFraction: Double = 0.5,
     val relativePressureTolerance: Double = 1e-5,
     val absolutePressureTolerance: Double = 1e-6,
+    val equilibriumTolerance: Double = 0.0,
+    val minSubsteps: Int = Int.MAX_VALUE,
 )
 
 internal object SimulationEngine {
@@ -28,20 +30,43 @@ internal object SimulationEngine {
     private val clocks = WeakHashMap<DuctNetwork<*>, Clock>()
 
     private class NodeWork(val node: DuctNode, val info: DuctNodeInfo) {
+        val flow = NodeFlowBindings(node)
         val connections = ArrayList<EdgeWork>()
+        val observer = node as? INodeTransferObserver
+        val lifecycle = node as? INodeSimulationStep
+        val source = node as? INodeStateSource
+        val constraint = node as? INodeFlowConstraint
+        val canSleep = !flow.hasHooks && observer == null && lifecycle == null && source == null && constraint == null &&
+            node !is INodeThermodynamicModel
         val transfers = ArrayList<CommittedTransfer>()
+        var initialMass = 0.0
+        var initialEnergy = 0.0
         var sourceChange = NodeStateChange.NONE
+        var connectionViews: List<EdgeView>? = null
         private var cached: NodeThermodynamicView? = null
+        private var gasMasses: Map<GasType, Double>? = null
 
-        fun view(): NodeThermodynamicView = cached ?: NodeThermodynamics.update(node, info).also { cached = it }
-        fun changed() { cached = null }
+        fun view(): NodeThermodynamicView = cached ?: NodeThermodynamics.update(node, info,
+            gasMasses ?: immutableMap(info.currentGasMasses).also { gasMasses = it }).also { cached = it }
+
+        fun changed(composition: Boolean = true) {
+            cached = null
+            if (composition) gasMasses = null
+        }
         fun context(step: SimulationStep): NodeStepContext = NodeStepContext(
-            step, view().state, Collections.unmodifiableList(connections.map { it.view }),
+            step, view().state, connectionViews ?: Collections.unmodifiableList(connections.map { it.view })
+                .also { connectionViews = it },
         )
     }
 
     private class EdgeWork(val edge: DuctEdge, val a: NodeWork, val b: NodeWork) {
+        val flow = EdgeFlowBindings(edge)
         val id = EdgeId(edge.nodeA, edge.nodeB)
+        val observer = edge as? IEdgeTransferObserver
+        val lifecycle = edge as? IEdgeSimulationStep
+        val canSleep = !flow.hasHooks && observer == null && lifecycle == null
+        val recordsTransfers = observer != null || lifecycle != null || a.observer != null || a.lifecycle != null ||
+            b.observer != null || b.lifecycle != null
         var view = snapshot()
         val transfers = ArrayList<CommittedTransfer>()
         var tickMass = 0.0
@@ -83,11 +108,18 @@ internal object SimulationEngine {
             edge.a.connections.add(edge)
             edge.b.connections.add(edge)
         }
-        val simultaneous = settings.simultaneous || nodes.values.any { it.node is INodeFlowConstraint }
+        val simultaneous = settings.simultaneous || nodes.values.any { it.constraint != null }
+        val hasCallbacks = nodes.values.any { it.lifecycle != null || it.observer != null } ||
+            edges.any { it.lifecycle != null || it.observer != null }
+        val sources = ArrayList<Pair<NodeWork, NodeStateChange>>()
+        val requests = ArrayList<PlannedTransfer>()
+        val gasScratch = Object2DoubleOpenHashMap<GasType>()
+        val reversedEdges = edges.asReversed()
+        val canSleep = settings.minSubsteps < subSteps && nodes.values.all { it.canSleep } && edges.all { it.canSleep }
         val model = PipeFlowModel(settings.pressureEqualizationFraction,
             settings.relativePressureTolerance, settings.absolutePressureTolerance)
 
-        repeat(subSteps) { interval ->
+        for (interval in 0 until subSteps) {
             val step = synchronized(clocks) {
                 val clock = clocks.getOrPut(network) { Clock() }
                 SimulationStep(clock.index++, clock.seconds, seconds).also { clock.seconds += seconds }
@@ -95,6 +127,12 @@ internal object SimulationEngine {
             for (node in nodes.values) {
                 node.transfers.clear()
                 node.sourceChange = NodeStateChange.NONE
+                node.connectionViews = null
+                if (hasCallbacks) node.changed()
+                if (canSleep) {
+                    node.initialMass = node.view().mixture.totalMass
+                    node.initialEnergy = node.info.currentEnergy
+                }
                 applyVolumeWork(node)
             }
             for (edge in edges) {
@@ -102,24 +140,31 @@ internal object SimulationEngine {
                 edge.intervalMass = 0.0
                 edge.view = edge.snapshot()
             }
-            for (node in nodes.values) (node.node as? INodeSimulationStep)?.onStepStart(node.context(step))
-            for (edge in edges) (edge.edge as? IEdgeSimulationStep)?.onStepStart(edge.stepContext(step))
-            for (node in nodes.values) node.changed()
-            for (edge in edges) edge.view = edge.snapshot()
-            val sources = nodes.values.mapNotNull { node ->
-                (node.node as? INodeStateSource)?.let {
+            for (node in nodes.values) node.lifecycle?.onStepStart(node.context(step))
+            for (edge in edges) edge.lifecycle?.onStepStart(edge.stepContext(step))
+            if (hasCallbacks) {
+                for (node in nodes.values) {
+                    node.changed()
+                    node.connectionViews = null
+                }
+                for (edge in edges) edge.view = edge.snapshot()
+            }
+            sources.clear()
+            for (node in nodes.values) {
+                node.source?.let {
                     val change = it.getStateChange(node.context(step))
-                    node to change.copy(gasMassDeltas = immutableMap(change.gasMassDeltas))
+                    sources.add(node to change.copy(gasMassDeltas = immutableMap(change.gasMassDeltas)))
                 }
             }
             for ((node, change) in sources) applySource(node, change)
 
-            val ordered = if (settings.alternateOrder && interval % 2 == 1) edges.asReversed() else edges
+            val ordered = if (settings.alternateOrder && interval % 2 == 1) reversedEdges else edges
             if (simultaneous) {
-                val requests = ordered.mapNotNull { edge ->
-                    request(edge, step, settings, model)?.let {
+                requests.clear()
+                for (edge in ordered) {
+                    request(edge, step, settings, model, gasScratch)?.let {
                         val budget = max(edge.a.connections.size, edge.b.connections.size).coerceAtLeast(1)
-                        PlannedTransfer(edge, it, if (edge.edge is IEdgeFlowModel) 1.0 else 1.0 / budget)
+                        requests.add(PlannedTransfer(edge, it, if (edge.flow.model != null) 1.0 else 1.0 / budget))
                     }
                 }
                 resolveConstraints(nodes.values, requests, step)
@@ -127,43 +172,72 @@ internal object SimulationEngine {
                 for (edge in ordered) conduct(edge, step)
             } else {
                 for (edge in ordered) {
-                    val request = request(edge, step, settings, model)
+                    val request = request(edge, step, settings, model, gasScratch)
                     if (request != null) commit(edge, request, step)
                     conduct(edge, step)
                 }
             }
             for (edge in edges) {
                 edge.edge.currentFlowRate = edge.intervalMass / seconds
-                (edge.edge as? IEdgeSimulationStep)?.onStepEnd(edge.stepContext(step), EdgeStepResult(
+                edge.lifecycle?.onStepEnd(edge.stepContext(step), EdgeStepResult(
                     Collections.unmodifiableList(ArrayList(edge.transfers)), edge.a.view().state, edge.b.view().state,
                 ))
             }
             for (node in nodes.values) {
-                (node.node as? INodeSimulationStep)?.onStepEnd(node.context(step), NodeStepResult(
+                node.lifecycle?.onStepEnd(node.context(step), NodeStepResult(
                     Collections.unmodifiableList(ArrayList(node.transfers)), node.sourceChange, node.view().state,
                 ))
                 node.view()
+            }
+            if (canSleep && interval + 1 >= settings.minSubsteps && atEquilibrium(nodes.values, edges, step, settings, model)) {
+                synchronized(clocks) {
+                    val clock = clocks.getValue(network)
+                    val remaining = subSteps - interval - 1
+                    clock.index += remaining
+                    clock.seconds += remaining * seconds
+                }
+                break
             }
         }
         for (edge in edges) edge.edge.currentFlowRate = edge.tickMass / 0.05
     }
 
-    private fun request(edge: EdgeWork, step: SimulationStep, settings: SolverSettings, model: IEdgeFlowModel): TransferRequest? =
-        FlowBehavior.request(edge.edge, edge.a.node, edge.b.node, edge.flowContext(step), model,
-            settings.relaxation, settings.perEdgeMassFraction)
+    private fun atEquilibrium(
+        nodes: Collection<NodeWork>, edges: List<EdgeWork>, step: SimulationStep,
+        settings: SolverSettings, model: PipeFlowModel,
+    ): Boolean {
+        for (node in nodes) {
+            val massChange = abs(node.view().mixture.totalMass - node.initialMass) / max(node.initialMass, 1e-9)
+            val energyChange = abs(node.info.currentEnergy - node.initialEnergy) / max(abs(node.initialEnergy), 1e-3)
+            if (max(massChange, energyChange) > settings.equilibriumTolerance) return false
+        }
+        for (edge in edges) {
+            val context = edge.flowContext(step)
+            val parameters = FlowParameters(context.edge.radius, context.edge.length, 0.0)
+            if (model.calculateFlowRate(context, parameters) != 0.0 || HeatBehavior.transfer(context, null) != 0.0) return false
+        }
+        return true
+    }
+
+    private fun request(
+        edge: EdgeWork, step: SimulationStep, settings: SolverSettings, model: IEdgeFlowModel,
+        gasScratch: Object2DoubleOpenHashMap<GasType>,
+    ): TransferRequest? =
+        FlowBehavior.request(edge.flow, edge.a.flow, edge.b.flow, edge.flowContext(step), model,
+            settings.relaxation, settings.perEdgeMassFraction, gasScratch)
 
     private fun applyVolumeWork(node: NodeWork) {
         val info = node.info
         val change = info.volumeChange - info.previousVolumeChange
-        node.changed()
         if (change == 0.0) return
+        node.changed(false)
         val before = node.view()
         val estimate = (-before.state.pressure * change).coerceAtLeast(-info.currentEnergy)
         val pressure = before.calculateState(emptyMap(), estimate).pressure
         val work = (-0.5 * (before.state.pressure + pressure) * change).coerceAtLeast(-info.currentEnergy)
         if (work.isFinite()) info.currentEnergy += work
         info.previousVolumeChange = info.volumeChange
-        node.changed()
+        node.changed(false)
     }
 
     private fun applySource(node: NodeWork, change: NodeStateChange) {
@@ -185,7 +259,7 @@ internal object SimulationEngine {
         for ((gas, amount) in applied.gasMassDeltas) changeMass(node, gas, amount)
         node.info.currentEnergy += applied.energyDelta
         node.sourceChange = applied
-        node.changed()
+        node.changed(false)
     }
 
     private fun resolveConstraints(nodes: Collection<NodeWork>, requests: List<PlannedTransfer>, step: SimulationStep) {
@@ -195,7 +269,7 @@ internal object SimulationEngine {
             incident.getOrPut(request.edge.b) { ArrayList() }.add(request)
         }
         for (node in nodes) {
-            val constraint = node.node as? INodeFlowConstraint ?: continue
+            val constraint = node.constraint ?: continue
             val adjacent = incident[node] ?: emptyList()
             val proposed = adjacent.map { if (it.edge.a === node) it.request else it.request.reversed() }
             val scales = constraint.getTransferScales(node.context(step), Collections.unmodifiableList(proposed))
@@ -241,50 +315,50 @@ internal object SimulationEngine {
             transfer.gasMasses.all { (gas, mass) -> (destination.info.currentGasMasses.getDouble(gas) + abs(mass)).isFinite() }) {
             "Gas transfer overflow"
         }
-        val before = edge.stepContext(step)
-        val beforeA = edge.a.context(step)
-        val beforeB = edge.b.context(step)
+        val before = if (edge.observer != null) edge.stepContext(step) else null
+        val beforeA = if (edge.a.observer != null) edge.a.context(step) else null
+        val beforeB = if (edge.b.observer != null) edge.b.context(step) else null
         for ((gas, mass) in transfer.gasMasses) {
             changeMass(edge.a, gas, -mass)
             changeMass(edge.b, gas, mass)
         }
         edge.a.info.currentEnergy -= transfer.advectedEnergy
         edge.b.info.currentEnergy += transfer.advectedEnergy
-        edge.a.changed()
-        edge.b.changed()
+        edge.a.changed(false)
+        edge.b.changed(false)
         edge.tickMass += actualMass
         edge.intervalMass += actualMass
-        notify(edge, CommittedTransfer(edge.id, transfer.gasMasses, transfer.advectedEnergy, 0.0),
+        if (edge.recordsTransfers) notify(edge, CommittedTransfer(edge.id, transfer.gasMasses, transfer.advectedEnergy, 0.0),
             before, beforeA, beforeB)
     }
 
     private fun conduct(edge: EdgeWork, step: SimulationStep) {
-        val energy = HeatBehavior.transfer(edge.edge, edge.flowContext(step))
+        val energy = HeatBehavior.transfer(edge.flowContext(step), edge.flow.heat)
         if (energy == 0.0) return
-        val before = edge.stepContext(step)
-        val beforeA = edge.a.context(step)
-        val beforeB = edge.b.context(step)
+        val before = if (edge.observer != null) edge.stepContext(step) else null
+        val beforeA = if (edge.a.observer != null) edge.a.context(step) else null
+        val beforeB = if (edge.b.observer != null) edge.b.context(step) else null
         edge.a.info.currentEnergy -= energy
         edge.b.info.currentEnergy += energy
-        edge.a.changed()
-        edge.b.changed()
-        notify(edge, CommittedTransfer(edge.id, emptyMap(), 0.0, energy), before, beforeA, beforeB)
+        edge.a.changed(false)
+        edge.b.changed(false)
+        if (edge.recordsTransfers) notify(edge, CommittedTransfer(edge.id, emptyMap(), 0.0, energy), before, beforeA, beforeB)
     }
 
     private fun notify(
         edge: EdgeWork,
         transfer: CommittedTransfer,
-        edgeContext: EdgeStepContext,
-        nodeAContext: NodeStepContext,
-        nodeBContext: NodeStepContext,
+        edgeContext: EdgeStepContext?,
+        nodeAContext: NodeStepContext?,
+        nodeBContext: NodeStepContext?,
     ) {
-        val reversed = transfer.reversed()
-        edge.transfers.add(transfer)
-        edge.a.transfers.add(transfer)
-        edge.b.transfers.add(reversed)
-        (edge.edge as? IEdgeTransferObserver)?.onTransferCommitted(edgeContext, transfer)
-        (edge.a.node as? INodeTransferObserver)?.onTransferCommitted(nodeAContext, transfer)
-        (edge.b.node as? INodeTransferObserver)?.onTransferCommitted(nodeBContext, reversed)
+        if (edge.lifecycle != null) edge.transfers.add(transfer)
+        if (edge.a.lifecycle != null) edge.a.transfers.add(transfer)
+        val reversed = if (edge.b.lifecycle != null || edge.b.observer != null) transfer.reversed() else null
+        if (edge.b.lifecycle != null) edge.b.transfers.add(reversed!!)
+        edge.observer?.onTransferCommitted(edgeContext!!, transfer)
+        edge.a.observer?.onTransferCommitted(nodeAContext!!, transfer)
+        edge.b.observer?.onTransferCommitted(nodeBContext!!, reversed!!)
     }
 
     private fun changeMass(node: NodeWork, gas: GasType, delta: Double) {

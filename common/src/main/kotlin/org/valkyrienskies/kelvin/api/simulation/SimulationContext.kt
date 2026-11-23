@@ -5,6 +5,7 @@ import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.DuctNodeState
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.api.nodes.INodeThermodynamicModel
+import org.valkyrienskies.kelvin.util.GasMixture
 import java.util.Collections
 
 /** Identifies a physical interval within one network. Times are in seconds. */
@@ -46,7 +47,12 @@ class NodeThermodynamicView internal constructor(
     val properties: ThermodynamicState,
     private val model: INodeThermodynamicModel,
 ) {
+    private var cachedMixture: GasMixture? = null
+    internal val mixture: GasMixture
+        get() = cachedMixture ?: GasMixture(material.gasMasses, properties.temperature).also { cachedMixture = it }
+
     fun calculateState(gasMassDeltas: Map<GasType, Double>, energyDelta: Double): ThermodynamicState {
+        if (gasMassDeltas.isEmpty()) return model.calculateState(material.copy(heatEnergy = material.heatEnergy + energyDelta))
         val masses = HashMap(material.gasMasses)
         for ((gas, delta) in gasMassDeltas) masses[gas] = (masses[gas] ?: 0.0) + delta
         return model.calculateState(material.copy(
@@ -54,6 +60,9 @@ class NodeThermodynamicView internal constructor(
             heatEnergy = material.heatEnergy + energyDelta,
         ))
     }
+
+    fun prepareStateChange(gasMassDeltas: Map<GasType, Double>, energyDelta: Double): ThermodynamicPrediction =
+        model.prepareStateChange(material, gasMassDeltas, energyDelta)
 
     fun calculateTransferEnergy(outgoingGasMasses: Map<GasType, Double>): Double =
         model.calculateTransferEnergy(material, outgoingGasMasses)

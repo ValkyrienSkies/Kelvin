@@ -10,26 +10,31 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal object HeatBehavior {
-    fun transfer(edge: DuctEdge, context: EdgeFlowContext): Double {
+    fun transfer(edge: DuctEdge, context: EdgeFlowContext): Double = transfer(context, edge as? IEdgeHeatConductanceModifier)
+
+    fun transfer(context: EdgeFlowContext, modifier: IEdgeHeatConductanceModifier?): Double {
         if (!context.step.durationSeconds.isFinite() || context.step.durationSeconds <= 0.0) return 0.0
         val a = context.thermodynamicsA
         val b = context.thermodynamicsB
         val capacityA = a.properties.heatCapacity
         val capacityB = b.properties.heatCapacity
         if (capacityA <= 1e-12 || capacityB <= 1e-12) return 0.0
+        val difference = a.state.temperature - b.state.temperature
+        if (difference == 0.0 && modifier == null) return 0.0
         var conductance = PassiveHeatTransfer.conductance(
-            context.edge, a.state.gasMasses, a.state.temperature, b.state.gasMasses, b.state.temperature,
+            context.edge, a.mixture.totalMass, a.mixture.heatConductivity, b.mixture.totalMass, b.mixture.heatConductivity,
         )
-        conductance = (edge as? IEdgeHeatConductanceModifier)?.modifyHeatConductance(context, conductance) ?: conductance
+        conductance = modifier?.modifyHeatConductance(context, conductance) ?: conductance
         if (!conductance.isFinite() || conductance <= 0.0) return 0.0
         val smaller = min(capacityA, capacityB)
         val capacity = smaller / (1.0 + smaller / max(capacityA, capacityB))
-        val difference = a.state.temperature - b.state.temperature
         if (difference == 0.0) return 0.0
         val direction = if (difference > 0.0) 1.0 else -1.0
+        val predictionA = a.prepareStateChange(emptyMap(), -1.0)
+        val predictionB = b.prepareStateChange(emptyMap(), 1.0)
         fun remainingDifference(amount: Double): Double {
-            val nextA = a.calculateState(emptyMap(), -amount).temperature
-            val nextB = b.calculateState(emptyMap(), amount).temperature
+            val nextA = predictionA.calculateTemperature(amount)
+            val nextB = predictionB.calculateTemperature(amount)
             require(nextA.isFinite() && nextB.isFinite()) { "Invalid temperature during heat transfer" }
             return (nextA - nextB) * direction
         }

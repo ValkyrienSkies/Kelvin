@@ -29,16 +29,23 @@ object PassiveHeatTransfer {
         edge: EdgeView,
         massesA: Map<GasType, Double>, temperatureA: Double,
         massesB: Map<GasType, Double>, temperatureB: Double,
+    ): Double = conductance(edge, massesA.values.sum(), heatConductivityAverage(massesA, 0.0, temperatureA),
+        massesB.values.sum(), heatConductivityAverage(massesB, 0.0, temperatureB))
+
+    internal fun conductance(
+        edge: EdgeView,
+        massA: Double, conductivityA: Double,
+        massB: Double, conductivityB: Double,
     ): Double {
         val wall = edge.wallThermalConductance.positiveFinite()
         val multiplier = edge.thermalConductivityMultiplier.positiveFinite()
         if (multiplier == 0.0 || !edge.radius.isFinite() || edge.radius <= 0.0 ||
             !edge.length.isFinite() || edge.length <= 0.0 ||
-            massesA.values.sum() <= MASS_EPSILON || massesB.values.sum() <= MASS_EPSILON
+            massA <= MASS_EPSILON || massB <= MASS_EPSILON
         ) return wall
 
-        val kA = heatConductivityAverage(massesA, 0.0, temperatureA).positiveFinite()
-        val kB = heatConductivityAverage(massesB, 0.0, temperatureB).positiveFinite()
+        val kA = conductivityA.positiveFinite()
+        val kB = conductivityB.positiveFinite()
         if (kA == 0.0 || kB == 0.0) return wall
 
         // Each endpoint supplies half of edge.length. Equal gases must yield their own k,

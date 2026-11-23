@@ -8,15 +8,7 @@ import org.valkyrienskies.kelvin.api.simulation.EdgeFlowContext
 /**
  * Represents a filtered connection in the graph. Filtered connections only allow certain gases to flow through.
  */
-interface FilteredEdge : DuctEdge, IEdgeGasFlowGate, IEdgeFlowRateModifier {
-    override fun modifyFlowRate(context: EdgeFlowContext, flowRate: Double): Double {
-        val source = if (flowRate >= 0.0) context.nodeA else context.nodeB
-        val allowedMass = source.gasMasses.entries.sumOf { (gas, mass) ->
-            if ((gas in filter) != blacklist) mass else 0.0
-        }
-        return if (allowedMass > 0.0) flowRate * (source.totalGasMass / allowedMass) else 0.0
-    }
-
+interface FilteredEdge : DuctEdge, IEdgeGasFlowGate {
     override fun allowsGasFlow(context: EdgeFlowContext, gas: GasType, gasFlowRate: Double): Boolean =
         (gas in filter) != blacklist
 

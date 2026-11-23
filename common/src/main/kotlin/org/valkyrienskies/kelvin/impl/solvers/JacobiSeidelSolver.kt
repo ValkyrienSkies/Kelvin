@@ -10,10 +10,10 @@ class JacobiSeidelSolver : KelvinSolver {
     var relativePressureTolerance: Double = 1e-5
     var absolutePressureTolerance: Double = 1e-6
 
-    @Deprecated("Every physical interval now runs its behavior hooks; equilibrium no longer skips intervals.")
+    /** Relative mass and energy tolerance for idle exit. Nodes and edges with hooks keep running. */
     var equilibriumTolerance: Double = 1e-4
 
-    @Deprecated("Every physical interval now runs its behavior hooks; equilibrium no longer skips intervals.")
+    /** Always run at least this many intervals, even in an idle network. */
     var minSubsteps: Int = 1
 
     override fun step(network: DuctNetwork<*>, subSteps: Int) {
@@ -24,6 +24,8 @@ class JacobiSeidelSolver : KelvinSolver {
             pressureEqualizationFraction = pressureEqualizationFraction,
             relativePressureTolerance = relativePressureTolerance,
             absolutePressureTolerance = absolutePressureTolerance,
+            equilibriumTolerance = equilibriumTolerance,
+            minSubsteps = minSubsteps,
         ))
     }
 }
