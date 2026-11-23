@@ -15,6 +15,7 @@ import org.valkyrienskies.kelvin.KelvinMod
 import org.valkyrienskies.kelvin.KelvinMod.init
 import org.valkyrienskies.kelvin.KelvinMod.initClient
 import org.valkyrienskies.kelvin.KelvinParticles
+import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticleProvider
 import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import thedarkcolour.kotlinforforge.forge.FORGE_BUS
@@ -31,7 +32,9 @@ class KelvinModForge {
 
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT) { -> Runnable {
                 MOD_BUS.addListener { event: RegisterParticleProvidersEvent ->
-                    KelvinParticles.KelvinClientParticles.init()
+                    KelvinParticles.ALL.forEach { particle ->
+                        event.registerSpriteSet(particle.get(), ::DefaultGasParticleProvider)
+                    }
                 }
             }
         }

@@ -12,10 +12,12 @@ object GasParticlePickerRegistry {
     val PARTICLE_PICKERS = HashMap<ResourceLocation, KelvinParticlePicker>()
     val GAS_PARTICLE_PICKERS = HashMap<GasType, ResourceLocation>()
 
+    @Synchronized
     fun registerParticlePicker(resourceLocation: ResourceLocation, particlePicker: KelvinParticlePicker) {
         PARTICLE_PICKERS[resourceLocation] = particlePicker
     }
 
+    @Synchronized
     fun registerGasToParticlePicker(resourceLocation: ResourceLocation, gasType: GasType) {
         GAS_PARTICLE_PICKERS[gasType] = resourceLocation
     }
@@ -26,9 +28,8 @@ object GasParticlePickerRegistry {
     }
 
     fun registerWithDefaultParticlePicker(gasType: GasType) {
-        KelvinParticles.registerDefaultParticle(gasType.resourceLocation.path, gasType.density.toFloat()).listen {
-            register(gasType.resourceLocation, gasType, DefaultGasParticlePicker(it.type))
-        }
+        val particle = KelvinParticles.registerDefaultParticle(gasType.resourceLocation.path, gasType.density.toFloat())
+        register(gasType.resourceLocation, gasType, DefaultGasParticlePicker(particle))
     }
 
     fun getParticlePicker(resourceLocation: ResourceLocation): KelvinParticlePicker? {
