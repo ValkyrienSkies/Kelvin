@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent
 import net.minecraftforge.event.AddReloadListenerEvent
+import net.minecraftforge.event.OnDatapackSyncEvent
 import net.minecraftforge.event.level.ChunkEvent
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.fml.DistExecutor
@@ -17,6 +18,7 @@ import org.valkyrienskies.kelvin.KelvinMod.initClient
 import org.valkyrienskies.kelvin.KelvinParticles
 import org.valkyrienskies.kelvin.impl.client.particle.DefaultGasParticleProvider
 import org.valkyrienskies.kelvin.impl.recipe.KelvinReactionDataLoader
+import org.valkyrienskies.kelvin.networking.GasTagSyncPacket
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 import thedarkcolour.kotlinforforge.forge.FORGE_BUS
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
@@ -77,6 +79,11 @@ class KelvinModForge {
         }
 
         FORGE_BUS.addListener(::registerResourceManagers)
+        FORGE_BUS.addListener { event: OnDatapackSyncEvent ->
+            val player = event.player
+            if (player != null) GasTagSyncPacket().sendTo(player)
+            else GasTagSyncPacket().sendTo(event.playerList.players)
+        }
     }
 
     private fun registerResourceManagers(event: AddReloadListenerEvent) {
