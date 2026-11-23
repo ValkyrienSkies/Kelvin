@@ -11,6 +11,7 @@ import org.valkyrienskies.kelvin.api.DuctNodePos
 import org.valkyrienskies.kelvin.api.GasType
 import org.valkyrienskies.kelvin.impl.registry.GasTypeRegistry
 
+@Deprecated("Implement IEdgeFlowGate on a duct edge for conditional flow instead.")
 open class SmartDuctEdge(
     override val type: ConnectionType,
     override val nodeA: DuctNodePos,

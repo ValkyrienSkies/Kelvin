@@ -7,6 +7,7 @@ import org.valkyrienskies.kelvin.KelvinMod.KELVINLOGGER
 import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.impl.client.ClientKelvinInfo
 import org.valkyrienskies.kelvin.util.GasPhysics
+import org.valkyrienskies.kelvin.util.NodeThermodynamics
 import org.valkyrienskies.kelvin.util.KelvinChunkPos
 
 /**
@@ -57,7 +58,7 @@ interface DuctNetwork<T: Level> {
     fun getNodeHeatCapacity(pos: DuctNodePos): Double {
         val info = nodeInfo[pos] ?: return 0.0
         val node = nodes[pos] ?: return GasPhysics.mixtureCapacity(info.currentGasMasses)
-        return GasPhysics.nodeHeatCapacity(info.currentGasMasses, node.heatCapacity)
+        return NodeThermodynamics.calculateState(node, NodeThermodynamics.material(node, info)).heatCapacity
     }
 
     /**
@@ -76,15 +77,10 @@ interface DuctNetwork<T: Level> {
      */
     fun getNodeState(nodePos: DuctNodePos): DuctNodeState? {
         val info = nodeInfo[nodePos] ?: return null
-        val volume = (nodes[nodePos]?.volume ?: info.totalVolume) + info.volumeChange
-        return DuctNodeState(
-            nodePos,
-            getTemperatureAt(nodePos),
-            getPressureAt(nodePos),
-            HashMap<GasType, Double>(info.currentGasMasses),
-            info.currentEnergy,
-            volume
-        )
+        val node = nodes[nodePos]
+        if (node != null) return NodeThermodynamics.snapshot(node, info).state
+        return DuctNodeState(nodePos, info.currentTemperature, info.currentPressure,
+            java.util.Collections.unmodifiableMap(HashMap(info.currentGasMasses)), info.currentEnergy, info.totalVolume)
     }
 
     fun getEdgeBetween(from: DuctNodePos, to: DuctNodePos): DuctEdge?

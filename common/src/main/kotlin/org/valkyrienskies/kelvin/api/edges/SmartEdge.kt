@@ -1,11 +1,18 @@
 package org.valkyrienskies.kelvin.api.edges
 
 import org.valkyrienskies.kelvin.api.GasType
+import org.valkyrienskies.kelvin.api.simulation.EdgeFlowContext
 
 /**
  * Gates the entire mixture according to a measurement at the receiving node.
  */
-interface SmartEdge {
+@Deprecated("Implement IEdgeFlowGate for conditional flow instead.")
+interface SmartEdge : IEdgeFlowGate {
+
+    override fun allowsFlow(context: EdgeFlowContext, flowRate: Double): Boolean = allowsFlow(
+        flowRate, context.nodeA.pressure, context.nodeA.temperature, context.nodeA.gasMasses,
+        context.nodeB.pressure, context.nodeB.temperature, context.nodeB.gasMasses,
+    )
 
     enum class FilterType {
         NONE,

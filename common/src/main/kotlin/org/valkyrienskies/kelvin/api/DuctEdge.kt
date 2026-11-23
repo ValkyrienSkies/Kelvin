@@ -20,7 +20,8 @@ import org.valkyrienskies.kelvin.api.edges.*
     JsonSubTypes.Type(value = FilteredOneWayDuctEdge::class, name = "FilteredOneWayDuctEdge"),
     JsonSubTypes.Type(value = OneWayDuctEdge::class, name = "OneWayDuctEdge"),
     JsonSubTypes.Type(value = PipeDuctEdge::class, name = "PipeDuctEdge"),
-    JsonSubTypes.Type(value = PumpDuctEdge::class, name = "PumpDuctEdge")
+    JsonSubTypes.Type(value = PumpDuctEdge::class, name = "PumpDuctEdge"),
+    JsonSubTypes.Type(value = SmartDuctEdge::class, name = "SmartDuctEdge")
 )
 interface DuctEdge {
 
