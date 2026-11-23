@@ -2,7 +2,6 @@ package org.valkyrienskies.kelvin.impl.solvers
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
-import net.minecraft.util.Mth
 import org.valkyrienskies.kelvin.api.DuctEdge
 import org.valkyrienskies.kelvin.api.DuctNetwork
 import org.valkyrienskies.kelvin.api.DuctNode
@@ -17,13 +16,12 @@ import org.valkyrienskies.kelvin.impl.DuctNodeInfo
 import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
-import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
 import org.valkyrienskies.kelvin.util.GasPhysics.pumpBlocksFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.pumpPressureForEdge
+import org.valkyrienskies.kelvin.util.PassiveHeatTransfer
 import kotlin.math.abs
-import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.min
 
@@ -194,6 +192,7 @@ class JacobiSeidelSolver : KelvinSolver {
     )
 
     override fun step(network: DuctNetwork<*>, subSteps: Int) {
+        require(subSteps > 0) { "subSteps must be positive" }
         val tickDelta = 1.0 / 20.0 / subSteps.toDouble()
 
         // Stable sorted edge list — Gauss-Seidel needs a deterministic order, and HashMap
@@ -329,7 +328,10 @@ class JacobiSeidelSolver : KelvinSolver {
 
         val mTotA = workA.totalMass
         val mTotB = workB.totalMass
-        if (mTotA <= 1e-9 && mTotB <= 1e-9) return
+        if (mTotA <= 1e-9 && mTotB <= 1e-9) {
+            applyPassiveConduction(workA, workB, edge, tickDelta)
+            return
+        }
 
         val tA = workA.temperature
         val tB = workB.temperature
@@ -535,32 +537,24 @@ class JacobiSeidelSolver : KelvinSolver {
     private fun applyPassiveConduction(
         workA: NodeWork, workB: NodeWork, edge: DuctEdge, tickDelta: Double,
     ) {
-        if (workA.totalMass < 0.1 || workB.totalMass < 0.1) return
-        val heatMultiplier = edge.passiveHeatMultiplier()
-        if (heatMultiplier <= 0.0) return
-        val condA = heatConductivityAverage(workA.info.currentGasMasses, workA.pressure, workA.temperature)
-        val condB = heatConductivityAverage(workB.info.currentGasMasses, workB.pressure, workB.temperature)
-        if (condA <= 1e-4 || condB <= 1e-4) return
-        val avgCond = condA * condB / (condA + condB)
-        val area = Math.PI * edge.radius * edge.radius
-        val dQ = avgCond * area * (workA.temperature - workB.temperature) / edge.length * heatMultiplier * tickDelta
-        if (!dQ.isFinite()) return
-        val energyLimit = if (dQ > 0.0) workA.info.currentEnergy.absoluteValue else workB.info.currentEnergy.absoluteValue
-        val limit = min(energyLimit, passiveEqualizationLimit(workA, workB))
-        if (limit <= 0.0) return
-        val dE = Mth.clamp(dQ, -limit, limit)
+        // Mass advection may just have changed both capacities and energies. Never use the
+        // pre-advection temperatures to choose heat direction or the equalization bound.
+        workA.ensureFresh()
+        workB.ensureFresh()
+        val conductance = PassiveHeatTransfer.conductance(
+            edge, workA.info.currentGasMasses, workA.temperature,
+            workB.info.currentGasMasses, workB.temperature,
+        )
+        val dE = PassiveHeatTransfer.energyTransfer(
+            workA.info.currentEnergy, workA.capacity,
+            workB.info.currentEnergy, workB.capacity,
+            conductance, tickDelta,
+        )
         if (dE == 0.0) return
         workA.info.currentEnergy -= dE
         workB.info.currentEnergy += dE
         workA.dirty = true
         workB.dirty = true
-    }
-
-    private fun passiveEqualizationLimit(workA: NodeWork, workB: NodeWork): Double {
-        val capA = workA.capacity
-        val capB = workB.capacity
-        if (capA <= 1e-12 || capB <= 1e-12) return 0.0
-        return abs(workA.temperature - workB.temperature) / ((1.0 / capA) + (1.0 / capB))
     }
 
     private fun applyPassiveConduction(edgesWithEnds: List<EdgeWithEnds>, tickDelta: Double) {

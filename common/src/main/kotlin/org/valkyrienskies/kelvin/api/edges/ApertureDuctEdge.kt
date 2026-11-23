@@ -17,6 +17,7 @@ open class ApertureDuctEdge(
     override var aperture: Double = 0.0,
     override var unloaded: Boolean = false
 ) : DuctEdge, ApertureEdge {
+    override var wallThermalConductance: Double = 0.0
 
 
     override fun serialize(tag: CompoundTag): CompoundTag {

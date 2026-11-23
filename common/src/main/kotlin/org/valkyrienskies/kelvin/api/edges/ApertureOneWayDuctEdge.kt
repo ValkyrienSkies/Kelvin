@@ -16,4 +16,6 @@ open class ApertureOneWayDuctEdge(
     override var aperture: Double = 0.0,
     override var reversed: Boolean = false,
     override var unloaded: Boolean = false
-) : DuctEdge, ApertureEdge, OneWayEdge
+) : DuctEdge, ApertureEdge, OneWayEdge {
+    override var wallThermalConductance: Double = 0.0
+}

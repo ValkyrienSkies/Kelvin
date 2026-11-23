@@ -13,23 +13,31 @@ import org.valkyrienskies.kelvin.util.GasPhysics.calcPressureFromGamma
 import org.valkyrienskies.kelvin.util.GasPhysics.calculateFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.dynamicViscosityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.effectiveFlowRadius
-import org.valkyrienskies.kelvin.util.GasPhysics.heatConductivityAverage
 import org.valkyrienskies.kelvin.util.GasPhysics.mdotChoked
 import org.valkyrienskies.kelvin.util.GasPhysics.mixtureCapacity
+import org.valkyrienskies.kelvin.util.GasPhysics.mixtureR
 import org.valkyrienskies.kelvin.util.GasPhysics.nodeHeatCapacity
+import org.valkyrienskies.kelvin.util.GasPhysics.pressureEqualizationMassLimit
+import org.valkyrienskies.kelvin.util.PassiveHeatTransfer
 import org.valkyrienskies.kelvin.util.GasPhysics.pumpBlocksFlow
 import org.valkyrienskies.kelvin.util.GasPhysics.pumpPressureForEdge
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 import kotlin.collections.set
-import kotlin.math.absoluteValue
-import kotlin.math.min
+import kotlin.math.max
 
 class JacobiSimplifiedSolver: KelvinSolver {
     override fun step(network: DuctNetwork<*>, subSteps: Int) {
+        require(subSteps > 0) { "subSteps must be positive" }
         val tickDelta = 1.0 / 20.0 / subSteps.toDouble()
         val activeEdges = network.edges.values.filterNot { it.unloaded }
+        val connections = HashMap<DuctNodePos, Int>()
+        for (edge in activeEdges) {
+            if (edge.nodeA in network.unloadedNodes || edge.nodeB in network.unloadedNodes) continue
+            connections.merge(edge.nodeA, 1, Int::plus)
+            connections.merge(edge.nodeB, 1, Int::plus)
+        }
 
         // 1. Pre-allocate structures outside the loop to destroy GC overhead
         val deltaGasMasses = HashMap<DuctNodePos, MutableMap<GasType, Double>>()
@@ -120,26 +128,6 @@ class JacobiSimplifiedSolver: KelvinSolver {
                         mdot, pA, tA, infoA.currentGasMasses, pB, tB, infoB.currentGasMasses,
                     )) mdot = 0.0
 
-                // Passive Heat Transfer (Conduction)
-                val heatCondA = heatConductivityAverage(infoA.currentGasMasses, pA, tA)
-                val heatCondB = heatConductivityAverage(infoB.currentGasMasses, pB, tB)
-                val avgCond = if (heatCondA > 1e-4 && heatCondB > 1e-4) heatCondA * heatCondB / (heatCondA + heatCondB) else 0.0
-                val passiveQ = (avgCond * (Math.PI * edge.radius * edge.radius) * ((tA - tB) / edge.length)) *
-                    edge.passiveHeatMultiplier() * tickDelta
-
-                if (mA >= 0.1 && mB >= 0.1 && Math.abs(passiveQ) > 1e-4) {
-                    val capA = nodeHeatCapacity(infoA.currentGasMasses, network.nodes[edge.nodeA]!!.heatCapacity)
-                    val capB = nodeHeatCapacity(infoB.currentGasMasses, network.nodes[edge.nodeB]!!.heatCapacity)
-                    val equalizationLimit = if (capA > 1e-12 && capB > 1e-12)
-                        Math.abs(tA - tB) / ((1.0 / capA) + (1.0 / capB))
-                    else 0.0
-                    val energyLimit = if (passiveQ > 0.0) infoA.currentEnergy.absoluteValue else infoB.currentEnergy.absoluteValue
-                    val qLimit = min(energyLimit, equalizationLimit)
-                    val qApplied = passiveQ.coerceIn(-qLimit, qLimit)
-                    deltaEnergy[edge.nodeA] = deltaEnergy[edge.nodeA]!! - qApplied
-                    deltaEnergy[edge.nodeB] = deltaEnergy[edge.nodeB]!! + qApplied
-                }
-
                 if (mdot == 0.0 || mdot.isNaN()) {
                     edge.currentFlowRate = 0.0
                     continue
@@ -161,11 +149,21 @@ class JacobiSimplifiedSolver: KelvinSolver {
                 }
 
                 if (allowedMass <= 1e-12) continue
-                val dmClamped = dmTotal.coerceAtMost(allowedMass)
+                // Several sources must share the destination's pressure budget. Otherwise
+                // fixing energy advection exposes large alternating pressure overshoots.
+                val maxRT = max(mixtureR(infoA.currentGasMasses), mixtureR(infoB.currentGasMasses)) * max(tA, tB)
+                val equalizationLimit = pressureEqualizationMassLimit(
+                    pA - pB + pumpPressure, maxRT,
+                    volA * (if (nodeDataA is TankDuctNode) nodeDataA.size else 1.0),
+                    volB * (if (nodeDataB is TankDuctNode) nodeDataB.size else 1.0),
+                    connections[edge.nodeA] ?: 1, connections[edge.nodeB] ?: 1,
+                )
+                val dmClamped = minOf(dmTotal, allowedMass, equalizationLimit)
 
                 // Calculate thermal energy bound to this mass
                 val srcCapacity = mixtureCapacity(srcInfo.currentGasMasses)
-                val specificCv = if (mA > 1e-12) srcCapacity / mA else 0.0
+                val srcMass = if (dtMass > 0.0) mA else mB
+                val specificCv = if (srcMass > 1e-12) srcCapacity / srcMass else 0.0
                 val energyTransfer = dmClamped * specificCv * srcTemp
 
                 transfers.add(FastTransfer(src, dst, dmClamped, energyTransfer, edge))
@@ -218,7 +216,12 @@ class JacobiSimplifiedSolver: KelvinSolver {
                         else info.currentGasMasses[gas] = next
                     }
                 }
+            }
 
+            PassiveHeatTransfer.apply(network, activeEdges, tickDelta)
+
+            for ((pos, info) in network.nodeInfo) {
+                if (pos in network.unloadedNodes) continue
                 val nodeData = network.nodes[pos] ?: continue
                 val cap = nodeHeatCapacity(info.currentGasMasses, nodeData.heatCapacity)
                 val mTot = info.currentGasMasses.values.sum()

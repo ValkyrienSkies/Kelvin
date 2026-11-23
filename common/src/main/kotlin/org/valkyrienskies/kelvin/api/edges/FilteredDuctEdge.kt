@@ -21,6 +21,7 @@ open class FilteredDuctEdge(
     override var blacklist: Boolean = false,
     override var unloaded: Boolean = false
 ) : FilteredEdge {
+    override var wallThermalConductance: Double = 0.0
 
     override fun serialize(tag: CompoundTag): CompoundTag {
 
