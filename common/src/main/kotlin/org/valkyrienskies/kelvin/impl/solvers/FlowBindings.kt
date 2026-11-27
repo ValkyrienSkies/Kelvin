@@ -12,7 +12,9 @@ internal class NodeFlowBindings(node: DuctNode) {
     val pressure = node as? INodePressureOffsetProvider
     val gasGate = node as? INodeGasFlowGate
     val gasRate = node as? INodeGasFlowRateModifier
-    val hasHooks = gate != null || rate != null || radius != null || pressure != null || gasGate != null || gasRate != null
+    val transfer = node as? INodeTransferLimiter
+    val hasHooks = gate != null || rate != null || radius != null || pressure != null || gasGate != null ||
+        gasRate != null || transfer != null
 }
 
 internal class EdgeFlowBindings(edge: DuctEdge) {

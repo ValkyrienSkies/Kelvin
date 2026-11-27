@@ -87,7 +87,11 @@ internal object FlowBehavior {
         val request = TransferRequest(context.edge.id, immutableMap(masses), direction * energy)
         val modelScale = model.getTransferScale(context, parameters, request).scale()
         if (modelScale == 0.0) return null
-        return request.scaled(modelScale)
+        val limited = request.scaled(modelScale)
+        val limitA = nodeA.transfer?.getTransferScale(a!!, limited)?.scale() ?: 1.0
+        val limitB = nodeB.transfer?.getTransferScale(b!!, limited.reversed())?.scale() ?: 1.0
+        val limit = min(limitA, limitB)
+        return if (limit == 0.0) null else limited.scaled(limit)
     }
 
     private inline fun modify(rate: Double, modifier: (Double) -> Double): Double {

@@ -5,9 +5,10 @@ import org.valkyrienskies.kelvin.api.DuctNode
 import org.valkyrienskies.kelvin.api.DuctNodePos
 import java.util.HashSet
 import org.valkyrienskies.kelvin.api.simulation.NodeFlowContext
+import org.valkyrienskies.kelvin.api.simulation.TransferRequest
 
 /**
- * A duct node whose incident connections are restricted to [radius].
+ * A duct node with a maximum [radius] and a [flowFraction] of the allowed flow.
  *
  * The restriction is supplied by the node rather than by replacing an incident edge, allowing
  * filtered, one-way, smart, and other specialized edges to retain their behavior.
@@ -20,9 +21,16 @@ open class ValveDuctNode(
     override val maxTemperature: Double,
     override val heatCapacity: Double,
     radius: Double = 0.0,
-) : DuctNode, INodeFlowRadiusModifier {
+) : DuctNode, INodeFlowRadiusModifier, INodeTransferLimiter {
 
     override fun modifyFlowRadius(context: NodeFlowContext, radius: Double): Double = minOf(radius, this.radius)
+
+    override fun getTransferScale(context: NodeFlowContext, transfer: TransferRequest): Double = flowFraction
+
+    var flowFraction: Double = 1.0
+        set(value) {
+            field = if (value.isFinite()) value.coerceIn(0.0, 1.0) else 0.0
+        }
 
     var radius: Double = sanitizeRadius(radius)
         set(value) {
