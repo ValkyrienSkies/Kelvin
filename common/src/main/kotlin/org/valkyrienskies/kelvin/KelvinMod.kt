@@ -8,6 +8,7 @@ import dev.architectury.networking.simple.SimpleNetworkManager
 import dev.architectury.platform.Platform
 import dev.architectury.registry.ReloadListenerRegistry
 import dev.architectury.utils.Env
+import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
@@ -140,9 +141,13 @@ object KelvinMod {
             if (Platform.getEnvironment() == Env.CLIENT) KelvinClient.disabled = false
         }
 
-        ClientPlayerEvent.CLIENT_PLAYER_QUIT.register {
-            if (Platform.getEnvironment() == Env.CLIENT) KelvinClient.dump()
-            GasTagRegistry.clear()
+        ClientPlayerEvent.CLIENT_PLAYER_QUIT.register { player ->
+            if (Platform.getEnvironment() == Env.CLIENT) {
+                KelvinClient.dump()
+                if (player != null && !Minecraft.getInstance().isLocalServer) {
+                    GasTagRegistry.clear()
+                }
+            }
         }
 
         ClientTickEvent.CLIENT_LEVEL_POST.register {
